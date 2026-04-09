@@ -1,0 +1,91 @@
+{
+  "name": "RyskPosition",
+  "type": "object",
+  "properties": {
+    "asset": {
+      "type": "string",
+      "enum": [
+        "UETH",
+        "UBTC"
+      ],
+      "title": "Asset"
+    },
+    "option_type": {
+      "type": "string",
+      "enum": [
+        "Cash secured put",
+        "Covered call",
+        "Other"
+      ],
+      "title": "Option Type"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Closed",
+        "Expired OTM",
+        "Expired ITM",
+        "Exercised"
+      ],
+      "title": "Status"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Created Date"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "apr_percent": {
+      "type": "number",
+      "title": "APR (%)"
+    },
+    "income_usd": {
+      "type": "number",
+      "title": "Income (USD)"
+    },
+    "size": {
+      "type": "number",
+      "title": "Size (USDC)"
+    },
+    "notional_usd": {
+      "type": "number",
+      "title": "Notional (USD)"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price"
+    },
+    "maturity_price": {
+      "type": "number",
+      "title": "Maturity Price"
+    },
+    "target_price": {
+      "type": "number",
+      "title": "Target / Strike Price"
+    },
+    "outcome": {
+      "type": "string",
+      "title": "Outcome"
+    },
+    "wallet_id": {
+      "type": "string",
+      "title": "Linked Wallet ID"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "asset",
+    "option_type",
+    "status",
+    "created_date",
+    "maturity_date"
+  ]
+}
