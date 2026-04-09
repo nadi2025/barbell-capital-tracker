@@ -18,6 +18,10 @@
       "type": "number",
       "title": "Leverage"
     },
+    "size": {
+      "type": "number",
+      "title": "Size (Amount)"
+    },
     "margin_usd": {
       "type": "number",
       "title": "Margin (USD)"
@@ -41,6 +45,10 @@
     "entry_price": {
       "type": "number",
       "title": "Entry Price"
+    },
+    "mark_price": {
+      "type": "number",
+      "title": "Mark Price"
     },
     "status": {
       "type": "string",
