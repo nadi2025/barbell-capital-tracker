@@ -1,0 +1,35 @@
+{
+  "name": "AaveBorrow",
+  "type": "object",
+  "properties": {
+    "borrowed_token": {
+      "type": "string",
+      "title": "Borrowed Token"
+    },
+    "borrowed_amount": {
+      "type": "number",
+      "title": "Borrowed Amount (USD)"
+    },
+    "borrow_apy": {
+      "type": "number",
+      "title": "Borrow APY (%)"
+    },
+    "e_mode": {
+      "type": "string",
+      "enum": [
+        "Enabled",
+        "Disabled"
+      ],
+      "title": "E-Mode"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Updated"
+    }
+  },
+  "required": [
+    "borrowed_token",
+    "borrowed_amount"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "AaveCollateral",
+  "type": "object",
+  "properties": {
+    "token": {
+      "type": "string",
+      "title": "Token"
+    },
+    "units": {
+      "type": "number",
+      "title": "Units"
+    },
+    "is_collateral_enabled": {
+      "type": "boolean",
+      "title": "Is Collateral Enabled",
+      "default": true
+    },
+    "supply_apy": {
+      "type": "number",
+      "title": "Supply APY (%)"
+    },
+    "liquidation_threshold": {
+      "type": "number",
+      "title": "Liquidation Threshold (%)"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Updated"
+    }
+  },
+  "required": [
+    "token",
+    "units"
+  ]
+}
