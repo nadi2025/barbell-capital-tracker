@@ -18,6 +18,10 @@
       "type": "number",
       "title": "Leverage"
     },
+    "size": {
+      "type": "number",
+      "title": "Size (Amount of Asset)"
+    },
     "margin_usd": {
       "type": "number",
       "title": "Margin (USD)"
@@ -25,6 +29,14 @@
     "position_value_usd": {
       "type": "number",
       "title": "Position Value (USD)"
+    },
+    "entry_price": {
+      "type": "number",
+      "title": "Entry Price"
+    },
+    "mark_price": {
+      "type": "number",
+      "title": "Mark Price (Current)"
     },
     "liquidation_price": {
       "type": "number",
@@ -37,10 +49,6 @@
         "Short"
       ],
       "title": "Direction"
-    },
-    "entry_price": {
-      "type": "number",
-      "title": "Entry Price"
     },
     "status": {
       "type": "string",
@@ -62,7 +70,7 @@
     },
     "pnl_usd": {
       "type": "number",
-      "title": "PnL (USD)"
+      "title": "PnL (USD) - override"
     }
   },
   "required": [
