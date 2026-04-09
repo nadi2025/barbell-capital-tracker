@@ -14,7 +14,7 @@ export default function DepositsPage() {
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editDeposit, setEditDeposit] = useState(null);
-  const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", notes: "" });
+  const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
   const [user, setUser] = useState(null);
 
   const loadData = async () => {
@@ -31,11 +31,11 @@ export default function DepositsPage() {
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
-  const openNew = () => { setEditDeposit(null); setForm({ date: "", type: "Deposit", amount: "", notes: "" }); setFormOpen(true); };
-  const openEdit = (dep) => { setEditDeposit(dep); setForm({ date: dep.date, type: dep.type, amount: String(dep.amount), notes: dep.notes || "" }); setFormOpen(true); };
+  const openNew = () => { setEditDeposit(null); setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" }); setFormOpen(true); };
+  const openEdit = (dep) => { setEditDeposit(dep); setForm({ date: dep.date, type: dep.type, amount: String(dep.amount), capital_source: dep.capital_source || "Equity Investment", notes: dep.notes || "" }); setFormOpen(true); };
 
   const handleSave = async () => {
-    const data = { date: form.date, type: form.type, amount: parseFloat(form.amount), notes: form.notes || undefined };
+    const data = { date: form.date, type: form.type, amount: parseFloat(form.amount), capital_source: form.capital_source, notes: form.notes || undefined };
     if (editDeposit) {
       await base44.entities.Deposit.update(editDeposit.id, data);
       toast.success("Updated");
@@ -44,7 +44,7 @@ export default function DepositsPage() {
       toast.success(`${form.type} recorded`);
     }
     setFormOpen(false);
-    setForm({ date: "", type: "Deposit", amount: "", notes: "" });
+    setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
     setEditDeposit(null);
     loadData();
   };
@@ -107,6 +107,7 @@ export default function DepositsPage() {
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="text-left px-4 py-3 font-medium">Date</th>
                 <th className="text-left px-4 py-3 font-medium">Type</th>
+                <th className="text-left px-4 py-3 font-medium">Capital Source</th>
                 <th className="text-right px-4 py-3 font-medium">Amount</th>
                 <th className="text-left px-4 py-3 font-medium">Notes</th>
                 {!isReadOnly && <th className="text-right px-4 py-3 font-medium">Actions</th>}
@@ -119,10 +120,17 @@ export default function DepositsPage() {
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1.5 text-xs">
                       {d.type === "Deposit"
-                        ? <ArrowDownLeft className="w-3.5 h-3.5 text-profit" />
-                        : <ArrowUpRight className="w-3.5 h-3.5 text-loss" />}
+                       ? <ArrowDownLeft className="w-3.5 h-3.5 text-profit" />
+                       : <ArrowUpRight className="w-3.5 h-3.5 text-loss" />}
                       {d.type}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      d.capital_source === "Debt Investment" ? "bg-loss/10 text-loss border-loss/20"
+                      : d.capital_source === "Equity Cash Flow" ? "bg-blue-50 text-blue-700 border-blue-200"
+                      : "bg-profit/10 text-profit border-profit/20"
+                    }`}>{d.capital_source || "Equity Investment"}</span>
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-medium">
                     <span className={d.type === "Deposit" ? "text-profit" : "text-loss"}>
@@ -166,6 +174,17 @@ export default function DepositsPage() {
                 <SelectContent>
                   <SelectItem value="Deposit">Deposit</SelectItem>
                   <SelectItem value="Withdrawal">Withdrawal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Capital Source</Label>
+              <Select value={form.capital_source} onValueChange={v => setForm(f => ({ ...f, capital_source: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Equity Investment">הון עצמי – השקעה</SelectItem>
+                  <SelectItem value="Equity Cash Flow">הון עצמי – תזרים</SelectItem>
+                  <SelectItem value="Debt Investment">השקעת חוב</SelectItem>
                 </SelectContent>
               </Select>
             </div>

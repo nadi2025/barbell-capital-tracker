@@ -19,6 +19,15 @@
       "type": "number",
       "title": "Amount ($)"
     },
+    "capital_source": {
+      "type": "string",
+      "enum": [
+        "Equity Investment",
+        "Equity Cash Flow",
+        "Debt Investment"
+      ],
+      "title": "Capital Source"
+    },
     "notes": {
       "type": "string",
       "title": "Notes"

@@ -19,13 +19,22 @@ const empty = {
 
 export default function DebtPage() {
   const [debts, setDebts] = useState([]);
+  const [debtDeposits, setDebtDeposits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  const load = () => base44.entities.DebtFacility.list("-start_date").then(d => { setDebts(d); setLoading(false); });
+  const load = async () => {
+    const [d, deps] = await Promise.all([
+      base44.entities.DebtFacility.list("-start_date"),
+      base44.entities.Deposit.list("-date"),
+    ]);
+    setDebts(d);
+    setDebtDeposits(deps.filter(dep => dep.capital_source === "Debt Investment"));
+    setLoading(false);
+  };
 
   useEffect(() => { load(); }, []);
 
@@ -103,6 +112,45 @@ export default function DebtPage() {
       </div>
 
       <InterestSchedule debts={debts} />
+
+      {/* Debt-funded deposits */}
+      {debtDeposits.length > 0 && (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-semibold">העברות ממומנות בחוב</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">הפקדות שסומנו כ"השקעת חוב"</p>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-xs text-muted-foreground">
+                <th className="text-left px-4 py-3 font-medium">Date</th>
+                <th className="text-left px-4 py-3 font-medium">Type</th>
+                <th className="text-right px-4 py-3 font-medium">Amount</th>
+                <th className="text-left px-4 py-3 font-medium">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {debtDeposits.map(d => (
+                <tr key={d.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
+                  <td className="px-4 py-3 font-mono text-xs">{d.date}</td>
+                  <td className="px-4 py-3 text-xs">{d.type}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs text-loss">
+                    {d.type === "Deposit" ? "+" : "-"}${(d.amount || 0).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{d.notes || "—"}</td>
+                </tr>
+              ))}
+              <tr className="bg-muted/20 font-semibold text-sm">
+                <td colSpan={2} className="px-4 py-3 text-xs text-muted-foreground">TOTAL</td>
+                <td className="px-4 py-3 text-right font-mono text-loss">
+                  ${debtDeposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0).toLocaleString()}
+                </td>
+                <td />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
