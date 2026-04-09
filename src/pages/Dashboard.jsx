@@ -9,6 +9,7 @@ import AllocationChart from "../components/dashboard/AllocationChart";
 import MonthlyPremiumChart from "../components/dashboard/MonthlyPremiumChart";
 import StrategyInsights from "../components/dashboard/StrategyInsights";
 import CapitalStructure from "../components/dashboard/CapitalStructure";
+import DebtAlerts from "../components/dashboard/DebtAlerts";
 import KpiCard from "../components/KpiCard";
 import { TrendingUp, Award, BarChart3, Activity } from "lucide-react";
 
@@ -120,6 +121,9 @@ export default function Dashboard() {
           icon={Award}
         />
       </div>
+
+      {/* Debt Alerts */}
+      <DebtAlerts debts={debts} />
 
       {/* Capital Structure */}
       <CapitalStructure debts={debts} nav={snapshot?.nav || 0} totalDeposited={totalDeposited} />
