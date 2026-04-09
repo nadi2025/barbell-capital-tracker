@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import PriceUpdateModal from "../../components/crypto/PriceUpdateModal";
 import AlertsPanel from "../../components/crypto/AlertsPanel";
+import AaveHealthPanel from "../../components/crypto/AaveHealthPanel";
 
 const fmt = (v, d = 0) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = (v) => v == null ? "0%" : `${(v * 100).toFixed(1)}%`;
@@ -23,9 +24,10 @@ export default function CryptoDashboard() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const [interestPayments, setInterestPayments] = useState([]);
+  const [aavePosition, setAavePosition] = useState(null);
 
   const load = async () => {
-    const [a, lo, le, lev, lp, sn, ip] = await Promise.all([
+    const [a, lo, le, lev, lp, sn, ip, av] = await Promise.all([
       base44.entities.CryptoAsset.list(),
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
@@ -33,8 +35,9 @@ export default function CryptoDashboard() {
       base44.entities.LpPosition.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
       base44.entities.InterestPayment.filter({ status: "Paid" }),
+      base44.entities.AavePosition.list("-last_updated", 1),
     ]);
-    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setInterestPayments(ip);
+    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setInterestPayments(ip); setAavePosition(av[0] || null);
     setLoading(false);
   };
 
@@ -53,8 +56,11 @@ export default function CryptoDashboard() {
   const nav = totalAssets - totalDebt;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
 
-  const activeLoan = loans[0];
+  const investorLoans = loans.filter(l => l.loan_type === "Investor Debt" || !l.loan_type);
+  const activeLoan = investorLoans[0] || loans[0];
   const quarterlyPayment = activeLoan ? activeLoan.principal_usd * activeLoan.annual_interest_rate / 4 : 0;
+  const totalInvestorDebt = investorLoans.reduce((s, l) => s + (l.principal_usd || 0), 0);
+  const aaveDebt = aavePosition?.total_borrowed_usd || 0;
 
   // Allocation pie
   const btcAssets = assets.filter(a => ["awBTC", "wBTC", "BTC"].includes(a.token));
@@ -79,7 +85,7 @@ export default function CryptoDashboard() {
   ].filter(d => d.value > 0);
 
   const leverageRatio = nav > 0 ? totalAssets / nav : 0;
-  const borrowPowerUsed = activeLoan?.borrow_power_used || 0;
+  const borrowPowerUsed = aavePosition ? (aavePosition.borrow_power_used / 100) : (activeLoan?.borrow_power_used || 0);
 
   const chartData = [...snapshots].reverse().map(s => ({
     date: s.snapshot_date,
@@ -125,6 +131,7 @@ export default function CryptoDashboard() {
         liquidationAlerts={liquidationAlerts}
         staleAssets={staleAssets}
         loans={loans}
+        aavePosition={aavePosition}
       />
 
       {/* KPI Cards */}
@@ -140,9 +147,9 @@ export default function CryptoDashboard() {
           <p className="text-xs text-muted-foreground mt-1">Wallets + Positions</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Debt</p>
-          <p className="text-xl font-bold font-mono text-loss">{fmt(totalDebt)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Quarterly payment: {fmt(quarterlyPayment)}</p>
+          <p className="text-xs text-muted-foreground mb-1">Investor Debt (S&T)</p>
+          <p className="text-xl font-bold font-mono text-loss">{fmt(totalInvestorDebt || totalDebt)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Aave on-chain: {fmt(aaveDebt)} · Q: {fmt(quarterlyPayment)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Lent Out</p>
@@ -156,27 +163,22 @@ export default function CryptoDashboard() {
         </div>
       </div>
 
-      {/* Second row */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      {/* Second row — Aave Health */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <AaveHealthPanel aave={aavePosition} />
+      </div>
+
+      {/* Third row */}
+      <div className="grid grid-cols-2 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Borrow Power Used</p>
-          <p className={`text-xl font-bold font-mono ${borrowPowerUsed > 0.7 ? "text-loss" : borrowPowerUsed > 0.5 ? "text-amber-400" : "text-profit"}`}>
-            {pct(borrowPowerUsed)}
-          </p>
-          <div className="w-full bg-muted rounded-full h-1.5 mt-2">
-            <div className={`h-1.5 rounded-full ${borrowPowerUsed > 0.7 ? "bg-loss" : borrowPowerUsed > 0.5 ? "bg-amber-400" : "bg-profit"}`}
-              style={{ width: `${Math.min(100, borrowPowerUsed * 100)}%` }} />
-          </div>
+          <p className="text-xs text-muted-foreground mb-1">Open HL Positions</p>
+          <p className="text-xl font-bold font-mono text-foreground">{leveraged.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Margin: {fmt(leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Leverage</p>
           <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
           <p className="text-xs text-muted-foreground mt-1">Exposure / Equity</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Open Leveraged Positions</p>
-          <p className="text-xl font-bold font-mono text-foreground">{leveraged.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Margin: {fmt(leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
         </div>
       </div>
 

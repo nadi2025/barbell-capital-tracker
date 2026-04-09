@@ -1,0 +1,56 @@
+{
+  "name": "AavePosition",
+  "type": "object",
+  "properties": {
+    "total_collateral_usd": {
+      "type": "number",
+      "title": "Total Collateral (USD)"
+    },
+    "total_borrowed_usd": {
+      "type": "number",
+      "title": "Total Borrowed (USD)"
+    },
+    "health_factor": {
+      "type": "number",
+      "title": "Health Factor"
+    },
+    "borrow_power_used": {
+      "type": "number",
+      "title": "Borrow Power Used (%)"
+    },
+    "supply_apy": {
+      "type": "number",
+      "title": "Supply APY (%)"
+    },
+    "borrow_apy": {
+      "type": "number",
+      "title": "Borrow APY (%)"
+    },
+    "net_apy": {
+      "type": "number",
+      "title": "Net APY (%)"
+    },
+    "e_mode": {
+      "type": "string",
+      "enum": [
+        "Enabled",
+        "Disabled"
+      ],
+      "title": "E-Mode"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Updated"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "health_factor",
+    "total_collateral_usd",
+    "total_borrowed_usd"
+  ]
+}
