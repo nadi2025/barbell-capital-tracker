@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import AssignmentAnalysis from "../components/AssignmentAnalysis";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2 } from "lucide-react";
@@ -9,18 +10,21 @@ import { toast } from "sonner";
 
 export default function OptionsPage() {
   const [trades, setTrades] = useState([]);
+  const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState(null);
   const [user, setUser] = useState(null);
 
   const loadData = async () => {
-    const [t, u] = await Promise.all([
+    const [t, u, s] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.auth.me(),
+      base44.entities.StockPosition.list(),
     ]);
     setTrades(t);
     setUser(u);
+    setStocks(s);
     setLoading(false);
   };
 
@@ -56,6 +60,8 @@ export default function OptionsPage() {
           </Button>
         )}
       </div>
+
+      <AssignmentAnalysis trades={trades} stocks={stocks} />
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
