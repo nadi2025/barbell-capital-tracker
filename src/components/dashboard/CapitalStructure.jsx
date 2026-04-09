@@ -50,6 +50,7 @@ export default function CapitalStructure({ debts, nav, totalDeposited }) {
           <div className="w-2.5 h-2.5 rounded-full bg-loss" />
           <span className="text-muted-foreground">Debt</span>
           <span className="font-mono font-medium text-foreground">{(debtRatio * 100).toFixed(0)}%</span>
+          <span className="font-mono text-loss">(${totalDebt.toLocaleString("en-US", { maximumFractionDigits: 0 })})</span>
         </div>
       </div>
 
