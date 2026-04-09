@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Plus, Pencil, CheckCircle } from "lucide-react";
+import { Plus, Pencil, CheckCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ export default function CryptoDebtPage() {
   const [editLoan, setEditLoan] = useState(null);
   const [loanForm, setLoanForm] = useState({ lender: "", principal_usd: "", annual_interest_rate: "", next_payment_date: "", collateral_description: "", platform: "", borrow_power_used: "", status: "Active" });
   const [payDialog, setPayDialog] = useState(false);
+  const [editPayment, setEditPayment] = useState(null);
   const [payForm, setPayForm] = useState({ payment_date: "", amount_usd: "", quarter: "", status: "Scheduled", notes: "", loan_id: "" });
   const [lendingDialog, setLendingDialog] = useState(false);
   const [editLending, setEditLending] = useState(null);
@@ -43,8 +44,15 @@ export default function CryptoDebtPage() {
 
   const savePay = async () => {
     const data = { ...payForm, amount_usd: parseFloat(payForm.amount_usd) || 0, loan_id: loans[0]?.id || "" };
-    await base44.entities.InterestPayment.create(data);
-    toast.success("Payment recorded"); setPayDialog(false); load();
+    if (editPayment) await base44.entities.InterestPayment.update(editPayment.id, data);
+    else await base44.entities.InterestPayment.create(data);
+    toast.success(editPayment ? "Payment updated" : "Payment recorded"); setPayDialog(false); load();
+  };
+
+  const delPayment = async (id) => {
+    if (!confirm("Delete this payment?")) return;
+    await base44.entities.InterestPayment.delete(id);
+    toast.success("Deleted"); load();
   };
 
   const markPaid = async (pay) => {
@@ -158,11 +166,14 @@ export default function CryptoDebtPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${p.status === "Paid" ? "bg-profit/10 text-profit border-profit/20" : p.status === "Overdue" ? "bg-loss/10 text-loss border-loss/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20"}`}>{p.status}</span>
                   </td>
                   <td className="py-2 text-right">
-                    {p.status !== "Paid" && (
-                      <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => markPaid(p)}>
-                        <CheckCircle className="w-3 h-3" /> Mark Paid
+                    <div className="flex gap-1 justify-end">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditPayment(p); setPayForm({ payment_date: p.payment_date || "", amount_usd: p.amount_usd || "", quarter: p.quarter || "", status: p.status, notes: p.notes || "", loan_id: p.loan_id || "" }); setPayDialog(true); }}>
+                        <Pencil className="w-3 h-3" />
                       </Button>
-                    )}
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => delPayment(p.id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -243,7 +254,7 @@ export default function CryptoDebtPage() {
       {/* Payment Dialog */}
       <Dialog open={payDialog} onOpenChange={setPayDialog}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Interest Payment</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editPayment ? "Edit Payment" : "Add Interest Payment"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             {[{ label: "Date", key: "payment_date", type: "date" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Quarter (e.g. Q1 2026)", key: "quarter" }, { label: "Notes", key: "notes" }].map(f => (
               <div key={f.key}>
