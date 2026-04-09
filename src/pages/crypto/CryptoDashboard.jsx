@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, DollarSign, AlertTriangle, RefreshCw, Wallet, BarChart3, Activity, ArrowUpRight } from "lucide-react";
@@ -19,20 +20,19 @@ export default function CryptoDashboard() {
   const [leveraged, setLeveraged] = useState([]);
   const [lpPositions, setLpPositions] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
-  const [investors, setInvestors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const load = async () => {
-    const [a, lo, le, lev, lp, sn, inv] = await Promise.all([
+    const [a, lo, le, lev, lp, sn] = await Promise.all([
       base44.entities.CryptoAsset.list(),
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
       base44.entities.LpPosition.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
-      base44.entities.CryptoInvestor.list(),
     ]);
-    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setInvestors(inv);
+    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn);
     setLoading(false);
   };
 
@@ -45,13 +45,11 @@ export default function CryptoDashboard() {
   );
 
   const totalAssets = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0)
-    + leveraged.reduce((s, l) => s + (l.position_value_usd || 0), 0)
+    + leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0)
     + lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
   const totalDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
   const nav = totalAssets - totalDebt;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
-  const initialCapital = investors.reduce((s, i) => s + (i.initial_investment_usd || 0), 0);
-  const navChange = initialCapital > 0 ? ((nav - initialCapital) / initialCapital) * 100 : 0;
 
   const activeLoan = loans[0];
   const quarterlyPayment = activeLoan ? activeLoan.principal_usd * activeLoan.annual_interest_rate / 4 : 0;
@@ -130,26 +128,28 @@ export default function CryptoDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Net Asset Value (NAV)</p>
+          <p className="text-xs text-muted-foreground mb-1">Net Value (NAV)</p>
           <p className={`text-xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Assets {fmt(totalAssets)} − Debt {fmt(totalDebt)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Assets − Debt</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Initial Capital Raised</p>
-          <p className="text-xl font-bold font-mono text-foreground">{fmt(initialCapital)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{investors.length} investor</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Assets Today</p>
+          <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalAssets)}</p>
-          <p className={`text-xs ${navChange < 0 ? "text-loss" : "text-profit"} mt-1`}>{navChange < 0 ? "-" : "+"}{Math.abs(navChange).toFixed(1)}% vs initial</p>
+          <p className="text-xs text-muted-foreground mt-1">Wallets + Positions</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Money Lent Out</p>
+          <p className="text-xs text-muted-foreground mb-1">Total Debt</p>
+          <p className="text-xl font-bold font-mono text-loss">{fmt(totalDebt)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Quarterly payment: {fmt(quarterlyPayment)}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Lent Out</p>
           <p className="text-xl font-bold font-mono text-chart-2">{fmt(totalLent)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{loans.length} active loans</p>
+          <p className="text-xs text-muted-foreground mt-1">{lending.length} active borrowers</p>
         </div>
       </div>
+
+      {/* Second row */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Borrow Power Used</p>
