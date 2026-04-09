@@ -17,7 +17,6 @@ import WalletsPage from './pages/crypto/WalletsPage';
 import LeveragedPage from './pages/crypto/LeveragedPage';
 
 import CryptoDebtPage from './pages/crypto/CryptoDebtPage';
-import RyskPage from './pages/crypto/RyskPage';
 import InvestorsPage from './pages/crypto/InvestorsPage';
 import ActivityPage from './pages/crypto/ActivityPage';
 
@@ -61,7 +60,6 @@ const AuthenticatedApp = () => {
         <Route path="/crypto/debt" element={<CryptoDebtPage />} />
         <Route path="/crypto/investors" element={<InvestorsPage />} />
         <Route path="/crypto/activity" element={<ActivityPage />} />
-        <Route path="/crypto/rysk" element={<RyskPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

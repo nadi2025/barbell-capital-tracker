@@ -2,14 +2,6 @@
   "name": "CryptoLoan",
   "type": "object",
   "properties": {
-    "loan_type": {
-      "type": "string",
-      "enum": [
-        "Investor Debt",
-        "On-Chain Borrow"
-      ],
-      "title": "Loan Type"
-    },
     "lender": {
       "type": "string",
       "title": "Lender"

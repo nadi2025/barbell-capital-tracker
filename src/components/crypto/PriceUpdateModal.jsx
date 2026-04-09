@@ -9,14 +9,12 @@ import { toast } from "sonner";
 const BTC_TOKENS = ["awBTC", "wBTC", "BTC"];
 const ETH_TOKENS = ["aETH", "ETH"];
 const AAVE_TOKENS = ["aAAVE", "AAVE"];
-const MSTR_TOKENS = ["MSTR"];
 const STABLE_TOKENS = ["USDC", "USDT", "DAI", "aUSDC"];
 
 export default function PriceUpdateModal({ open, onClose, onUpdated }) {
   const [btcPrice, setBtcPrice] = useState("");
   const [ethPrice, setEthPrice] = useState("");
   const [aavePrice, setAavePrice] = useState("");
-  const [mstrPrice, setMstrPrice] = useState("");
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -45,24 +43,14 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
     const eth = parseFloat(ethPrice) || 0;
     const aave = parseFloat(aavePrice) || 0;
 
-    const mstr = parseFloat(mstrPrice) || 0;
     const assets = await base44.entities.CryptoAsset.list();
     const today = new Date().toISOString().split("T")[0];
-
-    // Handle MSTR placeholder asset for price storage
-    if (mstr > 0) {
-      const mstrAsset = assets.find(a => MSTR_TOKENS.includes(a.token));
-      if (!mstrAsset) {
-        await base44.entities.CryptoAsset.create({ token: "MSTR", amount: 0, current_price_usd: mstr, current_value_usd: 0, asset_category: "Other", wallet_id: "price-store", last_updated: today });
-      }
-    }
 
     await Promise.all(assets.map(asset => {
       let price = null;
       if (BTC_TOKENS.includes(asset.token) && btc > 0) price = btc;
       else if (ETH_TOKENS.includes(asset.token) && eth > 0) price = eth;
       else if (AAVE_TOKENS.includes(asset.token) && aave > 0) price = aave;
-      else if (MSTR_TOKENS.includes(asset.token) && mstr > 0) price = mstr;
       else if (STABLE_TOKENS.includes(asset.token)) price = 1;
 
       if (price === null) return null;
@@ -110,14 +98,12 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
             { label: "BTC Price ($)", value: btcPrice, set: setBtcPrice, placeholder: "70,000" },
             { label: "ETH Price ($)", value: ethPrice, set: setEthPrice, placeholder: "2,500" },
             { label: "AAVE Price ($)", value: aavePrice, set: setAavePrice, placeholder: "175" },
-          { label: "MSTR Price ($)", value: mstrPrice, set: setMstrPrice, placeholder: "150" },
           ].map(f => (
             <div key={f.label}>
               <Label className="text-xs text-muted-foreground mb-1 block">{f.label}</Label>
               <Input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder} type="number" />
             </div>
-          ))
-          }
+          ))}
           <p className="text-xs text-muted-foreground">Stablecoins remain at $1. A new portfolio snapshot will be created automatically.</p>
           <Button className="w-full" onClick={handleUpdate} disabled={loading}>
             {loading ? "Updating..." : "Update Prices"}

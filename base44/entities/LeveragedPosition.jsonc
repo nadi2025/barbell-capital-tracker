@@ -4,12 +4,31 @@
   "properties": {
     "asset": {
       "type": "string",
-      "title": "Asset (BTC/ETH/AAVE/MSTR)"
+      "title": "Asset"
     },
     "platform": {
       "type": "string",
-      "title": "Platform",
-      "default": "HyperLiquid"
+      "enum": [
+        "HyperLiquid",
+        "Other"
+      ],
+      "title": "Platform"
+    },
+    "leverage": {
+      "type": "number",
+      "title": "Leverage"
+    },
+    "margin_usd": {
+      "type": "number",
+      "title": "Margin (USD)"
+    },
+    "position_value_usd": {
+      "type": "number",
+      "title": "Position Value (USD)"
+    },
+    "liquidation_price": {
+      "type": "number",
+      "title": "Liquidation Price"
     },
     "direction": {
       "type": "string",
@@ -19,25 +38,9 @@
       ],
       "title": "Direction"
     },
-    "leverage": {
-      "type": "number",
-      "title": "Leverage"
-    },
-    "size_units": {
-      "type": "number",
-      "title": "Size (units)"
-    },
     "entry_price": {
       "type": "number",
-      "title": "Entry Price ($)"
-    },
-    "liquidation_price": {
-      "type": "number",
-      "title": "Liquidation Price ($)"
-    },
-    "margin_usd": {
-      "type": "number",
-      "title": "Margin (USD)"
+      "title": "Entry Price"
     },
     "status": {
       "type": "string",
@@ -57,17 +60,14 @@
       "format": "date",
       "title": "Closed Date"
     },
-    "closed_pnl": {
+    "pnl_usd": {
       "type": "number",
-      "title": "Closed PnL (USD)"
-    },
-    "notes": {
-      "type": "string",
-      "title": "Notes"
+      "title": "PnL (USD)"
     }
   },
   "required": [
     "asset",
+    "platform",
     "direction",
     "status"
   ]

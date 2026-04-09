@@ -1,19 +1,10 @@
 import { AlertTriangle, Clock, Shield } from "lucide-react";
 import moment from "moment";
 
-export default function AlertsPanel({ borrowPowerUsed, liquidationAlerts, staleAssets, loans, aavePosition }) {
+export default function AlertsPanel({ borrowPowerUsed, liquidationAlerts, staleAssets, loans }) {
   const alerts = [];
 
-  // Aave-specific alerts
-  if (aavePosition) {
-    const hf = aavePosition.health_factor;
-    const bp = aavePosition.borrow_power_used;
-    if (hf < 1.5) alerts.push({ type: "danger", msg: `Aave Health Factor CRITICAL: ${hf.toFixed(2)} — URGENT liquidation risk!` });
-    else if (hf < 2.0) alerts.push({ type: "warning", msg: `Aave Health Factor: ${hf.toFixed(2)} — consider reducing borrow` });
-    if (bp > 75) alerts.push({ type: "danger", msg: `Aave Borrow Power ${bp.toFixed(1)}% — above 75%, critical` });
-    else if (bp > 60) alerts.push({ type: "warning", msg: `Aave Borrow Power ${bp.toFixed(1)}% — above 60%` });
-    if (aavePosition.borrow_apy > 5) alerts.push({ type: "warning", msg: `Aave Borrow APY high: ${aavePosition.borrow_apy.toFixed(2)}%` });
-  } else if (borrowPowerUsed > 0.7) {
+  if (borrowPowerUsed > 0.7) {
     alerts.push({ type: "danger", msg: `Borrow Power high: ${(borrowPowerUsed * 100).toFixed(0)}% — above 70%` });
   }
 

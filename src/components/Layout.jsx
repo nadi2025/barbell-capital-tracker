@@ -22,7 +22,6 @@ const onChainNav = [
   { path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
   { path: "/crypto/investors", label: "Investors", icon: Users },
   { path: "/crypto/activity", label: "Activity Log", icon: FileText },
-  { path: "/crypto/rysk", label: "Rysk Options", icon: Activity },
 ];
 
 const navItems = [
