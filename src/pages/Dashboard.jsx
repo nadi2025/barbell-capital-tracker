@@ -54,10 +54,7 @@ export default function Dashboard() {
   const holdingStocks = stocks.filter(s => s.status === "Holding" || s.status === "Partially Sold");
   const totalStockValue = holdingStocks.reduce((s, x) => s + (x.current_value || 0), 0);
 
-  const equityDeposits = deposits.filter(d => d.capital_source !== "Debt Investment");
-  const debtDeposits = deposits.filter(d => d.capital_source === "Debt Investment");
-  const totalDeposited = equityDeposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
-  const totalDebtFromDeposits = debtDeposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
+  const totalDeposited = deposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
 
   const closedOptions = options.filter(o => o.status === "Closed" || o.status === "Expired");
   const openOptions = options.filter(o => o.status === "Open");
@@ -129,7 +126,7 @@ export default function Dashboard() {
       <DebtAlerts debts={debts} />
 
       {/* Capital Structure */}
-      <CapitalStructure debts={debts} nav={snapshot?.nav || 0} totalDeposited={totalDeposited} totalDebtFromDeposits={totalDebtFromDeposits} />
+      <CapitalStructure debts={debts} nav={snapshot?.nav || 0} totalDeposited={totalDeposited} />
 
       {/* Strategy insights */}
       <StrategyInsights options={options} stocks={holdingStocks} snapshot={snapshot} />

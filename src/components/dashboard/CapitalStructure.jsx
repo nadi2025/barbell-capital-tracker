@@ -8,10 +8,9 @@ function calcExpectedTotalInterest(debt) {
   return debt.outstanding_balance * (debt.interest_rate_pct / 100) * yearsRemaining;
 }
 
-export default function CapitalStructure({ debts, nav, totalDeposited, totalDebtFromDeposits = 0 }) {
+export default function CapitalStructure({ debts, nav, totalDeposited }) {
   const activeDebts = debts.filter(d => d.status === "Active");
-  const totalDebtFromFacilities = activeDebts.reduce((s, d) => s + (d.outstanding_balance || 0), 0);
-  const totalDebt = totalDebtFromFacilities + totalDebtFromDeposits;
+  const totalDebt = activeDebts.reduce((s, d) => s + (d.outstanding_balance || 0), 0);
   const equity = nav - totalDebt;
   const debtRatio = nav > 0 ? totalDebt / nav : 0;
   const equityRatio = 1 - debtRatio;
