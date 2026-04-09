@@ -8,6 +8,7 @@ import PnlChart from "../components/dashboard/PnlChart";
 import AllocationChart from "../components/dashboard/AllocationChart";
 import MonthlyPremiumChart from "../components/dashboard/MonthlyPremiumChart";
 import StrategyInsights from "../components/dashboard/StrategyInsights";
+import CapitalStructure from "../components/dashboard/CapitalStructure";
 import KpiCard from "../components/KpiCard";
 import { TrendingUp, Award, BarChart3, Activity } from "lucide-react";
 
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const [stocks, setStocks] = useState([]);
   const [deposits, setDeposits] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
+  const [debts, setDebts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,11 +31,13 @@ export default function Dashboard() {
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
       base44.entities.AccountSnapshot.list("-snapshot_date", 1),
-    ]).then(([o, s, d, snaps]) => {
+      base44.entities.DebtFacility.list(),
+    ]).then(([o, s, d, snaps, debtList]) => {
       setOptions(o);
       setStocks(s);
       setDeposits(d);
       setSnapshot(snaps[0] || null);
+      setDebts(debtList || []);
       setLoading(false);
     });
   }, []);
@@ -116,6 +120,9 @@ export default function Dashboard() {
           icon={Award}
         />
       </div>
+
+      {/* Capital Structure */}
+      <CapitalStructure debts={debts} nav={snapshot?.nav || 0} totalDeposited={totalDeposited} />
 
       {/* Strategy insights */}
       <StrategyInsights options={options} stocks={holdingStocks} snapshot={snapshot} />

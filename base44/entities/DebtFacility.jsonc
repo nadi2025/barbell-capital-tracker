@@ -1,0 +1,72 @@
+{
+  "name": "DebtFacility",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Facility Name"
+    },
+    "lender": {
+      "type": "string",
+      "title": "Lender"
+    },
+    "principal": {
+      "type": "number",
+      "title": "Principal Amount ($)"
+    },
+    "outstanding_balance": {
+      "type": "number",
+      "title": "Outstanding Balance ($)"
+    },
+    "interest_rate_pct": {
+      "type": "number",
+      "title": "Annual Interest Rate (%)"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "interest_paid_to_date": {
+      "type": "number",
+      "title": "Interest Paid to Date ($)"
+    },
+    "payment_frequency": {
+      "type": "string",
+      "enum": [
+        "Monthly",
+        "Quarterly",
+        "Semi-Annual",
+        "Annual",
+        "Bullet"
+      ],
+      "title": "Payment Frequency"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Paid Off",
+        "Defaulted"
+      ],
+      "title": "Status"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name",
+    "principal",
+    "outstanding_balance",
+    "interest_rate_pct",
+    "start_date",
+    "status"
+  ]
+}

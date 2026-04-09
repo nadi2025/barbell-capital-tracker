@@ -11,6 +11,7 @@ import OptionsPage from './pages/OptionsPage';
 import StocksPage from './pages/StocksPage';
 import DepositsPage from './pages/DepositsPage';
 import ReportsPage from './pages/ReportsPage';
+import DebtPage from './pages/DebtPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -44,6 +45,7 @@ const AuthenticatedApp = () => {
         <Route path="/stocks" element={<StocksPage />} />
         <Route path="/deposits" element={<DepositsPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/debt" element={<DebtPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

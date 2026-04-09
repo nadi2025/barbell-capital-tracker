@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
-  LayoutDashboard, TrendingUp, Wallet, Building2, FileText,
+  LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
   Menu, X, LogOut, ChevronRight, DollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const navItems = [
   { path: "/stocks", label: "Stock Positions", icon: Building2 },
   { path: "/deposits", label: "Deposits", icon: Wallet },
   { path: "/reports", label: "Reports", icon: FileText },
+  { path: "/debt", label: "Debt & Capital", icon: Landmark },
 ];
 
 export default function Layout() {
