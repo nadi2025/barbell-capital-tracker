@@ -1,0 +1,46 @@
+{
+  "name": "CryptoInvestor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Investor Name"
+    },
+    "initial_investment_usd": {
+      "type": "number",
+      "title": "Initial Investment (USD)"
+    },
+    "wallet": {
+      "type": "string",
+      "title": "Wallet"
+    },
+    "btc_amount": {
+      "type": "number",
+      "title": "BTC Amount"
+    },
+    "eth_amount": {
+      "type": "number",
+      "title": "ETH Amount"
+    },
+    "aave_amount": {
+      "type": "number",
+      "title": "AAVE Amount"
+    },
+    "current_total_value_usd": {
+      "type": "number",
+      "title": "Current Total Value (USD)"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Updated"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

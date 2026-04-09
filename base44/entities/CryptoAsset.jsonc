@@ -1,0 +1,53 @@
+{
+  "name": "CryptoAsset",
+  "type": "object",
+  "properties": {
+    "wallet_id": {
+      "type": "string",
+      "title": "Wallet ID"
+    },
+    "wallet_name": {
+      "type": "string",
+      "title": "Wallet Name"
+    },
+    "token": {
+      "type": "string",
+      "title": "Token"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "current_price_usd": {
+      "type": "number",
+      "title": "Current Price (USD)"
+    },
+    "current_value_usd": {
+      "type": "number",
+      "title": "Current Value (USD)"
+    },
+    "asset_category": {
+      "type": "string",
+      "enum": [
+        "Collateral on Aave",
+        "Spot",
+        "Stablecoin",
+        "LP Token",
+        "Vault",
+        "Other"
+      ],
+      "title": "Category"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Updated"
+    }
+  },
+  "required": [
+    "wallet_id",
+    "token",
+    "amount",
+    "asset_category"
+  ]
+}

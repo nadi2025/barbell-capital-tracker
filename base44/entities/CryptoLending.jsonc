@@ -1,0 +1,40 @@
+{
+  "name": "CryptoLending",
+  "type": "object",
+  "properties": {
+    "borrower": {
+      "type": "string",
+      "title": "Borrower"
+    },
+    "amount_usd": {
+      "type": "number",
+      "title": "Amount (USD)"
+    },
+    "interest_rate": {
+      "type": "number",
+      "title": "Interest Rate"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Repaid"
+      ],
+      "title": "Status"
+    }
+  },
+  "required": [
+    "borrower",
+    "amount_usd",
+    "status"
+  ]
+}

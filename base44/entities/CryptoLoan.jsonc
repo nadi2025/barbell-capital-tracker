@@ -1,0 +1,53 @@
+{
+  "name": "CryptoLoan",
+  "type": "object",
+  "properties": {
+    "lender": {
+      "type": "string",
+      "title": "Lender"
+    },
+    "principal_usd": {
+      "type": "number",
+      "title": "Principal (USD)"
+    },
+    "annual_interest_rate": {
+      "type": "number",
+      "title": "Annual Interest Rate (decimal)"
+    },
+    "quarterly_payment_usd": {
+      "type": "number",
+      "title": "Quarterly Payment (USD)"
+    },
+    "next_payment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Next Payment Date"
+    },
+    "collateral_description": {
+      "type": "string",
+      "title": "Collateral Description"
+    },
+    "platform": {
+      "type": "string",
+      "title": "Platform"
+    },
+    "borrow_power_used": {
+      "type": "number",
+      "title": "Borrow Power Used (0-1)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Paid Off"
+      ],
+      "title": "Status"
+    }
+  },
+  "required": [
+    "lender",
+    "principal_usd",
+    "annual_interest_rate",
+    "status"
+  ]
+}

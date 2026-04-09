@@ -1,0 +1,43 @@
+{
+  "name": "CryptoActivityLog",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": [
+        "Deposit",
+        "Withdrawal",
+        "Rebalance",
+        "Interest Payment",
+        "LP Open",
+        "LP Close",
+        "Trade",
+        "Collateral Adjustment",
+        "Other"
+      ],
+      "title": "Action Type"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "amount_usd": {
+      "type": "number",
+      "title": "Amount (USD)"
+    },
+    "related_entity": {
+      "type": "string",
+      "title": "Related Entity"
+    }
+  },
+  "required": [
+    "date",
+    "action_type",
+    "description"
+  ]
+}

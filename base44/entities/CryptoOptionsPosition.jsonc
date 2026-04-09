@@ -1,0 +1,71 @@
+{
+  "name": "CryptoOptionsPosition",
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string",
+      "title": "Platform"
+    },
+    "asset": {
+      "type": "string",
+      "title": "Asset"
+    },
+    "option_type": {
+      "type": "string",
+      "enum": [
+        "Call",
+        "Put"
+      ],
+      "title": "Option Type"
+    },
+    "apr_percent": {
+      "type": "number",
+      "title": "APR (%)"
+    },
+    "income_usd": {
+      "type": "number",
+      "title": "Income (USD)"
+    },
+    "size": {
+      "type": "number",
+      "title": "Size (Contracts)"
+    },
+    "notional_usd": {
+      "type": "number",
+      "title": "Notional (USD)"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "target_price": {
+      "type": "number",
+      "title": "Target Price"
+    },
+    "outcome": {
+      "type": "string",
+      "title": "Outcome"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Expired ITM",
+        "Expired OTM",
+        "Exercised"
+      ],
+      "title": "Status"
+    }
+  },
+  "required": [
+    "platform",
+    "asset",
+    "option_type",
+    "status"
+  ]
+}

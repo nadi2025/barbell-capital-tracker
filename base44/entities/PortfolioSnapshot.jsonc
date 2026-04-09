@@ -1,0 +1,52 @@
+{
+  "name": "PortfolioSnapshot",
+  "type": "object",
+  "properties": {
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Snapshot Date"
+    },
+    "total_assets_usd": {
+      "type": "number",
+      "title": "Total Assets (USD)"
+    },
+    "total_debt_usd": {
+      "type": "number",
+      "title": "Total Debt (USD)"
+    },
+    "net_value_usd": {
+      "type": "number",
+      "title": "Net Value (USD)"
+    },
+    "btc_price": {
+      "type": "number",
+      "title": "BTC Price"
+    },
+    "eth_price": {
+      "type": "number",
+      "title": "ETH Price"
+    },
+    "aave_price": {
+      "type": "number",
+      "title": "AAVE Price"
+    },
+    "btc_allocation_percent": {
+      "type": "number",
+      "title": "BTC Allocation (%)"
+    },
+    "eth_allocation_percent": {
+      "type": "number",
+      "title": "ETH Allocation (%)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "snapshot_date",
+    "total_assets_usd",
+    "net_value_usd"
+  ]
+}

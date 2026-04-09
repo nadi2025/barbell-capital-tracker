@@ -1,0 +1,41 @@
+{
+  "name": "InterestPayment",
+  "type": "object",
+  "properties": {
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Payment Date"
+    },
+    "amount_usd": {
+      "type": "number",
+      "title": "Amount (USD)"
+    },
+    "loan_id": {
+      "type": "string",
+      "title": "Loan ID"
+    },
+    "quarter": {
+      "type": "string",
+      "title": "Quarter"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Scheduled",
+        "Paid",
+        "Overdue"
+      ],
+      "title": "Status"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "payment_date",
+    "amount_usd",
+    "status"
+  ]
+}

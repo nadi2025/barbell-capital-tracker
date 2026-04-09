@@ -1,0 +1,42 @@
+{
+  "name": "CryptoWallet",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Wallet Name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Safe Multisig",
+        "MetaMask",
+        "Exchange",
+        "Other"
+      ],
+      "title": "Type"
+    },
+    "address": {
+      "type": "string",
+      "title": "Blockchain Address"
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "Ethereum",
+        "Arbitrum",
+        "Base",
+        "Other"
+      ],
+      "title": "Network"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

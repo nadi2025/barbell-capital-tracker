@@ -1,0 +1,74 @@
+{
+  "name": "LpPosition",
+  "type": "object",
+  "properties": {
+    "position_number": {
+      "type": "number",
+      "title": "Position #"
+    },
+    "token_a": {
+      "type": "string",
+      "title": "Token A"
+    },
+    "token_b": {
+      "type": "string",
+      "title": "Token B"
+    },
+    "first_opened": {
+      "type": "string",
+      "format": "date",
+      "title": "First Opened"
+    },
+    "original_value_usd": {
+      "type": "number",
+      "title": "Original Value (USD)"
+    },
+    "last_rebalanced": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Rebalanced"
+    },
+    "current_value_usd": {
+      "type": "number",
+      "title": "Current Value (USD)"
+    },
+    "total_fees_earned_usd": {
+      "type": "number",
+      "title": "Total Fees Earned (USD)"
+    },
+    "rebalance_count": {
+      "type": "number",
+      "title": "Rebalances"
+    },
+    "rebalance_strategy": {
+      "type": "string",
+      "title": "Rebalance Strategy"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Closed"
+      ],
+      "title": "Status"
+    },
+    "closed_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Closed Date"
+    },
+    "managed_for": {
+      "type": "string",
+      "title": "Managed For (Investor)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "token_a",
+    "token_b",
+    "status"
+  ]
+}

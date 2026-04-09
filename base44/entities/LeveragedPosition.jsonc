@@ -1,0 +1,74 @@
+{
+  "name": "LeveragedPosition",
+  "type": "object",
+  "properties": {
+    "asset": {
+      "type": "string",
+      "title": "Asset"
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "HyperLiquid",
+        "Other"
+      ],
+      "title": "Platform"
+    },
+    "leverage": {
+      "type": "number",
+      "title": "Leverage"
+    },
+    "margin_usd": {
+      "type": "number",
+      "title": "Margin (USD)"
+    },
+    "position_value_usd": {
+      "type": "number",
+      "title": "Position Value (USD)"
+    },
+    "liquidation_price": {
+      "type": "number",
+      "title": "Liquidation Price"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "Long",
+        "Short"
+      ],
+      "title": "Direction"
+    },
+    "entry_price": {
+      "type": "number",
+      "title": "Entry Price"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Closed"
+      ],
+      "title": "Status"
+    },
+    "opened_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Opened Date"
+    },
+    "closed_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Closed Date"
+    },
+    "pnl_usd": {
+      "type": "number",
+      "title": "PnL (USD)"
+    }
+  },
+  "required": [
+    "asset",
+    "platform",
+    "direction",
+    "status"
+  ]
+}

@@ -3,17 +3,30 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign } from
-"lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const offChainNav = [
+  { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/options", label: "Options Trades", icon: TrendingUp },
+  { path: "/stocks", label: "Stock Positions", icon: Building2 },
+  { path: "/deposits", label: "Deposits", icon: Wallet },
+  { path: "/reports", label: "Reports", icon: FileText },
+  { path: "/debt", label: "Debt & Capital", icon: Landmark },
+];
+
+const onChainNav = [
+  { path: "/crypto", label: "דשבורד קריפטו", icon: Bitcoin },
+  { path: "/crypto/wallets", label: "ארנקים ונכסים", icon: Wallet },
+  { path: "/crypto/leveraged", label: "פוזיציות ממונפות", icon: Layers },
+  { path: "/crypto/lp", label: "בריכות נזילות LP", icon: Activity },
+  { path: "/crypto/debt", label: "חוב וריבית", icon: CreditCard },
+  { path: "/crypto/investors", label: "משקיעים", icon: Users },
+  { path: "/crypto/activity", label: "יומן פעולות", icon: FileText },
+];
+
 const navItems = [
-{ path: "/", label: "Dashboard", icon: LayoutDashboard },
-{ path: "/options", label: "Options Trades", icon: TrendingUp },
-{ path: "/stocks", label: "Stock Positions", icon: Building2 },
-{ path: "/deposits", label: "Deposits", icon: Wallet },
-{ path: "/reports", label: "Reports", icon: FileText },
-{ path: "/debt", label: "Debt & Capital", icon: Landmark }];
+...offChainNav, ...onChainNav];
 
 
 export default function Layout() {
@@ -60,30 +73,39 @@ export default function Layout() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {filteredNav.map((item) => {
-            const isActive = location.pathname === item.path;
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
-                  transition-all duration-150
-                  ${isActive ?
-                "bg-primary/10 text-primary" :
-                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}
-                `
-                }>
-                
-                <Icon className="w-4.5 h-4.5" />
-                {item.label}
-                {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-              </Link>);
-
-          })}
+        <nav className="flex-1 py-4 px-3 overflow-y-auto">
+          <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-1">Off-Chain</p>
+          <div className="space-y-0.5 mb-4">
+            {offChainNav.filter(item => isInvestor ? item.path === "/" || item.path === "/reports" : true).map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                    ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider px-3 mb-1">On-Chain · קריפטו</p>
+          <div className="space-y-0.5">
+            {onChainNav.map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                    ${isActive ? "bg-orange-500/15 text-orange-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {/* User info */}
