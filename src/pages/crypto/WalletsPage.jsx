@@ -34,15 +34,15 @@ export default function WalletsPage() {
   const saveWallet = async () => {
     if (editWallet) await base44.entities.CryptoWallet.update(editWallet.id, walletForm);
     else await base44.entities.CryptoWallet.create(walletForm);
-    toast.success("ארנק נשמר");
+    toast.success("Wallet saved");
     setWalletDialog(false); load();
   };
 
   const deleteWallet = async (id) => {
-    if (!confirm("למחוק ארנק זה?")) return;
+    if (!confirm("Delete this wallet?")) return;
     await base44.entities.CryptoWallet.delete(id);
     if (selectedWallet?.id === id) setSelectedWallet(null);
-    toast.success("ארנק נמחק"); load();
+    toast.success("Wallet deleted"); load();
   };
 
   const saveAsset = async () => {
@@ -51,13 +51,13 @@ export default function WalletsPage() {
     const data = { ...assetForm, amount, current_price_usd: price, current_value_usd: price * amount, wallet_id: selectedWallet.id, wallet_name: selectedWallet.name, last_updated: new Date().toISOString().split("T")[0] };
     if (editAsset) await base44.entities.CryptoAsset.update(editAsset.id, data);
     else await base44.entities.CryptoAsset.create(data);
-    toast.success("נכס נשמר"); setAssetDialog(false); load();
+    toast.success("Asset saved"); setAssetDialog(false); load();
   };
 
   const deleteAsset = async (id) => {
-    if (!confirm("למחוק נכס זה?")) return;
+    if (!confirm("Delete this asset?")) return;
     await base44.entities.CryptoAsset.delete(id);
-    toast.success("נכס נמחק"); load();
+    toast.success("Asset deleted"); load();
   };
 
   const isStale = (asset) => {
@@ -66,21 +66,20 @@ export default function WalletsPage() {
   };
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-            <h1 className="text-2xl font-bold">ארנקים ונכסים</h1>
+            <h1 className="text-2xl font-bold">Wallets & Assets</h1>
           </div>
         </div>
         <Button onClick={() => { setEditWallet(null); setWalletForm({ name: "", type: "MetaMask", network: "Ethereum", address: "", notes: "" }); setWalletDialog(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> ארנק חדש
+          <Plus className="w-4 h-4" /> New Wallet
         </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Wallets list */}
         <div className="space-y-2">
           {wallets.map(w => (
             <div key={w.id}
@@ -102,40 +101,39 @@ export default function WalletsPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">{w.type} · {w.network}</p>
               <p className="text-lg font-bold font-mono text-profit mt-1">{fmt(walletValue(w.id))}</p>
-              <p className="text-xs text-muted-foreground">{walletAssets(w.id).length} נכסים</p>
+              <p className="text-xs text-muted-foreground">{walletAssets(w.id).length} assets</p>
             </div>
           ))}
-          {wallets.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">אין ארנקים עדיין</p>}
+          {wallets.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">No wallets yet</p>}
         </div>
 
-        {/* Assets for selected wallet */}
         <div className="lg:col-span-2">
           {selectedWallet ? (
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold">{selectedWallet.name} — נכסים</h2>
+                <h2 className="font-semibold">{selectedWallet.name} — Assets</h2>
                 <Button size="sm" onClick={() => { setEditAsset(null); setAssetForm({ token: "", amount: "", current_price_usd: "", asset_category: "Spot" }); setAssetDialog(true); }} className="gap-1.5">
-                  <Plus className="w-3.5 h-3.5" /> נכס חדש
+                  <Plus className="w-3.5 h-3.5" /> New Asset
                 </Button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-xs text-muted-foreground">
-                      <th className="text-right pb-2 pr-2">טוקן</th>
-                      <th className="text-right pb-2">קטגוריה</th>
-                      <th className="text-right pb-2">כמות</th>
-                      <th className="text-right pb-2">מחיר</th>
-                      <th className="text-right pb-2">שווי</th>
-                      <th className="text-right pb-2">עודכן</th>
+                      <th className="text-left pb-2 pl-2">Token</th>
+                      <th className="text-left pb-2">Category</th>
+                      <th className="text-left pb-2">Amount</th>
+                      <th className="text-left pb-2">Price</th>
+                      <th className="text-left pb-2">Value</th>
+                      <th className="text-left pb-2">Updated</th>
                       <th className="pb-2"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {walletAssets(selectedWallet.id).map(a => (
                       <tr key={a.id} className={`border-b border-border/40 hover:bg-muted/20 ${isStale(a) ? "bg-amber-500/5" : ""}`}>
-                        <td className="py-2 pr-2 font-mono font-medium">
-                          {isStale(a) && <AlertCircle className="w-3 h-3 text-amber-500 inline ml-1" />}
+                        <td className="py-2 pl-2 font-mono font-medium">
+                          {isStale(a) && <AlertCircle className="w-3 h-3 text-amber-500 inline mr-1" />}
                           {a.token}
                         </td>
                         <td className="py-2 text-xs text-muted-foreground">{a.asset_category}</td>
@@ -157,30 +155,29 @@ export default function WalletsPage() {
                     ))}
                   </tbody>
                 </table>
-                {walletAssets(selectedWallet.id).length === 0 && <p className="text-sm text-muted-foreground text-center py-6">אין נכסים בארנק זה</p>}
+                {walletAssets(selectedWallet.id).length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No assets in this wallet</p>}
               </div>
             </div>
           ) : (
             <div className="h-48 flex items-center justify-center text-sm text-muted-foreground bg-card border border-border rounded-xl">
-              בחר ארנק לצפייה בנכסים
+              Select a wallet to view assets
             </div>
           )}
         </div>
       </div>
 
-      {/* Wallet Dialog */}
       <Dialog open={walletDialog} onOpenChange={setWalletDialog}>
-        <DialogContent dir="rtl" className="max-w-sm">
-          <DialogHeader><DialogTitle>{editWallet ? "עריכת ארנק" : "ארנק חדש"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editWallet ? "Edit Wallet" : "New Wallet"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            {[{ label: "שם", key: "name" }, { label: "כתובת", key: "address" }, { label: "הערות", key: "notes" }].map(f => (
+            {[{ label: "Name", key: "name" }, { label: "Address", key: "address" }, { label: "Notes", key: "notes" }].map(f => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
                 <Input value={walletForm[f.key]} onChange={e => setWalletForm(p => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
             <div>
-              <Label className="text-xs mb-1 block">סוג</Label>
+              <Label className="text-xs mb-1 block">Type</Label>
               <Select value={walletForm.type} onValueChange={v => setWalletForm(p => ({ ...p, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -189,7 +186,7 @@ export default function WalletsPage() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">רשת</Label>
+              <Label className="text-xs mb-1 block">Network</Label>
               <Select value={walletForm.network} onValueChange={v => setWalletForm(p => ({ ...p, network: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -197,30 +194,29 @@ export default function WalletsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" onClick={saveWallet}>שמור</Button>
+            <Button className="w-full" onClick={saveWallet}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Asset Dialog */}
       <Dialog open={assetDialog} onOpenChange={setAssetDialog}>
-        <DialogContent dir="rtl" className="max-w-sm">
-          <DialogHeader><DialogTitle>{editAsset ? "עריכת נכס" : "נכס חדש"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editAsset ? "Edit Asset" : "New Asset"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div>
-              <Label className="text-xs mb-1 block">טוקן</Label>
+              <Label className="text-xs mb-1 block">Token</Label>
               <Input value={assetForm.token} onChange={e => setAssetForm(p => ({ ...p, token: e.target.value }))} placeholder="ETH, BTC, USDC..." />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">כמות</Label>
+              <Label className="text-xs mb-1 block">Amount</Label>
               <Input type="number" value={assetForm.amount} onChange={e => setAssetForm(p => ({ ...p, amount: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">מחיר נוכחי ($)</Label>
+              <Label className="text-xs mb-1 block">Current Price ($)</Label>
               <Input type="number" value={assetForm.current_price_usd} onChange={e => setAssetForm(p => ({ ...p, current_price_usd: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">קטגוריה</Label>
+              <Label className="text-xs mb-1 block">Category</Label>
               <Select value={assetForm.asset_category} onValueChange={v => setAssetForm(p => ({ ...p, asset_category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -228,7 +224,7 @@ export default function WalletsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" onClick={saveAsset}>שמור</Button>
+            <Button className="w-full" onClick={saveAsset}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>

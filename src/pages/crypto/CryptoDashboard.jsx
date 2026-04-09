@@ -99,19 +99,19 @@ export default function CryptoDashboard() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto" dir="rtl">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-            <h1 className="text-2xl font-bold tracking-tight">דשבורד קריפטו</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Crypto Dashboard</h1>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">MAGAM DeFi · Oasis Project G Ltd.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setPriceModalOpen(true)}>
-            <RefreshCw className="w-4 h-4" /> עדכן מחירים
+            <RefreshCw className="w-4 h-4" /> Update Prices
           </Button>
         </div>
       </div>
@@ -127,24 +127,24 @@ export default function CryptoDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">שווי נקי (NAV)</p>
+          <p className="text-xs text-muted-foreground mb-1">Net Value (NAV)</p>
           <p className={`text-xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
-          <p className="text-xs text-muted-foreground mt-1">נכסים − חוב</p>
+          <p className="text-xs text-muted-foreground mt-1">Assets − Debt</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">סה"כ נכסים</p>
+          <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalAssets)}</p>
-          <p className="text-xs text-muted-foreground mt-1">ארנקים + LP + פוזיציות</p>
+          <p className="text-xs text-muted-foreground mt-1">Wallets + Positions</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">סה"כ חוב</p>
+          <p className="text-xs text-muted-foreground mb-1">Total Debt</p>
           <p className="text-xl font-bold font-mono text-loss">{fmt(totalDebt)}</p>
-          <p className="text-xs text-muted-foreground mt-1">תשלום רבעוני: {fmt(quarterlyPayment)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Quarterly payment: {fmt(quarterlyPayment)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">כסף שהלוונו</p>
+          <p className="text-xs text-muted-foreground mb-1">Lent Out</p>
           <p className="text-xl font-bold font-mono text-chart-2">{fmt(totalLent)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{lending.length} לווים פעילים</p>
+          <p className="text-xs text-muted-foreground mt-1">{lending.length} active borrowers</p>
         </div>
       </div>
 
@@ -161,14 +161,14 @@ export default function CryptoDashboard() {
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">מינוף כולל</p>
+          <p className="text-xs text-muted-foreground mb-1">Total Leverage</p>
           <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
-          <p className="text-xs text-muted-foreground mt-1">חשיפה / הון עצמי</p>
+          <p className="text-xs text-muted-foreground mt-1">Exposure / Equity</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">פוזיציות ממונפות פתוחות</p>
+          <p className="text-xs text-muted-foreground mb-1">Open Leveraged Positions</p>
           <p className="text-xl font-bold font-mono text-foreground">{leveraged.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">מרג'ין: {fmt(leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
+          <p className="text-xs text-muted-foreground mt-1">Margin: {fmt(leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
         </div>
       </div>
 
@@ -176,7 +176,7 @@ export default function CryptoDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* NAV Chart */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-4">היסטוריית NAV</h3>
+          <h3 className="text-sm font-semibold mb-4">NAV History</h3>
           {chartData.length > 1 ? (
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
@@ -188,13 +188,13 @@ export default function CryptoDashboard() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">אין מספיק נתונים היסטוריים</div>
+            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No historical data yet — update prices to start tracking</div>
           )}
         </div>
 
         {/* Allocation Pie */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-4">הקצאת תיק</h3>
+          <h3 className="text-sm font-semibold mb-4">Portfolio Allocation</h3>
           {pieData.length > 0 ? (
             <div className="flex items-center gap-4">
               <ResponsiveContainer width="50%" height={180}>
@@ -218,18 +218,17 @@ export default function CryptoDashboard() {
               </div>
             </div>
           ) : (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">אין נתוני נכסים</div>
+            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No asset data</div>
           )}
         </div>
       </div>
 
       {/* Quick Links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
-          { label: "ארנקים ונכסים", path: "/crypto/wallets", icon: Wallet, color: "text-chart-2" },
-          { label: "פוזיציות ממונפות", path: "/crypto/leveraged", icon: TrendingUp, color: "text-chart-3" },
-          { label: "בריכות נזילות", path: "/crypto/lp", icon: BarChart3, color: "text-chart-1" },
-          { label: "פעילות", path: "/crypto/activity", icon: Activity, color: "text-chart-4" },
+          { label: "Wallets & Assets", path: "/crypto/wallets", icon: Wallet, color: "text-chart-2" },
+          { label: "Leveraged Positions", path: "/crypto/leveraged", icon: TrendingUp, color: "text-chart-3" },
+          { label: "Activity Log", path: "/crypto/activity", icon: Activity, color: "text-chart-4" },
         ].map(item => (
           <Link key={item.path} to={item.path}
             className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors flex items-center justify-between">

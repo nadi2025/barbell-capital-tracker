@@ -16,12 +16,12 @@ const offChainNav = [
 ];
 
 const onChainNav = [
-  { path: "/crypto", label: "דשבורד קריפטו", icon: Bitcoin },
-  { path: "/crypto/wallets", label: "ארנקים ונכסים", icon: Wallet },
-  { path: "/crypto/leveraged", label: "פוזיציות ממונפות", icon: Layers },
-  { path: "/crypto/debt", label: "חוב וריבית", icon: CreditCard },
-  { path: "/crypto/investors", label: "משקיעים", icon: Users },
-  { path: "/crypto/activity", label: "יומן פעולות", icon: FileText },
+  { path: "/crypto", label: "Crypto Dashboard", icon: Bitcoin },
+  { path: "/crypto/wallets", label: "Wallets & Assets", icon: Wallet },
+  { path: "/crypto/leveraged", label: "Leveraged Positions", icon: Layers },
+  { path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
+  { path: "/crypto/investors", label: "Investors", icon: Users },
+  { path: "/crypto/activity", label: "Activity Log", icon: FileText },
 ];
 
 const navItems = [

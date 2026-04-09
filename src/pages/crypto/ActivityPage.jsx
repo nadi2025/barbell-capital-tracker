@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 
 const fmt = (v) => v == null ? "" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-const ACTION_TYPES = ["Deposit", "Withdrawal", "Rebalance", "Interest Payment", "LP Open", "LP Close", "Trade", "Collateral Adjustment", "Other"];
-const ACTION_LABELS = { Deposit: "הפקדה", Withdrawal: "משיכה", Rebalance: "איזון", "Interest Payment": "תשלום ריבית", "LP Open": "פתיחת LP", "LP Close": "סגירת LP", Trade: "עסקה", "Collateral Adjustment": "שינוי ביטחון", Other: "אחר" };
+const ACTION_TYPES = ["Deposit", "Withdrawal", "Rebalance", "Interest Payment", "Trade", "Collateral Adjustment", "Other"];
+const ACTION_LABELS = { Deposit: "Deposit", Withdrawal: "Withdrawal", Rebalance: "Rebalance", "Interest Payment": "Interest Payment", Trade: "Trade", "Collateral Adjustment": "Collateral Adjustment", Other: "Other" }; "משיכה", Rebalance: "איזון", "Interest Payment": "תשלום ריבית", "LP Open": "פתיחת LP", "LP Close": "סגירת LP", Trade: "עסקה", "Collateral Adjustment": "שינוי ביטחון", Other: "אחר" };
 
 const emptyForm = { date: new Date().toISOString().split("T")[0], action_type: "Other", description: "", amount_usd: "", related_entity: "" };
 
@@ -25,32 +25,32 @@ export default function ActivityPage() {
 
   const save = async () => {
     await base44.entities.CryptoActivityLog.create({ ...form, amount_usd: parseFloat(form.amount_usd) || null });
-    toast.success("פעולה נרשמה"); setDialog(false); load();
+    toast.success("Activity recorded"); setDialog(false); load();
   };
 
   const del = async (id) => {
-    if (!confirm("למחוק?")) return;
+    if (!confirm("Delete?")) return;
     await base44.entities.CryptoActivityLog.delete(id);
-    toast.success("נמחק"); load();
+    toast.success("Deleted"); load();
   };
 
   const typeColor = { Deposit: "text-profit", Withdrawal: "text-loss", Trade: "text-chart-3", "LP Open": "text-chart-2", "LP Close": "text-muted-foreground", "Interest Payment": "text-amber-500" };
   const filtered = filterType === "all" ? logs : logs.filter(l => l.action_type === filterType);
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-          <h1 className="text-2xl font-bold">יומן פעולות</h1>
+          <h1 className="text-2xl font-bold">Activity Log</h1>
         </div>
         <Button onClick={() => { setForm(emptyForm); setDialog(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> הוסף פעולה
+          <Plus className="w-4 h-4" /> Add Activity
         </Button>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button variant={filterType === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterType("all")}>הכל</Button>
+        <Button variant={filterType === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterType("all")}>All</Button>
         {ACTION_TYPES.map(t => (
           <Button key={t} variant={filterType === t ? "default" : "outline"} size="sm" onClick={() => setFilterType(t)}>
             {ACTION_LABELS[t]}
@@ -63,11 +63,11 @@ export default function ActivityPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="text-right px-4 py-3">תאריך</th>
-                <th className="text-right px-4 py-3">סוג</th>
-                <th className="text-right px-4 py-3">תיאור</th>
-                <th className="text-right px-4 py-3">סכום</th>
-                <th className="text-right px-4 py-3">קשור ל</th>
+                <th className="text-left px-4 py-3">Date</th>
+                <th className="text-left px-4 py-3">Type</th>
+                <th className="text-left px-4 py-3">Description</th>
+                <th className="text-left px-4 py-3">Amount</th>
+                <th className="text-left px-4 py-3">Related To</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -90,22 +90,22 @@ export default function ActivityPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-muted-foreground text-sm">אין פעולות רשומות</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-muted-foreground text-sm">No activities recorded</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       <Dialog open={dialog} onOpenChange={setDialog}>
-        <DialogContent dir="rtl" className="max-w-sm">
-          <DialogHeader><DialogTitle>פעולה חדשה</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>New Activity</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
             <div>
-              <Label className="text-xs mb-1 block">תאריך</Label>
+              <Label className="text-xs mb-1 block">Date</Label>
               <Input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">סוג פעולה</Label>
+              <Label className="text-xs mb-1 block">Action Type</Label>
               <Select value={form.action_type} onValueChange={v => setForm(p => ({ ...p, action_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -113,13 +113,13 @@ export default function ActivityPage() {
                 </SelectContent>
               </Select>
             </div>
-            {[{ label: "תיאור", key: "description" }, { label: "סכום ($)", key: "amount_usd", type: "number" }, { label: "קשור ל", key: "related_entity" }].map(f => (
+            {[{ label: "Description", key: "description" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Related To", key: "related_entity" }].map(f => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
                 <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
-            <Button className="w-full" onClick={save}>שמור</Button>
+            <Button className="w-full" onClick={save}>Save</Button>
           </div>
         </DialogContent>
       </Dialog>

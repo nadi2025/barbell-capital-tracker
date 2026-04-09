@@ -26,13 +26,13 @@ export default function LeveragedPage() {
     const data = { ...form, leverage: parseFloat(form.leverage) || null, margin_usd: parseFloat(form.margin_usd) || null, position_value_usd: parseFloat(form.position_value_usd) || null, liquidation_price: parseFloat(form.liquidation_price) || null, entry_price: parseFloat(form.entry_price) || null, pnl_usd: parseFloat(form.pnl_usd) || null };
     if (editPos) await base44.entities.LeveragedPosition.update(editPos.id, data);
     else await base44.entities.LeveragedPosition.create(data);
-    toast.success("פוזיציה נשמרה"); setDialog(false); load();
+    toast.success("Position saved"); setDialog(false); load();
   };
 
   const del = async (id) => {
-    if (!confirm("למחוק פוזיציה זו?")) return;
+    if (!confirm("Delete this position?")) return;
     await base44.entities.LeveragedPosition.delete(id);
-    toast.success("נמחק"); load();
+    toast.success("Deleted"); load();
   };
 
   const filtered = filter === "all" ? positions : positions.filter(p => p.status === filter);
@@ -47,30 +47,30 @@ export default function LeveragedPage() {
   };
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-            <h1 className="text-2xl font-bold">פוזיציות ממונפות</h1>
+            <h1 className="text-2xl font-bold">Leveraged Positions</h1>
           </div>
         </div>
         <Button onClick={() => { setEditPos(null); setForm(emptyForm); setDialog(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> פוזיציה חדשה
+          <Plus className="w-4 h-4" /> New Position
         </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">מרג'ין פרוס</p>
+          <p className="text-xs text-muted-foreground">Margin Deployed</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalMargin)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">שווי נומינלי</p>
+          <p className="text-xs text-muted-foreground">Notional Value</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalNotional)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground">מינוף ממוצע</p>
+          <p className="text-xs text-muted-foreground">Average Leverage</p>
           <p className="text-xl font-bold font-mono text-foreground">{avgLev.toFixed(1)}x</p>
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function LeveragedPage() {
       <div className="flex gap-2">
         {["Open", "Closed", "all"].map(s => (
           <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>
-            {s === "all" ? "הכל" : s === "Open" ? "פתוחות" : "סגורות"}
+            {s === "all" ? "All" : s}
           </Button>
         ))}
       </div>
@@ -88,15 +88,15 @@ export default function LeveragedPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="text-right px-4 py-3">נכס</th>
-                <th className="text-right px-4 py-3">כיוון</th>
-                <th className="text-right px-4 py-3">מינוף</th>
-                <th className="text-right px-4 py-3">מרג'ין</th>
-                <th className="text-right px-4 py-3">שווי פוזיציה</th>
-                <th className="text-right px-4 py-3">מחיר כניסה</th>
-                <th className="text-right px-4 py-3">מחיר חיסול</th>
-                <th className="text-right px-4 py-3">PnL</th>
-                <th className="text-right px-4 py-3">סטטוס</th>
+                <th className="text-left px-4 py-3">Asset</th>
+                <th className="text-left px-4 py-3">Direction</th>
+                <th className="text-left px-4 py-3">Leverage</th>
+                <th className="text-left px-4 py-3">Margin</th>
+                <th className="text-left px-4 py-3">Position Value</th>
+                <th className="text-left px-4 py-3">Entry Price</th>
+                <th className="text-left px-4 py-3">Liq. Price</th>
+                <th className="text-left px-4 py-3">PnL</th>
+                <th className="text-left px-4 py-3">Status</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -125,7 +125,7 @@ export default function LeveragedPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${p.status === "Open" ? "bg-profit/10 text-profit border-profit/20" : "bg-muted text-muted-foreground border-border"}`}>
-                      {p.status === "Open" ? "פתוחה" : "סגורה"}
+                      {p.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
@@ -141,7 +141,7 @@ export default function LeveragedPage() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground text-sm">אין פוזיציות</td></tr>
+                <tr><td colSpan={10} className="text-center py-8 text-muted-foreground text-sm">No positions</td></tr>
               )}
             </tbody>
           </table>
@@ -149,17 +149,17 @@ export default function LeveragedPage() {
       </div>
 
       <Dialog open={dialog} onOpenChange={setDialog}>
-        <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader><DialogTitle>{editPos ? "עריכת פוזיציה" : "פוזיציה חדשה"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editPos ? "Edit Position" : "New Position"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {[{ label: "נכס", key: "asset" }, { label: "מינוף", key: "leverage", type: "number" }, { label: "מרג'ין ($)", key: "margin_usd", type: "number" }, { label: "שווי פוזיציה ($)", key: "position_value_usd", type: "number" }, { label: "מחיר כניסה", key: "entry_price", type: "number" }, { label: "מחיר חיסול", key: "liquidation_price", type: "number" }, { label: "PnL ($)", key: "pnl_usd", type: "number" }, { label: "תאריך פתיחה", key: "opened_date", type: "date" }].map(f => (
+            {[{ label: "Asset", key: "asset" }, { label: "Leverage", key: "leverage", type: "number" }, { label: "Margin ($)", key: "margin_usd", type: "number" }, { label: "Position Value ($)", key: "position_value_usd", type: "number" }, { label: "Entry Price", key: "entry_price", type: "number" }, { label: "Liquidation Price", key: "liquidation_price", type: "number" }, { label: "PnL ($)", key: "pnl_usd", type: "number" }, { label: "Opened Date", key: "opened_date", type: "date" }].map(f => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
                 <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
             <div>
-              <Label className="text-xs mb-1 block">כיוון</Label>
+              <Label className="text-xs mb-1 block">Direction</Label>
               <Select value={form.direction} onValueChange={v => setForm(p => ({ ...p, direction: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -169,7 +169,7 @@ export default function LeveragedPage() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">סטטוס</Label>
+              <Label className="text-xs mb-1 block">Status</Label>
               <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -179,7 +179,7 @@ export default function LeveragedPage() {
               </Select>
             </div>
           </div>
-          <Button className="w-full mt-2" onClick={save}>שמור</Button>
+          <Button className="w-full mt-2" onClick={save}>Save</Button>
         </DialogContent>
       </Dialog>
     </div>

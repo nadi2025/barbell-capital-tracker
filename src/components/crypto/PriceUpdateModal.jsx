@@ -78,7 +78,7 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
       aave_price: aave || null,
     });
 
-    toast.success("מחירים עודכנו ותמונת מצב נשמרה");
+    toast.success("Prices updated and snapshot saved");
     setLoading(false);
     onUpdated && onUpdated();
     onClose();
@@ -86,13 +86,13 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent dir="rtl" className="max-w-sm">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>עדכון מחירים</DialogTitle>
+          <DialogTitle>Update Prices</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <Button variant="outline" size="sm" className="w-full gap-2" onClick={fetchLivePrices} disabled={fetching}>
-            {fetching ? "שואב..." : "שלוף מחירים בזמן אמת"}
+            {fetching ? "Fetching..." : "Fetch Live Prices"}
           </Button>
           {[
             { label: "BTC Price ($)", value: btcPrice, set: setBtcPrice, placeholder: "70,000" },
@@ -104,9 +104,9 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
               <Input value={f.value} onChange={e => f.set(e.target.value)} placeholder={f.placeholder} type="number" />
             </div>
           ))}
-          <p className="text-xs text-muted-foreground">Stablecoins יישארו על $1. תמונת מצב חדשה תיווצר אוטומטית.</p>
+          <p className="text-xs text-muted-foreground">Stablecoins remain at $1. A new portfolio snapshot will be created automatically.</p>
           <Button className="w-full" onClick={handleUpdate} disabled={loading}>
-            {loading ? "מעדכן..." : "עדכן מחירים"}
+            {loading ? "Updating..." : "Update Prices"}
           </Button>
         </div>
       </DialogContent>

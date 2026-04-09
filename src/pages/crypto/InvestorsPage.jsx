@@ -26,24 +26,24 @@ export default function InvestorsPage() {
     const data = { ...form, initial_investment_usd: parseFloat(form.initial_investment_usd) || null, btc_amount: parseFloat(form.btc_amount) || null, eth_amount: parseFloat(form.eth_amount) || null, aave_amount: parseFloat(form.aave_amount) || null, current_total_value_usd: parseFloat(form.current_total_value_usd) || null, last_updated: new Date().toISOString().split("T")[0] };
     if (editInv) await base44.entities.CryptoInvestor.update(editInv.id, data);
     else await base44.entities.CryptoInvestor.create(data);
-    toast.success("משקיע נשמר"); setDialog(false); load();
+    toast.success("Investor saved"); setDialog(false); load();
   };
 
   const del = async (id) => {
-    if (!confirm("למחוק משקיע?")) return;
+    if (!confirm("Delete this investor?")) return;
     await base44.entities.CryptoInvestor.delete(id);
-    toast.success("נמחק"); load();
+    toast.success("Deleted"); load();
   };
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-          <h1 className="text-2xl font-bold">משקיעים</h1>
+          <h1 className="text-2xl font-bold">Investors</h1>
         </div>
         <Button onClick={() => { setEditInv(null); setForm(emptyForm); setDialog(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> משקיע חדש
+          <Plus className="w-4 h-4" /> New Investor
         </Button>
       </div>
 
@@ -85,19 +85,19 @@ export default function InvestorsPage() {
 
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div>
-                  <p className="text-xs text-muted-foreground">שווי נוכחי</p>
+                  <p className="text-xs text-muted-foreground">Current Value</p>
                   <p className="font-bold font-mono text-lg">{fmt(total)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">השקעה ראשונית</p>
+                  <p className="text-xs text-muted-foreground">Initial Investment</p>
                   <p className="font-mono">{fmt(initial)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">רווח/הפסד</p>
+                  <p className="text-xs text-muted-foreground">P&L</p>
                   <p className={`font-mono font-semibold ${pnl >= 0 ? "text-profit" : "text-loss"}`}>{pnl >= 0 ? "+" : ""}{fmt(pnl)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">תשואה</p>
+                  <p className="text-xs text-muted-foreground">Return</p>
                   <p className={`font-mono font-semibold ${pnlPct >= 0 ? "text-profit" : "text-loss"}`}>{pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(1)}%</p>
                 </div>
               </div>
@@ -126,21 +126,21 @@ export default function InvestorsPage() {
             </div>
           );
         })}
-        {investors.length === 0 && <p className="text-sm text-muted-foreground text-center py-10 col-span-3">אין משקיעים עדיין</p>}
+        {investors.length === 0 && <p className="text-sm text-muted-foreground text-center py-10 col-span-3">No investors yet</p>}
       </div>
 
       <Dialog open={dialog} onOpenChange={setDialog}>
-        <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader><DialogTitle>{editInv ? "עריכת משקיע" : "משקיע חדש"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editInv ? "Edit Investor" : "New Investor"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {[{ label: "שם", key: "name" }, { label: "השקעה ראשונית ($)", key: "initial_investment_usd", type: "number" }, { label: "ארנק", key: "wallet" }, { label: "BTC כמות", key: "btc_amount", type: "number" }, { label: "ETH כמות", key: "eth_amount", type: "number" }, { label: "AAVE כמות", key: "aave_amount", type: "number" }, { label: "שווי נוכחי ($)", key: "current_total_value_usd", type: "number" }, { label: "הערות", key: "notes" }].map(f => (
+            {[{ label: "Name", key: "name" }, { label: "Initial Investment ($)", key: "initial_investment_usd", type: "number" }, { label: "Wallet", key: "wallet" }, { label: "BTC Amount", key: "btc_amount", type: "number" }, { label: "ETH Amount", key: "eth_amount", type: "number" }, { label: "AAVE Amount", key: "aave_amount", type: "number" }, { label: "Current Value ($)", key: "current_total_value_usd", type: "number" }, { label: "Notes", key: "notes" }].map(f => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
                 <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
           </div>
-          <Button className="w-full mt-2" onClick={save}>שמור</Button>
+          <Button className="w-full mt-2" onClick={save}>Save</Button>
         </DialogContent>
       </Dialog>
     </div>

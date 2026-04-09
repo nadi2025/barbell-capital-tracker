@@ -5,25 +5,25 @@ export default function AlertsPanel({ borrowPowerUsed, liquidationAlerts, staleA
   const alerts = [];
 
   if (borrowPowerUsed > 0.7) {
-    alerts.push({ type: "danger", msg: `Borrow Power גבוה: ${(borrowPowerUsed * 100).toFixed(0)}% — מעל 70%` });
+    alerts.push({ type: "danger", msg: `Borrow Power high: ${(borrowPowerUsed * 100).toFixed(0)}% — above 70%` });
   }
 
   loans.forEach(loan => {
     if (!loan.next_payment_date) return;
     const days = moment(loan.next_payment_date).diff(moment(), "days");
     if (days <= 30 && days >= 0) {
-      alerts.push({ type: "warning", msg: `תשלום ריבית בעוד ${days} ימים — ${moment(loan.next_payment_date).format("DD/MM/YYYY")}` });
+      alerts.push({ type: "warning", msg: `Interest payment due in ${days} days — ${moment(loan.next_payment_date).format("DD/MM/YYYY")}` });
     } else if (days < 0) {
-      alerts.push({ type: "danger", msg: `תשלום ריבית באיחור! (${moment(loan.next_payment_date).format("DD/MM/YYYY")})` });
+      alerts.push({ type: "danger", msg: `Interest payment overdue! (${moment(loan.next_payment_date).format("DD/MM/YYYY")})` });
     }
   });
 
   liquidationAlerts.forEach(l => {
-    alerts.push({ type: "danger", msg: `פוזיציית ${l.asset} קרובה לחיסול! מחיר חיסול: $${l.liquidation_price?.toLocaleString()}` });
+    alerts.push({ type: "danger", msg: `${l.asset} position near liquidation! Liquidation price: $${l.liquidation_price?.toLocaleString()}` });
   });
 
   if (staleAssets.length > 0) {
-    alerts.push({ type: "warning", msg: `${staleAssets.length} נכסים לא עודכנו מעל 7 ימים` });
+    alerts.push({ type: "warning", msg: `${staleAssets.length} assets not updated in over 7 days` });
   }
 
   if (alerts.length === 0) return null;
