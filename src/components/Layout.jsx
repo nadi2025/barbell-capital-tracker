@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers } from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const offChainNav = [
@@ -22,6 +22,7 @@ const onChainNav = [
   { path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
   { path: "/crypto/investors", label: "Investors", icon: Users },
   { path: "/crypto/activity", label: "Activity Log", icon: FileText },
+  { path: "/crypto/rysk", label: "Rysk Options", icon: BarChart2 },
 ];
 
 const navItems = [
