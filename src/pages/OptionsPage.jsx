@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import AssignmentAnalysis from "../components/AssignmentAnalysis";
+import ExpiryAlerts from "../components/ExpiryAlerts";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
@@ -103,6 +104,8 @@ export default function OptionsPage() {
           )}
         </div>
       </div>
+
+      <ExpiryAlerts trades={trades} />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
