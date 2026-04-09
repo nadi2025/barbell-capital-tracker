@@ -3,18 +3,18 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign
-} from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign } from
+"lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/options", label: "Options Trades", icon: TrendingUp },
-  { path: "/stocks", label: "Stock Positions", icon: Building2 },
-  { path: "/deposits", label: "Deposits", icon: Wallet },
-  { path: "/reports", label: "Reports", icon: FileText },
-  { path: "/debt", label: "Debt & Capital", icon: Landmark },
-];
+{ path: "/", label: "Dashboard", icon: LayoutDashboard },
+{ path: "/options", label: "Options Trades", icon: TrendingUp },
+{ path: "/stocks", label: "Stock Positions", icon: Building2 },
+{ path: "/deposits", label: "Deposits", icon: Wallet },
+{ path: "/reports", label: "Reports", icon: FileText },
+{ path: "/debt", label: "Debt & Capital", icon: Landmark }];
+
 
 export default function Layout() {
   const location = useLocation();
@@ -29,7 +29,7 @@ export default function Layout() {
   const isPartner = user?.role === "partner";
   const isInvestor = user?.role === "investor";
 
-  const filteredNav = navItems.filter(item => {
+  const filteredNav = navItems.filter((item) => {
     if (isInvestor) return item.path === "/" || item.path === "/reports";
     return true;
   });
@@ -37,12 +37,12 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen &&
+      <div
+        className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+        onClick={() => setSidebarOpen(false)} />
+
+      }
 
       {/* Sidebar */}
       <aside className={`
@@ -54,8 +54,8 @@ export default function Layout() {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <DollarSign className="w-7 h-7 text-primary mr-2" />
-          <span className="text-lg font-semibold text-foreground tracking-tight">
-            Oasis Tracker
+          <span className="text-[hsl(var(--foreground))] text-lg font-semibold tracking-tight">Oasis Tracker
+
           </span>
         </div>
 
@@ -72,17 +72,17 @@ export default function Layout() {
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium
                   transition-all duration-150
-                  ${isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }
-                `}
-              >
+                  ${isActive ?
+                "bg-primary/10 text-primary" :
+                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}
+                `
+                }>
+                
                 <Icon className="w-4.5 h-4.5" />
                 {item.label}
                 {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-              </Link>
-            );
+              </Link>);
+
           })}
         </nav>
 
@@ -100,8 +100,8 @@ export default function Layout() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              onClick={() => base44.auth.logout()}
-            >
+              onClick={() => base44.auth.logout()}>
+              
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
@@ -116,8 +116,8 @@ export default function Layout() {
             variant="ghost"
             size="icon"
             className="lg:hidden mr-2"
-            onClick={() => setSidebarOpen(true)}
-          >
+            onClick={() => setSidebarOpen(true)}>
+            
             <Menu className="w-5 h-5" />
           </Button>
           <div className="flex-1" />
@@ -131,6 +131,6 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-    </div>
-  );
+    </div>);
+
 }
