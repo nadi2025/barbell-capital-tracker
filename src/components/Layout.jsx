@@ -54,7 +54,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <DollarSign className="w-7 h-7 text-primary mr-2" />
-          <span className="text-[hsl(var(--foreground))] text-lg font-semibold tracking-tight">Oasis Tracker
+          <span className="text-sidebar-foreground text-lg font-semibold tracking-tight">Oasis Tracker
 
           </span>
         </div>
