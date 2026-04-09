@@ -1,0 +1,32 @@
+{
+  "name": "Deposit",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Deposit",
+        "Withdrawal"
+      ],
+      "title": "Type"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount ($)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "date",
+    "type",
+    "amount"
+  ]
+}

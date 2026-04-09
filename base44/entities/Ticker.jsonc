@@ -1,0 +1,30 @@
+{
+  "name": "Ticker",
+  "type": "object",
+  "properties": {
+    "symbol": {
+      "type": "string",
+      "title": "Ticker Symbol"
+    },
+    "company_name": {
+      "type": "string",
+      "title": "Company Name"
+    },
+    "sector": {
+      "type": "string",
+      "title": "Sector"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price ($)"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
+    }
+  },
+  "required": [
+    "symbol"
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "name": "OptionsTrade",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "Sell",
+        "Buy",
+        "Ass"
+      ],
+      "title": "Type"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Put",
+        "Call",
+        "PCS",
+        "CCS"
+      ],
+      "title": "Category"
+    },
+    "open_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Open Date"
+    },
+    "expiration_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Expiration Date"
+    },
+    "close_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Close Date"
+    },
+    "ticker": {
+      "type": "string",
+      "title": "Ticker"
+    },
+    "strike": {
+      "type": "number",
+      "title": "Strike"
+    },
+    "strike_2": {
+      "type": "number",
+      "title": "Strike 2"
+    },
+    "quantity": {
+      "type": "number",
+      "title": "Quantity"
+    },
+    "fill_price": {
+      "type": "number",
+      "title": "Fill Price ($)"
+    },
+    "close_price": {
+      "type": "number",
+      "title": "Close Price ($)"
+    },
+    "fee": {
+      "type": "number",
+      "title": "Fee ($)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "Closed",
+        "Assigned",
+        "Expired"
+      ],
+      "title": "Status"
+    },
+    "collateral": {
+      "type": "number",
+      "title": "Collateral ($)"
+    },
+    "pnl": {
+      "type": "number",
+      "title": "P&L ($)"
+    },
+    "days_held": {
+      "type": "number",
+      "title": "Days Held"
+    },
+    "ppd": {
+      "type": "number",
+      "title": "PPD ($)"
+    },
+    "roc": {
+      "type": "number",
+      "title": "ROC (%)"
+    },
+    "annualized_roc": {
+      "type": "number",
+      "title": "Annualized ROC (%)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "linked_stock_id": {
+      "type": "string",
+      "title": "Linked Stock Position ID"
+    }
+  },
+  "required": [
+    "type",
+    "category",
+    "open_date",
+    "ticker",
+    "strike",
+    "quantity",
+    "fill_price",
+    "status"
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "name": "StockPosition",
+  "type": "object",
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "title": "Ticker"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "Assignment",
+        "Direct Buy",
+        "SDI"
+      ],
+      "title": "Source"
+    },
+    "entry_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Entry Date"
+    },
+    "shares": {
+      "type": "number",
+      "title": "Shares"
+    },
+    "average_cost": {
+      "type": "number",
+      "title": "Average Cost ($)"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price ($)"
+    },
+    "invested_value": {
+      "type": "number",
+      "title": "Invested Value ($)"
+    },
+    "current_value": {
+      "type": "number",
+      "title": "Current Value ($)"
+    },
+    "gain_loss": {
+      "type": "number",
+      "title": "Gain/Loss ($)"
+    },
+    "gain_loss_pct": {
+      "type": "number",
+      "title": "Gain/Loss (%)"
+    },
+    "portfolio_weight": {
+      "type": "number",
+      "title": "Portfolio Weight (%)"
+    },
+    "high_52w": {
+      "type": "number",
+      "title": "52-Week High"
+    },
+    "low_52w": {
+      "type": "number",
+      "title": "52-Week Low"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Holding",
+        "Partially Sold",
+        "Closed"
+      ],
+      "title": "Status"
+    },
+    "linked_option_id": {
+      "type": "string",
+      "title": "Linked Option ID"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "ticker",
+    "source",
+    "entry_date",
+    "shares",
+    "average_cost",
+    "status"
+  ]
+}
