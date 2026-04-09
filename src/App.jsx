@@ -19,6 +19,7 @@ import LeveragedPage from './pages/crypto/LeveragedPage';
 import CryptoDebtPage from './pages/crypto/CryptoDebtPage';
 import InvestorsPage from './pages/crypto/InvestorsPage';
 import ActivityPage from './pages/crypto/ActivityPage';
+import AavePage from './pages/crypto/AavePage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
         <Route path="/crypto/debt" element={<CryptoDebtPage />} />
         <Route path="/crypto/investors" element={<InvestorsPage />} />
         <Route path="/crypto/activity" element={<ActivityPage />} />
+        <Route path="/crypto/aave" element={<AavePage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

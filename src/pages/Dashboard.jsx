@@ -44,13 +44,12 @@ export default function Dashboard() {
   const [cryptoLending, setCryptoLending] = useState([]);
   const [cryptoSnapshots, setCryptoSnapshots] = useState([]);
   const [optionsTrades, setOptionsTrades] = useState([]);
+  const [aaveAccount, setAaveAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [aaveBorrowEdit, setAaveBorrowEdit] = useState(false);
-  const [aaveBorrowAmount, setAaveBorrowAmount] = useState(327000);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, cs, ot] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, cs, ot, aa] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -61,10 +60,12 @@ export default function Dashboard() {
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
       base44.entities.OptionsTrade.filter({ ticker: "RFS" }),
+      base44.entities.AaveAccount.list(),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
     setCryptoAssets(ca); setCryptoLoans(cl); setCryptoLending(cle); setCryptoSnapshots(cs); setOptionsTrades(ot);
+    setAaveAccount(aa[0] || null);
     setLoading(false);
   };
 
@@ -92,6 +93,7 @@ export default function Dashboard() {
   // ── On-Chain calcs ──
   const cryptoTotalAssets = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const loansGivenValue = cryptoLending.reduce((s, l) => s + (l.amount_usd || 0), 0);
+  const aaveBorrowAmount = aaveAccount?.borrow_usd || 0;
   const cryptoTotalDebt = cryptoLoans.reduce((s, l) => s + (l.principal_usd || 0), 0) + aaveBorrowAmount;
   const cryptoNAV = cryptoTotalAssets + loansGivenValue - cryptoTotalDebt;
 
@@ -187,17 +189,14 @@ export default function Dashboard() {
           <StatCard title="NAV קריפטו" value={fmt(cryptoNAV)} trend={cryptoNAV >= 0 ? "up" : "down"} icon={Bitcoin} />
           <StatCard title="סה״כ נכסים On-Chain" value={fmt(cryptoTotalAssets)} icon={Wallet} sub={`${cryptoAssets.length} נכסים`} />
           <StatCard title="הלוואות שנתנו" value={fmt(loansGivenValue)} icon={Wallet} sub={`${cryptoLending.length} הלוואות`} />
-          <div
-            onClick={() => setAaveBorrowEdit(true)}
-            className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/20 transition-colors flex flex-col gap-1"
-          >
+          <Link to="/crypto/aave" className="bg-card border border-border rounded-xl p-4 hover:bg-muted/20 transition-colors flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <p className="text-xs text-muted-foreground font-medium">חוב On-Chain</p>
               <CreditCard className="w-4 h-4 text-muted-foreground/50" />
             </div>
             <p className="text-2xl font-bold font-mono text-loss">{fmt(cryptoTotalDebt)}</p>
-            <p className="text-xs text-muted-foreground">{aaveBorrowEdit ? "עריכה..." : `Aave: ${fmt(aaveBorrowAmount)}`}</p>
-          </div>
+            <p className="text-xs text-muted-foreground">Aave: {fmt(aaveBorrowAmount)}</p>
+          </Link>
           <StatCard title="BTC" value={fmt(btcVal)} icon={Bitcoin} sub={`ETH: ${fmt(ethVal)}`} />
         </div>
       </div>
@@ -262,34 +261,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Aave Borrow Edit Dialog */}
-      {aaveBorrowEdit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card border border-border rounded-xl p-6 max-w-sm">
-            <h3 className="text-lg font-semibold mb-4">עדכן הוואה Aave</h3>
-            <input
-              type="number"
-              value={aaveBorrowAmount}
-              onChange={(e) => setAaveBorrowAmount(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-input rounded-md mb-4 font-mono"
-            />
-            <div className="flex gap-2">
-              <button
-                onClick={() => setAaveBorrowEdit(false)}
-                className="flex-1 px-4 py-2 bg-muted rounded-md hover:bg-muted/80"
-              >
-                ביטול
-              </button>
-              <button
-                onClick={() => setAaveBorrowEdit(false)}
-                className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                שמור
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={loadAll} />
     </div>
   );
