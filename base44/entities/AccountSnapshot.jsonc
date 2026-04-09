@@ -1,0 +1,63 @@
+{
+  "name": "AccountSnapshot",
+  "type": "object",
+  "properties": {
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Snapshot Date"
+    },
+    "nav": {
+      "type": "number",
+      "title": "NAV (USD)"
+    },
+    "cash": {
+      "type": "number",
+      "title": "Cash (USD)"
+    },
+    "stocks_value": {
+      "type": "number",
+      "title": "Stocks Value (USD)"
+    },
+    "options_value": {
+      "type": "number",
+      "title": "Options Value (USD)"
+    },
+    "long_value": {
+      "type": "number",
+      "title": "Long Total (USD)"
+    },
+    "short_value": {
+      "type": "number",
+      "title": "Short Total (USD)"
+    },
+    "initial_margin": {
+      "type": "number",
+      "title": "Initial Margin (USD)"
+    },
+    "maintenance_margin": {
+      "type": "number",
+      "title": "Maintenance Margin (USD)"
+    },
+    "available_funds": {
+      "type": "number",
+      "title": "Available Funds (USD)"
+    },
+    "excess_liquidity": {
+      "type": "number",
+      "title": "Excess Liquidity (USD)"
+    },
+    "buying_power": {
+      "type": "number",
+      "title": "Buying Power (USD)"
+    },
+    "sma": {
+      "type": "number",
+      "title": "SMA (USD)"
+    }
+  },
+  "required": [
+    "snapshot_date",
+    "nav"
+  ]
+}
