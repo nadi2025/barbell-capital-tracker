@@ -9,8 +9,8 @@ function fmt(v, dec = 0) {
 export default function AssignmentAnalysis({ trades, stocks }) {
   const [open, setOpen] = useState(true);
 
-  // Find all trades that led to assignment
-  const assigned = trades.filter(t => t.status === "Assigned" || t.status === "Expired" || t.status === "Closed");
+  // Find assigned trades + expired trades that have a linked stock ("failed" options where stock was bought anyway)
+  const assigned = trades.filter(t => t.status === "Assigned");
 
   // Group by ticker — for each assigned trade, find the matching stock position
   const rows = assigned.map(t => {
@@ -38,12 +38,39 @@ export default function AssignmentAnalysis({ trades, stocks }) {
     return { trade: t, premiumCollected, linkedStock, currentStockPrice, shares, currentValue, costBasis, unrealizedFromStock, trueTotal };
   });
 
-  const assignedRows = rows.filter(r => r.trade.status === "Assigned");
-  if (assignedRows.length === 0) return null;
+  // Also include expired trades that have a matching stock position (manual analysis of "failed" options)
+  const expiredWithStock = trades
+    .filter(t => t.status === "Expired")
+    .filter(t => stocks.some(s =>
+      (t.linked_stock_id && s.id === t.linked_stock_id) ||
+      s.ticker === t.ticker
+    ));
 
-  const totalPremium = assignedRows.reduce((s, r) => s + r.premiumCollected, 0);
-  const totalUnrealized = assignedRows.filter(r => r.unrealizedFromStock != null).reduce((s, r) => s + (r.unrealizedFromStock || 0), 0);
-  const totalTrue = assignedRows.filter(r => r.trueTotal != null).reduce((s, r) => s + (r.trueTotal || 0), 0);
+  const expiredRows = expiredWithStock.map(t => {
+    const premiumCollected = t.type === "Sell"
+      ? (t.fill_price || 0) * (t.quantity || 0) * 100
+      : -(t.fill_price || 0) * (t.quantity || 0) * 100;
+    const linkedStock = stocks.find(s =>
+      (t.linked_stock_id && s.id === t.linked_stock_id) ||
+      s.ticker === t.ticker
+    );
+    const shares = linkedStock?.shares || (t.quantity || 0) * 100;
+    const currentStockPrice = linkedStock?.current_price;
+    const avgCost = linkedStock?.average_cost || t.strike;
+    const currentValue = currentStockPrice ? currentStockPrice * shares : null;
+    const costBasis = avgCost ? avgCost * shares : null;
+    const unrealizedFromStock = currentValue != null && costBasis != null ? currentValue - costBasis : null;
+    const trueTotal = unrealizedFromStock != null ? premiumCollected + unrealizedFromStock : null;
+    return { trade: t, premiumCollected, linkedStock, currentStockPrice, shares, currentValue, costBasis, unrealizedFromStock, trueTotal, isExpiredAnalysis: true };
+  });
+
+  const assignedRows = rows.filter(r => r.trade.status === "Assigned");
+  const allAnalysisRows = [...assignedRows, ...expiredRows];
+  if (allAnalysisRows.length === 0) return null;
+
+  const totalPremium = allAnalysisRows.reduce((s, r) => s + r.premiumCollected, 0);
+  const totalUnrealized = allAnalysisRows.filter(r => r.unrealizedFromStock != null).reduce((s, r) => s + (r.unrealizedFromStock || 0), 0);
+  const totalTrue = allAnalysisRows.filter(r => r.trueTotal != null).reduce((s, r) => s + (r.trueTotal || 0), 0);
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -94,13 +121,16 @@ export default function AssignmentAnalysis({ trades, stocks }) {
               </tr>
             </thead>
             <tbody>
-              {assignedRows.map(({ trade: t, premiumCollected, linkedStock, currentStockPrice, shares, currentValue, costBasis, unrealizedFromStock, trueTotal }) => {
+              {allAnalysisRows.map(({ trade: t, premiumCollected, linkedStock, currentStockPrice, shares, currentValue, costBasis, unrealizedFromStock, trueTotal, isExpiredAnalysis }) => {
                 const isPos = trueTotal != null && trueTotal >= 0;
                 const TIcon = trueTotal != null ? (isPos ? TrendingUp : TrendingDown) : null;
                 return (
                   <tr key={t.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{t.open_date}</td>
-                    <td className="px-4 py-3 font-mono font-semibold">{t.ticker}</td>
+                    <td className="px-4 py-3 font-mono font-semibold">
+                      {t.ticker}
+                      {isExpiredAnalysis && <span className="ml-1.5 text-[10px] bg-orange-100 text-orange-700 px-1 py-0.5 rounded">Expired+Stock</span>}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono text-xs">${t.strike}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">{t.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">${t.fill_price}</td>

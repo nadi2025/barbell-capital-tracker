@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import AssignmentAnalysis from "../components/AssignmentAnalysis";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import OptionTradeForm from "../components/OptionTradeForm";
@@ -15,6 +16,9 @@ export default function OptionsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState(null);
   const [user, setUser] = useState(null);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterTicker, setFilterTicker] = useState("all");
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
 
   const loadData = async () => {
     const [t, u, s] = await Promise.all([
@@ -29,6 +33,32 @@ export default function OptionsPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const refreshLivePrices = async () => {
+    setRefreshingPrices(true);
+    const holdingStocks = stocks.filter(s => s.status === "Holding" || s.status === "Partially Sold");
+    const tickers = [...new Set(holdingStocks.map(s => s.ticker))];
+    if (tickers.length === 0) { setRefreshingPrices(false); return; }
+    const res = await base44.functions.invoke("fetchStockPrices", { tickers });
+    const prices = res.data?.prices || {};
+    await Promise.all(
+      holdingStocks.map(s => {
+        const price = prices[s.ticker];
+        if (price == null) return;
+        const invested = (s.average_cost || 0) * (s.shares || 0);
+        const currentVal = price * (s.shares || 0);
+        return base44.entities.StockPosition.update(s.id, {
+          current_price: price,
+          current_value: currentVal,
+          gain_loss: currentVal - invested,
+          gain_loss_pct: invested > 0 ? (currentVal - invested) / invested : 0,
+        });
+      })
+    );
+    await loadData();
+    setRefreshingPrices(false);
+    toast.success("Live prices updated");
+  };
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
@@ -47,18 +77,58 @@ export default function OptionsPage() {
     );
   }
 
+  const uniqueTickers = [...new Set(trades.map(t => t.ticker))].sort();
+  const filteredTrades = trades.filter(t => {
+    if (filterStatus !== "all" && t.status !== filterStatus) return false;
+    if (filterTicker !== "all" && t.ticker !== filterTicker) return false;
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Options Trades</h1>
-          <p className="text-sm text-muted-foreground mt-1">{trades.length} total trades</p>
+          <p className="text-sm text-muted-foreground mt-1">{filteredTrades.length} / {trades.length} trades</p>
         </div>
-        {!isReadOnly && (
-          <Button onClick={() => { setEditTrade(null); setFormOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> New Trade
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={refreshLivePrices} disabled={refreshingPrices} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${refreshingPrices ? 'animate-spin' : ''}`} />
+            {refreshingPrices ? "Updating..." : "Live Prices"}
           </Button>
-        )}
+          {!isReadOnly && (
+            <Button onClick={() => { setEditTrade(null); setFormOpen(true); }} className="gap-2">
+              <Plus className="w-4 h-4" /> New Trade
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="Open">Open</SelectItem>
+            <SelectItem value="Closed">Closed</SelectItem>
+            <SelectItem value="Assigned">Assigned</SelectItem>
+            <SelectItem value="Expired">Expired</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterTicker} onValueChange={setFilterTicker}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Ticker" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Tickers</SelectItem>
+            {uniqueTickers.map(tk => (
+              <SelectItem key={tk} value={tk}>{tk}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <AssignmentAnalysis trades={trades} stocks={stocks} />
@@ -84,7 +154,7 @@ export default function OptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {trades.map((t) => (
+              {filteredTrades.map((t) => (
                 <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{t.open_date}</td>
                   <td className="px-4 py-3 text-xs">{t.type}</td>
