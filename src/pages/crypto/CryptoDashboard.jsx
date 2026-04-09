@@ -43,10 +43,24 @@ export default function CryptoDashboard() {
     </div>
   );
 
-  const totalAssets = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0)
-    + leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0)
-    + lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
-  const totalDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
+  // CORRECT ACCOUNTING MODEL:
+  // Assets = things we OWN at current market value
+  const walletValue = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const hlEquity = leveraged.reduce((s, l) => {
+    const pnl = l.mark_price && l.entry_price && l.size
+      ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
+      : 0;
+    return s + (l.margin_usd || 0) + pnl;
+  }, 0);
+  const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
+  const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
+  const totalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + lentValue;
+  
+  // Liabilities = things we OWE
+  // S&T investor debt + Aave borrow (if any)
+  const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
+  const aaveBorrow = 327000; // Aave USDC borrow against collateral — MUST be included
+  const totalDebt = investorDebt + aaveBorrow;
   const nav = totalAssets - totalDebt;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
 
@@ -75,7 +89,13 @@ export default function CryptoDashboard() {
     { name: "Other", value: otherVal },
   ].filter(d => d.value > 0);
 
-  const leverageRatio = nav > 0 ? totalAssets / nav : 0;
+  // Effective leverage = Total Exposure / Equity
+  // Exposure = underlying crypto exposure (not HL notional), Equity = NAV or Assets - Aave Borrow
+  const exposureFromWallets = walletValue; // Aave collateral is the exposure
+  const exposureFromHL = leveraged.reduce((s, l) => s + (l.position_value_usd || 0), 0); // HL notional
+  const totalExposure = exposureFromWallets + exposureFromHL + vaultValue;
+  const equity = Math.max(100000, totalAssets - aaveBorrow); // Equity at least the remaining buffer
+  const leverageRatio = equity > 0 ? totalExposure / equity : 0;
   const borrowPowerUsed = activeLoan?.borrow_power_used || 0;
 
   const chartData = [...snapshots].reverse().map(s => ({
