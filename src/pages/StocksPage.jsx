@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
@@ -13,6 +13,7 @@ export default function StocksPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editStock, setEditStock] = useState(null);
   const [user, setUser] = useState(null);
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
 
   const loadData = async () => {
     const [s, u] = await Promise.all([
@@ -25,6 +26,32 @@ export default function StocksPage() {
   };
 
   useEffect(() => { loadData(); }, []);
+
+  const refreshLivePrices = async () => {
+    setRefreshingPrices(true);
+    const holdingStocks = stocks.filter(s => s.status === "Holding" || s.status === "Partially Sold");
+    const tickers = [...new Set(holdingStocks.map(s => s.ticker))];
+    if (tickers.length === 0) { setRefreshingPrices(false); return; }
+    const res = await base44.functions.invoke("fetchStockPrices", { tickers });
+    const prices = res.data?.prices || {};
+    await Promise.all(
+      holdingStocks.map(s => {
+        const price = prices[s.ticker];
+        if (price == null) return;
+        const invested = (s.average_cost || 0) * (s.shares || 0);
+        const currentVal = price * (s.shares || 0);
+        return base44.entities.StockPosition.update(s.id, {
+          current_price: price,
+          current_value: currentVal,
+          gain_loss: currentVal - invested,
+          gain_loss_pct: invested > 0 ? (currentVal - invested) / invested : 0,
+        });
+      })
+    );
+    await loadData();
+    setRefreshingPrices(false);
+    toast.success("Live prices updated");
+  };
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
@@ -52,11 +79,17 @@ export default function StocksPage() {
           <h1 className="text-2xl font-bold tracking-tight">Stock Positions</h1>
           <p className="text-sm text-muted-foreground mt-1">{stocks.length} positions · Total value: ${totalValue.toLocaleString()}</p>
         </div>
-        {!isReadOnly && (
-          <Button onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> New Position
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={refreshLivePrices} disabled={refreshingPrices} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${refreshingPrices ? 'animate-spin' : ''}`} />
+            {refreshingPrices ? "Updating..." : "Live Prices"}
           </Button>
-        )}
+          {!isReadOnly && (
+            <Button onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2">
+              <Plus className="w-4 h-4" /> New Position
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
