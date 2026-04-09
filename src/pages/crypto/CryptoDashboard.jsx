@@ -22,16 +22,19 @@ export default function CryptoDashboard() {
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
+  const [interestPayments, setInterestPayments] = useState([]);
+
   const load = async () => {
-    const [a, lo, le, lev, lp, sn] = await Promise.all([
+    const [a, lo, le, lev, lp, sn, ip] = await Promise.all([
       base44.entities.CryptoAsset.list(),
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
       base44.entities.LpPosition.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
+      base44.entities.InterestPayment.filter({ status: "Paid" }),
     ]);
-    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn);
+    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setInterestPayments(ip);
     setLoading(false);
   };
 
@@ -145,6 +148,11 @@ export default function CryptoDashboard() {
           <p className="text-xs text-muted-foreground mb-1">Lent Out</p>
           <p className="text-xl font-bold font-mono text-chart-2">{fmt(totalLent)}</p>
           <p className="text-xs text-muted-foreground mt-1">{lending.length} active borrowers</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4 col-span-2 lg:col-span-4">
+          <p className="text-xs text-muted-foreground mb-1">סה״כ ריבית ששולמה (קריפטו)</p>
+          <p className="text-xl font-bold font-mono text-amber-500">{fmt(interestPayments.reduce((s, p) => s + (p.amount_usd || 0), 0))}</p>
+          <p className="text-xs text-muted-foreground mt-1">{interestPayments.length} תשלומים</p>
         </div>
       </div>
 
