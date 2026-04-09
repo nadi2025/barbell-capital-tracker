@@ -19,7 +19,6 @@ const onChainNav = [
   { path: "/crypto", label: "דשבורד קריפטו", icon: Bitcoin },
   { path: "/crypto/wallets", label: "ארנקים ונכסים", icon: Wallet },
   { path: "/crypto/leveraged", label: "פוזיציות ממונפות", icon: Layers },
-  { path: "/crypto/lp", label: "בריכות נזילות LP", icon: Activity },
   { path: "/crypto/debt", label: "חוב וריבית", icon: CreditCard },
   { path: "/crypto/investors", label: "משקיעים", icon: Users },
   { path: "/crypto/activity", label: "יומן פעולות", icon: FileText },

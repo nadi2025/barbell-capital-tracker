@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,27 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
   const [btcPrice, setBtcPrice] = useState("");
   const [ethPrice, setEthPrice] = useState("");
   const [aavePrice, setAavePrice] = useState("");
+  const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const fetchLivePrices = async () => {
+    setFetching(true);
+    try {
+      const res = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,aave&vs_currencies=usd");
+      const data = await res.json();
+      if (data.bitcoin?.usd) setBtcPrice(String(data.bitcoin.usd));
+      if (data.ethereum?.usd) setEthPrice(String(data.ethereum.usd));
+      if (data.aave?.usd) setAavePrice(String(data.aave.usd));
+      toast.success("מחירים נשאבו בזמן אמת");
+    } catch {
+      toast.error("שגיאה בשליפת מחירים");
+    }
+    setFetching(false);
+  };
+
+  useEffect(() => {
+    if (open) fetchLivePrices();
+  }, [open]);
 
   const handleUpdate = async () => {
     setLoading(true);
@@ -71,6 +91,9 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
           <DialogTitle>עדכון מחירים</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          <Button variant="outline" size="sm" className="w-full gap-2" onClick={fetchLivePrices} disabled={fetching}>
+            {fetching ? "שואב..." : "שלוף מחירים בזמן אמת"}
+          </Button>
           {[
             { label: "BTC Price ($)", value: btcPrice, set: setBtcPrice, placeholder: "70,000" },
             { label: "ETH Price ($)", value: ethPrice, set: setEthPrice, placeholder: "2,500" },
