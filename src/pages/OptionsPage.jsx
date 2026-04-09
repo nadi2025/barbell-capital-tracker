@@ -140,7 +140,8 @@ export default function OptionsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="text-left px-4 py-3 font-medium">Date</th>
+                <th className="text-left px-4 py-3 font-medium">Open Date</th>
+                <th className="text-left px-4 py-3 font-medium">Expiry</th>
                 <th className="text-left px-4 py-3 font-medium">Type</th>
                 <th className="text-left px-4 py-3 font-medium">Ticker</th>
                 <th className="text-left px-4 py-3 font-medium">Category</th>
@@ -159,6 +160,11 @@ export default function OptionsPage() {
               {filteredTrades.map((t) => (
                 <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{t.open_date}</td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {t.expiration_date
+                      ? <span className={`${new Date(t.expiration_date) < new Date() ? 'text-muted-foreground' : 'text-amber-600 font-semibold'}`}>{t.expiration_date}</span>
+                      : <span className="text-muted-foreground">—</span>}
+                  </td>
                   <td className="px-4 py-3 text-xs">{t.type}</td>
                   <td className="px-4 py-3 font-mono font-medium">{t.ticker}</td>
                   <td className="px-4 py-3 text-xs">{t.category}</td>
