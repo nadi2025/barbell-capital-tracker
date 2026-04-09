@@ -67,27 +67,7 @@ export default function CryptoDashboard() {
   const activeLoan = loans[0];
   const quarterlyPayment = activeLoan ? activeLoan.principal_usd * activeLoan.annual_interest_rate / 4 : 0;
 
-  // Allocation pie
-  const btcAssets = assets.filter(a => ["awBTC", "wBTC", "BTC"].includes(a.token));
-  const ethAssets = assets.filter(a => ["aETH", "ETH"].includes(a.token));
-  const aaveAssets = assets.filter(a => ["aAAVE", "AAVE"].includes(a.token));
-  const stableAssets = assets.filter(a => a.asset_category === "Stablecoin");
-  const otherAssets = assets.filter(a => !["awBTC","wBTC","BTC","aETH","ETH","aAAVE","AAVE"].includes(a.token) && a.asset_category !== "Stablecoin");
 
-  const btcVal = btcAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const ethVal = ethAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const aaveVal = aaveAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const stableVal = stableAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const otherVal = otherAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const totalForPie = btcVal + ethVal + aaveVal + stableVal + otherVal || 1;
-
-  const pieData = [
-    { name: "BTC", value: btcVal },
-    { name: "ETH", value: ethVal },
-    { name: "AAVE", value: aaveVal },
-    { name: "Stablecoins", value: stableVal },
-    { name: "Other", value: otherVal },
-  ].filter(d => d.value > 0);
 
   // Effective leverage = Total Exposure / Equity
   // Exposure = underlying crypto exposure (not HL notional), Equity = NAV or Assets - Aave Borrow
