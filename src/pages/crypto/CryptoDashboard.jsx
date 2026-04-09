@@ -118,6 +118,39 @@ export default function CryptoDashboard() {
     return days > 7;
   });
 
+  // Allocation pie — based on UNDERLYING CRYPTO EXPOSURE (Aave collateral + HL notional)
+  const btcWalletVal = assets.filter(a => ["awBTC", "wBTC", "BTC"].includes(a.token))
+    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const btcHLVal = leveraged.filter(l => l.asset === "BTC").reduce((s, l) => s + (l.position_value_usd || 0), 0);
+  const btcExposure = btcWalletVal + btcHLVal;
+
+  const ethWalletVal = assets.filter(a => ["aETH", "ETH"].includes(a.token))
+    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const ethHLVal = leveraged.filter(l => l.asset === "ETH").reduce((s, l) => s + (l.position_value_usd || 0), 0);
+  const ethExposure = ethWalletVal + ethHLVal;
+
+  const aaveWalletVal = assets.filter(a => ["aAAVE", "AAVE"].includes(a.token))
+    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const aaveHLVal = leveraged.filter(l => l.asset === "AAVE").reduce((s, l) => s + (l.position_value_usd || 0), 0);
+  const aaveExposure = aaveWalletVal + aaveHLVal;
+
+  const mstrExposure = leveraged.filter(l => l.asset === "MSTR").reduce((s, l) => s + (l.position_value_usd || 0), 0);
+  const stableExposure = assets.filter(a => a.asset_category === "Stablecoin")
+    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const otherExposure = assets.filter(a => !["awBTC","wBTC","BTC","aETH","ETH","aAAVE","AAVE"].includes(a.token) && a.asset_category !== "Stablecoin")
+    .reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
+
+  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + mstrExposure + stableExposure + otherExposure || 1;
+
+  const pieData = [
+    { name: "BTC", value: btcExposure },
+    { name: "ETH", value: ethExposure },
+    { name: "AAVE", value: aaveExposure },
+    { name: "MSTR", value: mstrExposure },
+    { name: "Stablecoins", value: stableExposure },
+    { name: "Other", value: otherExposure },
+  ].filter(d => d.value > 0);
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -147,24 +180,32 @@ export default function CryptoDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Net Value (NAV)</p>
-          <p className={`text-xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Assets − Debt</p>
+          <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
+          <p className={`text-2xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
+          <p className="text-xs mt-1">Perf: <span className={nav >= 0 ? "text-profit" : "text-loss"}>{((nav / investorDebt) * 100).toFixed(1)}%</span></p>
+          <p className="text-xs text-muted-foreground">Assets {fmt(totalAssets)} − Debt {fmt(totalDebt)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalAssets)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Wallets + Positions</p>
+          <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+            <p>Aave: {fmt(walletValue)}</p>
+            <p>HL equity: {fmt(Math.max(0, hlEquity))}</p>
+            <p>Vaults: {fmt(vaultValue)}</p>
+          </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Debt</p>
           <p className="text-xl font-bold font-mono text-loss">{fmt(totalDebt)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Quarterly payment: {fmt(quarterlyPayment)}</p>
+          <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
+            <p>S&T: {fmt(investorDebt)}</p>
+            <p>Aave borrow: {fmt(aaveBorrow)}</p>
+          </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Lent Out</p>
-          <p className="text-xl font-bold font-mono text-chart-2">{fmt(totalLent)}</p>
-          <p className="text-xs text-muted-foreground mt-1">{lending.length} active borrowers</p>
+          <p className="text-xs text-muted-foreground mb-1">Effective Leverage</p>
+          <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
+          <p className="text-xs text-muted-foreground mt-1">Exposure {fmt(totalExposure)} / Equity</p>
         </div>
       </div>
 
@@ -181,14 +222,9 @@ export default function CryptoDashboard() {
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground mb-1">Total Leverage</p>
-          <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
-          <p className="text-xs text-muted-foreground mt-1">Exposure / Equity</p>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Open Leveraged Positions</p>
-          <p className="text-xl font-bold font-mono text-foreground">{leveraged.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Margin: {fmt(leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
+          <p className="text-xl font-bold font-mono text-foreground">{leveraged.filter(l => l.status === "Open").length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Margin: {fmt(leveraged.filter(l => l.status === "Open").reduce((s, l) => s + (l.margin_usd || 0), 0))}</p>
         </div>
       </div>
 
@@ -232,7 +268,7 @@ export default function CryptoDashboard() {
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />
                       <span className="text-muted-foreground">{d.name}</span>
                     </div>
-                    <span className="font-mono font-medium">{(d.value / totalForPie * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-medium">{(d.value / totalExposureForPie * 100).toFixed(0)}%</span>
                   </div>
                 ))}
               </div>
