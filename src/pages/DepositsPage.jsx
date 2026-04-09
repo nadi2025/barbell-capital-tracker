@@ -6,13 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export default function DepositsPage() {
   const [deposits, setDeposits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
+  const [editDeposit, setEditDeposit] = useState(null);
   const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", notes: "" });
   const [user, setUser] = useState(null);
 
@@ -30,16 +31,21 @@ export default function DepositsPage() {
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
+  const openNew = () => { setEditDeposit(null); setForm({ date: "", type: "Deposit", amount: "", notes: "" }); setFormOpen(true); };
+  const openEdit = (dep) => { setEditDeposit(dep); setForm({ date: dep.date, type: dep.type, amount: String(dep.amount), notes: dep.notes || "" }); setFormOpen(true); };
+
   const handleSave = async () => {
-    await base44.entities.Deposit.create({
-      date: form.date,
-      type: form.type,
-      amount: parseFloat(form.amount),
-      notes: form.notes || undefined,
-    });
-    toast.success(`${form.type} recorded`);
+    const data = { date: form.date, type: form.type, amount: parseFloat(form.amount), notes: form.notes || undefined };
+    if (editDeposit) {
+      await base44.entities.Deposit.update(editDeposit.id, data);
+      toast.success("Updated");
+    } else {
+      await base44.entities.Deposit.create(data);
+      toast.success(`${form.type} recorded`);
+    }
     setFormOpen(false);
     setForm({ date: "", type: "Deposit", amount: "", notes: "" });
+    setEditDeposit(null);
     loadData();
   };
 
@@ -72,7 +78,7 @@ export default function DepositsPage() {
           </p>
         </div>
         {!isReadOnly && (
-          <Button onClick={() => setFormOpen(true)} className="gap-2">
+          <Button onClick={openNew} className="gap-2">
             <Plus className="w-4 h-4" /> Add Transaction
           </Button>
         )}
@@ -125,12 +131,16 @@ export default function DepositsPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{d.notes || "-"}</td>
                   {!isReadOnly && (
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                        onClick={() => handleDelete(d)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </td>
+                   <td className="px-4 py-3 text-right">
+                     <div className="flex justify-end gap-1">
+                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(d)}>
+                         <Pencil className="w-3.5 h-3.5" />
+                       </Button>
+                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(d)}>
+                         <Trash2 className="w-3.5 h-3.5" />
+                       </Button>
+                     </div>
+                   </td>
                   )}
                 </tr>
               ))}
@@ -142,7 +152,7 @@ export default function DepositsPage() {
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-sm bg-card">
           <DialogHeader>
-            <DialogTitle>Add Transaction</DialogTitle>
+            <DialogTitle>{editDeposit ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div>
@@ -170,7 +180,7 @@ export default function DepositsPage() {
           </div>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="ghost" onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!form.date || !form.amount}>Add</Button>
+            <Button onClick={handleSave} disabled={!form.date || !form.amount}>{editDeposit ? "Update" : "Add"}</Button>
           </div>
         </DialogContent>
       </Dialog>

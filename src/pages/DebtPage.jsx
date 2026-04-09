@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import InterestSchedule from "../components/InterestSchedule";
 import { toast } from "sonner";
 import moment from "moment";
 
@@ -100,6 +101,8 @@ export default function DebtPage() {
           </div>
         ))}
       </div>
+
+      <InterestSchedule debts={debts} />
 
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
