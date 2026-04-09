@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import PortfolioBreakdown from "../components/dashboard/PortfolioBreakdown";
-import MarginPanel from "../components/dashboard/MarginPanel";
+import ExpiringOptionsPanel from "../components/dashboard/ExpiringOptionsPanel";
 import OpenOptionsTable from "../components/dashboard/OpenOptionsTable";
 import HoldingsTable from "../components/dashboard/HoldingsTable";
 import PnlChart from "../components/dashboard/PnlChart";
@@ -11,7 +11,7 @@ import StrategyInsights from "../components/dashboard/StrategyInsights";
 import CapitalStructure from "../components/dashboard/CapitalStructure";
 import DebtAlerts from "../components/dashboard/DebtAlerts";
 import KpiCard from "../components/KpiCard";
-import { TrendingUp, Award, BarChart3, Activity } from "lucide-react";
+import { TrendingUp, Award, BarChart3, Activity, Wallet, PiggyBank } from "lucide-react";
 
 function fmt(val, decimals = 0) {
   if (val === undefined || val === null || isNaN(val)) return "$0";
@@ -75,6 +75,9 @@ export default function Dashboard() {
     .filter(o => o.type === "Sell")
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
+  const totalDebt = debts.filter(d => d.status === "Active").reduce((s, d) => s + (d.outstanding_balance || 0), 0);
+  const netInvestmentValue = totalStockValue - totalDebt;
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -85,12 +88,32 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Top row: NAV + Margin */}
+      {/* Hero: Net Value + Deposited */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">Net Investment Value</p>
+          </div>
+          <p className="text-4xl font-bold font-mono text-foreground">{fmt(netInvestmentValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Stocks {fmt(totalStockValue)} — Debt {fmt(totalDebt)}</p>
+        </div>
+        <div className="bg-gradient-to-br from-chart-2/10 to-chart-2/5 border border-chart-2/20 rounded-2xl p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <PiggyBank className="w-5 h-5 text-chart-2" />
+            <p className="text-sm font-medium text-muted-foreground">Total Deposited</p>
+          </div>
+          <p className="text-4xl font-bold font-mono text-foreground">{fmt(totalDeposited)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Premium collected: <span className="text-profit font-semibold">{fmt(premiumCollected)}</span></p>
+        </div>
+      </div>
+
+      {/* Top row: NAV + Expiring Options */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <PortfolioBreakdown snapshot={snapshot} totalDeposited={totalDeposited} />
         </div>
-        <MarginPanel snapshot={snapshot} />
+        <ExpiringOptionsPanel options={options} />
       </div>
 
       {/* KPI Strip */}
