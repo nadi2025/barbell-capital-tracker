@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 const fmt = (v) => v == null ? "" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const ACTION_TYPES = ["Deposit", "Withdrawal", "Rebalance", "Interest Payment", "Trade", "Collateral Adjustment", "Other"];
-const ACTION_LABELS = { Deposit: "Deposit", Withdrawal: "Withdrawal", Rebalance: "Rebalance", "Interest Payment": "Interest Payment", Trade: "Trade", "Collateral Adjustment": "Collateral Adjustment", Other: "Other" };
+const ACTION_LABELS = { Deposit: "Deposit", Withdrawal: "Withdrawal", Rebalance: "Rebalance", "Interest Payment": "Interest Payment", Trade: "Trade", "Collateral Adjustment": "Collateral Adjustment", Other: "Other" };, Rebalance: "איזון", "Interest Payment": "תשלום ריבית", "LP Open": "פתיחת LP", "LP Close": "סגירת LP", Trade: "עסקה", "Collateral Adjustment": "שינוי ביטחון", Other: "אחר" };
 
 const emptyForm = { date: new Date().toISOString().split("T")[0], action_type: "Other", description: "", amount_usd: "", related_entity: "" };
 
