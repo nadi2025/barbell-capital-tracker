@@ -131,7 +131,9 @@ export default function OptionsPage() {
         </Select>
       </div>
 
-      <AssignmentAnalysis trades={trades} stocks={stocks} />
+      {(filterStatus !== "all" || filterTicker !== "all") && (
+        <AssignmentAnalysis trades={filteredTrades} stocks={stocks} />
+      )}
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
