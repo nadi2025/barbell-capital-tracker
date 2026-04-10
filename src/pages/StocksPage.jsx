@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
@@ -13,6 +13,27 @@ export default function StocksPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editStock, setEditStock] = useState(null);
   const [user, setUser] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefreshPrices = async () => {
+    const holdingStocks = stocks.filter(s => s.status !== "Closed" && s.ticker);
+    if (!holdingStocks.length) return;
+    setRefreshing(true);
+    const tickers = [...new Set(holdingStocks.map(s => s.ticker))];
+    const res = await base44.functions.invoke("fetchStockPrices", { tickers });
+    const prices = res.data?.prices || {};
+    await Promise.all(holdingStocks.map(async (s) => {
+      const price = prices[s.ticker];
+      if (!price) return;
+      const current_value = price * s.shares;
+      const gain_loss = current_value - (s.invested_value || 0);
+      const gain_loss_pct = s.invested_value ? gain_loss / s.invested_value : 0;
+      await base44.entities.StockPosition.update(s.id, { current_price: price, current_value, gain_loss, gain_loss_pct });
+    }));
+    toast.success(`מחירים עודכנו בהצלחה`);
+    setRefreshing(false);
+    loadData();
+  };
 
   const loadData = async () => {
     const [s, u] = await Promise.all([
@@ -52,11 +73,17 @@ export default function StocksPage() {
           <h1 className="text-2xl font-bold tracking-tight">Stock Positions</h1>
           <p className="text-sm text-muted-foreground mt-1">{stocks.length} positions · Total value: ${totalValue.toLocaleString()}</p>
         </div>
-        {!isReadOnly && (
-          <Button onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2">
-            <Plus className="w-4 h-4" /> New Position
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "מעדכן..." : "עדכן מחירים"}
           </Button>
-        )}
+          {!isReadOnly && (
+            <Button onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2">
+              <Plus className="w-4 h-4" /> New Position
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
