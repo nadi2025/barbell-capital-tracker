@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-const fmt = (v, d = 0) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", minimumFractionDigits: d, maximumFractionDigits: d });
+const fmt = (v, d = 0) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
 
 export default function OptionsPage() {
   const [positions, setPositions] = useState([]);
