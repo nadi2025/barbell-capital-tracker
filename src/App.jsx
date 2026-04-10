@@ -63,8 +63,7 @@ const AuthenticatedApp = () => {
         <Route path="/crypto/debt" element={<CryptoDebtPage />} />
         <Route path="/crypto/investors" element={<InvestorsPage />} />
         <Route path="/crypto/activity" element={<ActivityPage />} />
-        <Route path="/crypto/aave" element={<AavePage />} />
-        <Route path="/crypto/aave-detail" element={<AaveDetailPage />} />
+        <Route path="/crypto/aave" element={<AaveDetailPage />} />
         <Route path="/crypto/options" element={<CryptoOptionsPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
