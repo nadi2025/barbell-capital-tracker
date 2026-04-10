@@ -130,20 +130,20 @@ export default function Dashboard() {
   const nextExpiry = openOptions.sort((a, b) => new Date(a.expiration_date) - new Date(b.expiration_date))[0];
   if (nextExpiry?.expiration_date) {
     const days = Math.ceil((new Date(nextExpiry.expiration_date) - new Date()) / 86400000);
-    alerts.push({ icon: Calendar, color: days < 7 ? "text-amber-400" : "text-muted-foreground", label: `פקיעת אופציות הבאה: ${nextExpiry.expiration_date} (${days} ימים) · ${nextExpiry.ticker} $${nextExpiry.strike}` });
+    alerts.push({ icon: Calendar, color: days < 7 ? "text-amber-400" : "text-muted-foreground", label: `פקיעת אופציות הבאה: ${nextExpiry.expiration_date} (${days} ימים) · ${nextExpiry.ticker} $${nextExpiry.strike}`, category: "options" });
   }
   const nextDebt = debts.filter(d => d.status === "Active" && d.maturity_date).sort((a, b) => new Date(a.maturity_date) - new Date(b.maturity_date))[0];
   if (nextDebt) {
     const days = Math.ceil((new Date(nextDebt.maturity_date) - new Date()) / 86400000);
     const interest = nextDebt.outstanding_balance * nextDebt.interest_rate_pct / 100 / 4;
-    alerts.push({ icon: Calendar, color: days < 30 ? "text-amber-400" : "text-muted-foreground", label: `תשלום ריבית הבא: ${fmt(interest)} · ${nextDebt.maturity_date} (${days} ימים)` });
+    alerts.push({ icon: Calendar, color: days < 30 ? "text-amber-400" : "text-muted-foreground", label: `תשלום ריבית הבא: ${fmt(interest)} · ${nextDebt.maturity_date} (${days} ימים)`, category: "debt" });
   }
   if (healthFactor > 0 && healthFactor < 2) {
-    alerts.push({ icon: AlertTriangle, color: healthFactor < 1.5 ? "text-loss" : "text-amber-400", label: `Aave Health Factor: ${healthFactor.toFixed(2)} — ${healthFactor < 1.5 ? "סיכון גבוה!" : "שמור על מרחק"}` });
+    alerts.push({ icon: AlertTriangle, color: healthFactor < 1.5 ? "text-loss" : "text-amber-400", label: `Aave Health Factor: ${healthFactor.toFixed(2)} — ${healthFactor < 1.5 ? "סיכון גבוה!" : "שמור על מרחק"}`, category: "risk" });
   }
   const bigLoss = stocks.find(s => s.gain_loss_pct && s.gain_loss_pct < -0.3);
   if (bigLoss) {
-    alerts.push({ icon: TrendingDown, color: "text-loss", label: `${bigLoss.ticker}: ${pct(bigLoss.gain_loss_pct)} ROE (${fmt(bigLoss.gain_loss)})` });
+    alerts.push({ icon: TrendingDown, color: "text-loss", label: `${bigLoss.ticker}: ${pct(bigLoss.gain_loss_pct)} ROE (${fmt(bigLoss.gain_loss)})`, category: "risk" });
   }
 
   const hfColor = healthFactor > 2 ? "text-profit" : healthFactor < 1.5 ? "text-loss" : "text-amber-400";
@@ -285,17 +285,37 @@ export default function Dashboard() {
       </div>
 
       {/* ══ ALERTS BAR ══ */}
-      {alerts.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">התראות ואירועים קרובים</p>
-          {alerts.map((a, i) => (
-            <div key={i} className="flex items-center gap-2.5">
-              <a.icon className={`w-4 h-4 flex-shrink-0 ${a.color}`} />
-              <span className={`text-sm ${a.color}`}>{a.label}</span>
+      {alerts.length > 0 && (() => {
+        const categories = [
+          { key: "options", label: "📅 אופציות", borderColor: "border-l-primary" },
+          { key: "debt", label: "🏦 ריבית וחוב", borderColor: "border-l-amber-400" },
+          { key: "risk", label: "⚠️ סיכון ומניות", borderColor: "border-l-loss" },
+        ];
+        return (
+          <div className="bg-card border border-border rounded-xl p-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">התראות ואירועים קרובים</p>
+            <div className="space-y-3">
+              {categories.map(cat => {
+                const catAlerts = alerts.filter(a => a.category === cat.key);
+                if (catAlerts.length === 0) return null;
+                return (
+                  <div key={cat.key} className={`border-l-2 pl-3 ${cat.borderColor}`}>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1.5">{cat.label}</p>
+                    <div className="space-y-1.5">
+                      {catAlerts.map((a, i) => (
+                        <div key={i} className="flex items-center gap-2.5">
+                          <a.icon className={`w-4 h-4 flex-shrink-0 ${a.color}`} />
+                          <span className={`text-sm ${a.color}`}>{a.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={loadAll} />
     </div>
