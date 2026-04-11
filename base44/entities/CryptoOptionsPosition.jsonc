@@ -13,10 +13,31 @@
     "option_type": {
       "type": "string",
       "enum": [
-        "Call",
-        "Put"
+        "Put",
+        "Call"
       ],
       "title": "Option Type"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "Sell",
+        "Buy"
+      ],
+      "title": "Direction",
+      "default": "Sell"
+    },
+    "strategy": {
+      "type": "string",
+      "title": "Strategy"
+    },
+    "strike_price": {
+      "type": "number",
+      "title": "Strike Price"
+    },
+    "current_price": {
+      "type": "number",
+      "title": "Current Price"
     },
     "apr_percent": {
       "type": "number",
@@ -24,7 +45,7 @@
     },
     "income_usd": {
       "type": "number",
-      "title": "Income (USD)"
+      "title": "Premium / Income (USD)"
     },
     "size": {
       "type": "number",
@@ -34,36 +55,45 @@
       "type": "number",
       "title": "Notional (USD)"
     },
-    "current_price": {
-      "type": "number",
-      "title": "Current Price"
+    "opened_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Opened Date"
     },
     "maturity_date": {
       "type": "string",
       "format": "date",
       "title": "Maturity Date"
     },
-    "target_price": {
-      "type": "number",
-      "title": "Target Price"
-    },
-    "outcome": {
-      "type": "string",
-      "title": "Outcome"
-    },
     "status": {
       "type": "string",
       "enum": [
-        "Active",
-        "Expired ITM",
+        "Open",
         "Expired OTM",
+        "Expired ITM",
         "Exercised"
       ],
-      "title": "Status"
+      "title": "Status",
+      "default": "Open"
+    },
+    "settlement_price": {
+      "type": "number",
+      "title": "Price at Settlement"
+    },
+    "settlement_result": {
+      "type": "string",
+      "title": "Settlement Result (text)"
+    },
+    "net_pnl": {
+      "type": "number",
+      "title": "Net P&L (USD)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
     }
   },
   "required": [
-    "platform",
     "asset",
     "option_type",
     "status"
