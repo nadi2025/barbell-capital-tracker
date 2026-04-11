@@ -23,6 +23,7 @@ import AavePage from './pages/crypto/AavePage';
 import AaveDetailPage from './pages/crypto/AaveDetailPage';
 import CryptoOptionsPage from './pages/crypto/OptionsPage';
 import OffChainInvestorsPage from './pages/OffChainInvestorsPage';
+import WeeklyReportPage from './pages/WeeklyReportPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -67,6 +68,7 @@ const AuthenticatedApp = () => {
         <Route path="/crypto/aave" element={<AaveDetailPage />} />
         <Route path="/crypto/options" element={<CryptoOptionsPage />} />
         <Route path="/offchain-investors" element={<OffChainInvestorsPage />} />
+        <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>
