@@ -13,6 +13,7 @@ const offChainNav = [
   { path: "/deposits", label: "Deposits", icon: Wallet },
   { path: "/reports", label: "Reports", icon: FileText },
   { path: "/debt", label: "Debt & Capital", icon: Landmark },
+  { path: "/offchain-investors", label: "Investors (Off-Chain)", icon: Users },
 ];
 
 const onChainNav = [

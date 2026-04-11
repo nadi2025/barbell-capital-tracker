@@ -1,0 +1,52 @@
+{
+  "name": "InvestorPayment",
+  "type": "object",
+  "properties": {
+    "investor_id": {
+      "type": "string",
+      "title": "Investor ID"
+    },
+    "investor_name": {
+      "type": "string",
+      "title": "Investor Name"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Payment Date"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Currency"
+    },
+    "payment_type": {
+      "type": "string",
+      "enum": [
+        "Monthly Interest",
+        "Annual Interest",
+        "Principal Return",
+        "Partial Return"
+      ],
+      "title": "Payment Type"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "investor_id",
+    "payment_date",
+    "amount",
+    "currency",
+    "payment_type"
+  ]
+}

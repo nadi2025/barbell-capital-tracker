@@ -1,0 +1,84 @@
+{
+  "name": "OffChainInvestor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Investor Name"
+    },
+    "principal_usd": {
+      "type": "number",
+      "title": "Principal (USD)"
+    },
+    "principal_ils": {
+      "type": "number",
+      "title": "Principal (ILS)"
+    },
+    "interest_rate": {
+      "type": "number",
+      "title": "Interest Rate (%)"
+    },
+    "interest_schedule": {
+      "type": "string",
+      "enum": [
+        "Monthly",
+        "At Maturity"
+      ],
+      "title": "Interest Schedule"
+    },
+    "interest_currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Interest Currency"
+    },
+    "monthly_payment": {
+      "type": "number",
+      "title": "Monthly Payment (USD)"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "investment_location": {
+      "type": "string",
+      "enum": [
+        "Interactive Brokers",
+        "Leumi Notes",
+        "Other"
+      ],
+      "title": "Investment Location"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Matured",
+        "Repaid"
+      ],
+      "title": "Status",
+      "default": "Active"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name",
+    "principal_usd",
+    "interest_rate",
+    "interest_schedule",
+    "start_date",
+    "maturity_date",
+    "status"
+  ]
+}
