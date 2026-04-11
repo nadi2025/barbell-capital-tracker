@@ -17,17 +17,17 @@
       "format": "date",
       "title": "Period End"
     },
-    "pdf_url": {
-      "type": "string",
-      "title": "PDF URL"
+    "ib_nav": {
+      "type": "number",
+      "title": "IB NAV at Report"
     },
     "nav_at_report": {
       "type": "number",
-      "title": "NAV at Report"
+      "title": "Total NAV at Report"
     },
     "notes": {
       "type": "string",
-      "title": "Summary Notes"
+      "title": "Manager Notes"
     },
     "status": {
       "type": "string",
@@ -38,21 +38,49 @@
       "title": "Status",
       "default": "Draft"
     },
-    "manager_summary": {
-      "type": "string",
-      "title": "\u05e1\u05d9\u05db\u05d5\u05dd \u05e9\u05d1\u05d5\u05e2\u05d9"
+    "wizard_ib_options_pnl": {
+      "type": "number",
+      "title": "IB Options P&L"
     },
-    "actions_taken": {
-      "type": "string",
-      "title": "\u05e4\u05e2\u05d5\u05dc\u05d5\u05ea \u05e9\u05d1\u05d5\u05e6\u05e2\u05d5"
+    "wizard_ib_stocks_pnl": {
+      "type": "number",
+      "title": "IB Stocks P&L"
     },
-    "next_week_plan": {
-      "type": "string",
-      "title": "\u05ea\u05db\u05e0\u05d9\u05ea \u05dc\u05e9\u05d1\u05d5\u05e2 \u05d4\u05d1\u05d0"
+    "wizard_ib_premium_total": {
+      "type": "number",
+      "title": "IB Premium Total"
     },
-    "risks_notes": {
-      "type": "string",
-      "title": "\u05e1\u05d9\u05db\u05d5\u05e0\u05d9\u05dd \u05d5\u05d3\u05d2\u05e9\u05d9\u05dd"
+    "wizard_ib_win_rate": {
+      "type": "number",
+      "title": "IB Win Rate %"
+    },
+    "wizard_btc_price": {
+      "type": "number",
+      "title": "BTC Price"
+    },
+    "wizard_eth_price": {
+      "type": "number",
+      "title": "ETH Price"
+    },
+    "wizard_aave_price": {
+      "type": "number",
+      "title": "AAVE Price"
+    },
+    "wizard_mstr_price": {
+      "type": "number",
+      "title": "MSTR Price"
+    },
+    "wizard_aave_borrowed": {
+      "type": "number",
+      "title": "Aave Borrowed"
+    },
+    "wizard_aave_hf": {
+      "type": "number",
+      "title": "Aave Health Factor"
+    },
+    "wizard_on_chain_nav": {
+      "type": "number",
+      "title": "On-Chain NAV"
     }
   },
   "required": [

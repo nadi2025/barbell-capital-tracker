@@ -1,132 +1,76 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { format, subDays, differenceInDays } from "date-fns";
-import { FileText, Plus, Download, Send, Trash2, Eye } from "lucide-react";
+import { format, differenceInDays, subDays } from "date-fns";
+import { FileText, Plus, Trash2, Send, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import FreshnessCheck from "@/components/weeklyreport/FreshnessCheck";
-import ManagerInputForm from "@/components/weeklyreport/ManagerInputForm";
-import { generateWeeklyPDF } from "@/components/weeklyreport/generatePDF";
+import ReportWizard from "@/components/weeklyreport/ReportWizard";
+import { generateReportHTML } from "@/components/weeklyreport/generateReportHTML";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
 export default function WeeklyReportPage() {
-  const [step, setStep] = useState(null); // null | "freshness" | "input" | "generating"
+  const [step, setStep] = useState(null); // null | "wizard" | "generating"
   const [reports, setReports] = useState([]);
-  const [freshnessDates, setFreshnessDates] = useState({});
+  const [appData, setAppData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-
-  // All portfolio data needed for PDF
-  const [portfolioData, setPortfolioData] = useState(null);
-  const [investors, setInvestors] = useState([]);
-  const [investorPayments, setInvestorPayments] = useState([]);
-  const [options, setOptions] = useState([]);
-  const [leveraged, setLeveraged] = useState([]);
-  const [aave, setAave] = useState(null);
-  const [activities, setActivities] = useState([]);
 
   const load = async () => {
     const [
-      reportsList, assets, leveragedList, aaveAccounts,
-      optionsList, invList, payList, actList, snapshots, stocksList, deposits
+      reportsList, assets, leveraged, aaveAccounts, aaveCollateral,
+      optionsList, investors, payments, snapshots
     ] = await Promise.all([
       base44.entities.WeeklyReport.list("-report_date", 50),
-      base44.entities.CryptoAsset.list("-last_updated", 20),
+      base44.entities.CryptoAsset.list("-last_updated", 50),
       base44.entities.LeveragedPosition.list("-updated_date", 20),
       base44.entities.AaveAccount.list("-updated_date", 1),
+      base44.entities.AaveCollateral.list(),
       base44.entities.CryptoOptionsPosition.list("-opened_date", 50),
       base44.entities.OffChainInvestor.list(),
       base44.entities.InvestorPayment.list("-payment_date", 200),
-      base44.entities.CryptoActivityLog.list("-date", 50),
-      base44.entities.PortfolioSnapshot.list("-snapshot_date", 10),
-      base44.entities.StockPosition.list(),
-      base44.entities.Deposit.list("-date", 100),
+      base44.entities.PortfolioSnapshot.list("-snapshot_date", 5),
     ]);
 
     setReports(reportsList);
-    setInvestors(invList);
-    setInvestorPayments(payList);
-    setOptions(optionsList);
-    setLeveraged(leveragedList);
-    setAave(aaveAccounts[0] || null);
-    setActivities(actList);
 
-    // Freshness dates
-    const cryptoLatest = assets.reduce((latest, a) => {
-      const d = a.last_updated ? new Date(a.last_updated) : null;
-      return d && (!latest || d > latest) ? d : latest;
-    }, null);
-    const hlLatest = leveragedList.filter(l => l.status === "Open").reduce((latest, l) => {
-      const d = new Date(l.updated_date);
-      return !latest || d > latest ? d : latest;
-    }, null);
-    const optLatest = optionsList.filter(o => o.status === "Open").reduce((latest, o) => {
-      const d = new Date(o.updated_date);
-      return !latest || d > latest ? d : latest;
-    }, null);
-    const payLatest = payList.reduce((latest, p) => {
-      const d = new Date(p.payment_date);
-      return !latest || d > latest ? d : latest;
-    }, null);
-    const snapshotLatest = snapshots[0]?.snapshot_date ? new Date(snapshots[0].snapshot_date) : null;
+    // Extract current prices from assets
+    const getPrice = (token) => {
+      const asset = assets.find(a => a.token?.toUpperCase() === token.toUpperCase());
+      return asset?.current_price_usd || null;
+    };
 
-    setFreshnessDates({
-      crypto_prices: cryptoLatest,
-      hyperliquid: hlLatest,
-      aave: aaveAccounts[0]?.updated_date ? new Date(aaveAccounts[0].updated_date) : null,
-      options: optLatest,
-      ib_nav: snapshotLatest,
-      interest_payments: payLatest,
-    });
+    const lastReport = reportsList[0];
 
-    // Portfolio data for PDF
-    const totalCryptoAssets = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const aaveData = aaveAccounts[0] || {};
-    const totalDebt = (aaveData.borrow_usd || 0);
-    const hlMargin = leveragedList.filter(l => l.status === "Open").reduce((s, l) => s + (l.margin_usd || 0), 0);
-    const onChainNet = totalCryptoAssets - totalDebt;
-
-    const ibDeposits = deposits.filter(d => d.type === "Deposit").reduce((s, d) => s + (d.amount || 0), 0);
-    const ibWithdrawals = deposits.filter(d => d.type === "Withdrawal").reduce((s, d) => s + (d.amount || 0), 0);
-    const ibDeposited = ibDeposits - ibWithdrawals;
-    const ibSnapshot = snapshots[0];
-    const ibNav = ibSnapshot?.nav || 0;
-
-    const optsPremium = optionsList.reduce((s, o) => s + (o.income_usd || 0), 0);
-    const closedOpts = optionsList.filter(o => ["Expired OTM", "Expired ITM", "Exercised"].includes(o.status));
-    const winRate = closedOpts.length > 0 ? (closedOpts.filter(o => o.status === "Expired OTM").length / closedOpts.length) * 100 : 0;
-
-    const prevSnapshot = snapshots[1];
-
-    // Asset allocation
-    const btcAssets = assets.filter(a => a.token?.includes("BTC")).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const ethAssets = assets.filter(a => a.token?.includes("ETH")).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const aaveToken = assets.filter(a => a.token?.includes("AAVE")).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const mstr = assets.filter(a => a.token?.includes("MSTR")).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const stables = assets.filter(a => ["USDC", "USDT", "DAI"].some(t => a.token?.includes(t))).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-    const otherAssets = totalCryptoAssets - btcAssets - ethAssets - aaveToken - mstr - stables;
-
-    const btcPrice = assets.find(a => a.token === "BTC")?.current_price_usd;
-    const ethPrice = assets.find(a => a.token === "ETH")?.current_price_usd;
-
-    setPortfolioData({
-      current: {
-        nav: ibNav + onChainNet,
-        ib_nav: ibNav,
-        ib_deposited: ibDeposited,
-        options_premium_total: optsPremium,
-        options_win_rate: winRate,
-        btc_price: btcPrice,
-        eth_price: ethPrice,
-        allocation: { BTC: btcAssets, ETH: ethAssets, AAVE: aaveToken, MSTR: mstr, Stablecoins: stables, Other: Math.max(0, otherAssets) },
+    setAppData({
+      assets,
+      leveraged: leveraged.filter(l => l.status === "Open"),
+      aaveAccount: aaveAccounts[0] || null,
+      aaveCollateral,
+      options: optionsList,
+      investors,
+      payments,
+      // Defaults for wizard
+      defaults: {
+        ib_nav: lastReport?.ib_nav || snapshots[0]?.nav || null,
+        ib_options_pnl: lastReport?.wizard_ib_options_pnl || 0,
+        ib_stocks_pnl: lastReport?.wizard_ib_stocks_pnl || 0,
+        ib_premium_total: lastReport?.wizard_ib_premium_total || null,
+        ib_win_rate: lastReport?.wizard_ib_win_rate || null,
+        btc_price: getPrice("BTC") || lastReport?.wizard_btc_price || null,
+        eth_price: getPrice("ETH") || lastReport?.wizard_eth_price || null,
+        aave_price: getPrice("AAVE") || lastReport?.wizard_aave_price || null,
+        mstr_price: getPrice("MSTR") || lastReport?.wizard_mstr_price || null,
+        aave_borrowed: aaveAccounts[0]?.borrow_usd || lastReport?.wizard_aave_borrowed || null,
+        aave_hf: aaveAccounts[0]?.health_factor || lastReport?.wizard_aave_hf || null,
+        manager_notes: "",
+        on_chain_nav: null,
       },
-      prev: prevSnapshot ? {
-        nav: prevSnapshot.net_value_usd,
-        ib_nav: prevSnapshot.net_value_usd,
-        btc_price: prevSnapshot.btc_price,
-        eth_price: prevSnapshot.eth_price,
+      prevReport: lastReport ? {
+        ib_nav: lastReport.ib_nav,
+        btc_price: lastReport.wizard_btc_price,
+        eth_price: lastReport.wizard_eth_price,
+        on_chain_nav: lastReport.wizard_on_chain_nav,
       } : null,
     });
 
@@ -135,76 +79,116 @@ export default function WeeklyReportPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleGenerate = async (managerInputs) => {
-    setGenerating(true);
+  const handleWizardComplete = async (answers) => {
+    setStep("generating");
     try {
-      // Filter activities for report period
-      const periodActivities = activities.filter(a =>
-        a.date >= managerInputs.period_start && a.date <= managerInputs.period_end
-      );
+      const today = format(new Date(), "yyyy-MM-dd");
+      const periodStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
 
-      const doc = await generateWeeklyPDF({
-        managerInputs,
-        portfolioData,
-        activityLogs: periodActivities,
-        investors,
-        investorPayments,
-        options,
-        leveraged,
-        aave,
+      // Recalculate on-chain NAV for saving
+      const ethUnits = appData.aaveCollateral.find(a => a.token?.includes("ETH"))?.units || 0;
+      const wbtcUnits = appData.aaveCollateral.find(a => a.token?.includes("BTC") || a.token?.includes("WBTC"))?.units || 0;
+      const aaveTokenUnits = appData.aaveCollateral.find(a => a.token === "AAVE")?.units || 0;
+      const collateral = (ethUnits * (answers.eth_price || 0)) + (wbtcUnits * (answers.btc_price || 0)) + (aaveTokenUnits * (answers.aave_price || 0));
+      const onChainNav = collateral - (answers.aave_borrowed || 0);
+
+      // Generate HTML report
+      const html = generateReportHTML({
+        wizardAnswers: answers,
+        prevReport: appData.prevReport,
+        investors: appData.investors,
+        investorPayments: appData.payments,
+        options: appData.options,
+        leveraged: appData.leveraged,
+        aaveCollateral: appData.aaveCollateral,
+        periodStart,
+        periodEnd: today,
       });
 
-      // Save PDF as blob URL + upload
-      const pdfBlob = doc.output("blob");
-      const pdfFile = new File([pdfBlob], `weekly-report-${managerInputs.period_end}.pdf`, { type: "application/pdf" });
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: pdfFile });
-
-      // Save report record
+      // Save report record with all wizard answers
       await base44.entities.WeeklyReport.create({
-        report_date: format(new Date(), "yyyy-MM-dd"),
-        period_start: managerInputs.period_start,
-        period_end: managerInputs.period_end,
-        pdf_url: file_url,
-        nav_at_report: portfolioData?.current?.nav,
-        notes: managerInputs.manager_summary,
-        manager_summary: managerInputs.manager_summary,
-        actions_taken: managerInputs.actions_taken,
-        next_week_plan: managerInputs.next_week_plan,
-        risks_notes: managerInputs.risks_notes,
+        report_date: today,
+        period_start: periodStart,
+        period_end: today,
+        ib_nav: answers.ib_nav,
+        nav_at_report: (answers.ib_nav || 0) + onChainNav,
+        notes: answers.manager_notes,
         status: "Draft",
+        // Store wizard answers for next-run defaults
+        wizard_ib_options_pnl: answers.ib_options_pnl,
+        wizard_ib_stocks_pnl: answers.ib_stocks_pnl,
+        wizard_ib_premium_total: answers.ib_premium_total,
+        wizard_ib_win_rate: answers.ib_win_rate,
+        wizard_btc_price: answers.btc_price,
+        wizard_eth_price: answers.eth_price,
+        wizard_aave_price: answers.aave_price,
+        wizard_mstr_price: answers.mstr_price,
+        wizard_aave_borrowed: answers.aave_borrowed,
+        wizard_aave_hf: answers.aave_hf,
+        wizard_on_chain_nav: onChainNav,
       });
+
+      // Update Aave account with fresh data
+      if (appData.aaveAccount) {
+        await base44.entities.AaveAccount.update(appData.aaveAccount.id, {
+          borrow_usd: answers.aave_borrowed,
+          health_factor: answers.aave_hf,
+        });
+      }
+
+      // Update crypto asset prices
+      const priceUpdates = [
+        { token: "BTC", price: answers.btc_price },
+        { token: "ETH", price: answers.eth_price },
+        { token: "AAVE", price: answers.aave_price },
+        { token: "MSTR", price: answers.mstr_price },
+      ];
+      for (const { token, price } of priceUpdates) {
+        if (!price) continue;
+        const asset = appData.assets.find(a => a.token?.toUpperCase() === token);
+        if (asset) {
+          await base44.entities.CryptoAsset.update(asset.id, {
+            current_price_usd: price,
+            current_value_usd: asset.amount ? asset.amount * price : asset.current_value_usd,
+            last_updated: today,
+          });
+        }
+      }
 
       // Create portfolio snapshot
       await base44.entities.PortfolioSnapshot.create({
-        snapshot_date: managerInputs.period_end,
-        total_assets_usd: portfolioData?.current?.ib_nav,
-        net_value_usd: portfolioData?.current?.nav,
-        btc_price: portfolioData?.current?.btc_price,
-        eth_price: portfolioData?.current?.eth_price,
-        notes: `Auto-snapshot from weekly report ${managerInputs.period_end}`,
+        snapshot_date: today,
+        total_assets_usd: collateral,
+        net_value_usd: (answers.ib_nav || 0) + onChainNav,
+        btc_price: answers.btc_price,
+        eth_price: answers.eth_price,
+        aave_price: answers.aave_price,
+        notes: `Auto-snapshot from weekly report ${today}`,
       });
 
-      // Download PDF
-      doc.save(`weekly-report-${managerInputs.period_end}.pdf`);
+      // Open HTML in new window for print-to-PDF
+      const win = window.open("", "_blank");
+      win.document.write(html);
+      win.document.close();
 
-      toast.success("Report generated and saved!");
+      toast.success("הדוח נפתח בחלון חדש — השתמש ב-Ctrl+P לשמירה כ-PDF");
       setStep(null);
       load();
     } catch (e) {
-      toast.error("Error generating report: " + e.message);
+      toast.error("שגיאה: " + e.message);
+      setStep(null);
     }
-    setGenerating(false);
   };
 
   const handleMarkSent = async (id) => {
     await base44.entities.WeeklyReport.update(id, { status: "Sent" });
-    toast.success("Marked as sent");
+    toast.success("סומן כנשלח");
     load();
   };
 
   const handleDelete = async (id) => {
     await base44.entities.WeeklyReport.delete(id);
-    toast.success("Report deleted");
+    toast.success("נמחק");
     load();
   };
 
@@ -220,40 +204,35 @@ export default function WeeklyReportPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">דוח שבועי</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Weekly Investment Management Report — PDF Generator</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Weekly Investment Management Report</p>
         </div>
-        {step === null && (
-          <Button onClick={() => setStep("freshness")} className="gap-2">
-            <Plus className="w-4 h-4" /> הפק דוח חדש
+        {!step && (
+          <Button onClick={() => setStep("wizard")} className="gap-2">
+            <Plus className="w-4 h-4" /> הפק דוח שבועי
           </Button>
         )}
       </div>
 
-      {/* Step flow */}
-      {step === "freshness" && (
-        <FreshnessCheck
-          dates={freshnessDates}
-          onSkip={() => setStep("input")}
+      {/* Wizard */}
+      {step === "wizard" && appData && (
+        <ReportWizard
+          defaults={appData.defaults}
+          onComplete={handleWizardComplete}
+          onCancel={() => setStep(null)}
         />
       )}
 
-      {step === "input" && (
-        <ManagerInputForm
-          onBack={() => setStep("freshness")}
-          onSubmit={handleGenerate}
-        />
-      )}
-
-      {generating && (
-        <div className="bg-card border border-border rounded-xl p-8 text-center">
-          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-semibold">מפיק דוח PDF...</p>
-          <p className="text-xs text-muted-foreground mt-1">אוסף נתונים ויוצר PDF מקצועי</p>
+      {/* Generating state */}
+      {step === "generating" && (
+        <div className="bg-card border border-border rounded-2xl p-12 text-center" dir="rtl">
+          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-5" />
+          <p className="text-lg font-bold">מפיק דוח...</p>
+          <p className="text-sm text-muted-foreground mt-2">שומר נתונים ומכין את הדוח</p>
         </div>
       )}
 
-      {/* Report history */}
-      {step === null && (
+      {/* History */}
+      {!step && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-muted-foreground" />
@@ -261,8 +240,8 @@ export default function WeeklyReportPage() {
           </div>
 
           {reports.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-10 text-center text-muted-foreground text-sm">
-              אין דוחות עדיין. לחץ "הפק דוח חדש" כדי להתחיל.
+            <div className="bg-card border border-border rounded-xl p-12 text-center text-muted-foreground text-sm" dir="rtl">
+              אין דוחות עדיין. לחץ "הפק דוח שבועי" כדי להתחיל.
             </div>
           ) : (
             <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -271,7 +250,8 @@ export default function WeeklyReportPage() {
                   <tr className="border-b border-border bg-muted/40">
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">תאריך</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">תקופה</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">NAV</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">NAV בדוח</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">IB NAV</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground text-xs">סטטוס</th>
                     <th className="px-4 py-3"></th>
                   </tr>
@@ -284,23 +264,17 @@ export default function WeeklyReportPage() {
                         {format(new Date(r.period_start), "d.M")} — {format(new Date(r.period_end), "d.M.yy")}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{fmtUSD(r.nav_at_report)}</td>
+                      <td className="px-4 py-3 font-mono text-xs">{fmtUSD(r.ib_nav)}</td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className={r.status === "Sent" ? "text-emerald-600 border-emerald-300" : "text-muted-foreground"}>
+                        <Badge variant="outline" className={r.status === "Sent" ? "text-emerald-600 border-emerald-300 bg-emerald-50" : "text-muted-foreground"}>
                           {r.status}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          {r.pdf_url && (
-                            <a href={r.pdf_url} target="_blank" rel="noreferrer">
-                              <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs">
-                                <Eye className="w-3 h-3" /> View
-                              </Button>
-                            </a>
-                          )}
+                        <div className="flex items-center gap-1 justify-start">
                           {r.status !== "Sent" && (
                             <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs text-emerald-600" onClick={() => handleMarkSent(r.id)}>
-                              <Send className="w-3 h-3" /> Send
+                              <Send className="w-3 h-3" /> שלח
                             </Button>
                           )}
                           <Button variant="ghost" size="sm" className="h-7 px-2 text-red-400 hover:text-red-600" onClick={() => handleDelete(r.id)}>
