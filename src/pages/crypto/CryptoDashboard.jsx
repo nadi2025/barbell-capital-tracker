@@ -172,7 +172,8 @@ export default function CryptoDashboard() {
           <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
            <p>Aave: {fmt(walletValue)}</p>
            <p>HL Margin: {fmt(Math.max(0, totalMarginFromPositions))}</p>
-           <p>Vaults: {fmt(vaultValue)}</p>
+           <p>Options: {fmt(activeNotional)}</p>
+           <p>Lending: {fmt(lentValue)}</p>
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
