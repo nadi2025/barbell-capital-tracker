@@ -232,7 +232,7 @@ export default function UnifiedOverview({
           <p className="text-xs text-muted-foreground mt-1.5">IB Dashboard →</p>
         </Link>
         <Link to="/crypto" className="block bg-card border border-border rounded-xl p-4 hover:border-orange-400/40 transition-colors">
-          <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
+          <p className="text-xs text-muted-foreground mb-1">On-Chain NAV</p>
           <p className={`text-2xl font-bold font-mono ${cryptoNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(cryptoNAV)}</p>
           <p className="text-xs mt-1">Perf: <span className={cryptoNAV >= 0 ? "text-profit" : "text-loss"}>{((cryptoNAV / investorDebt) * 100).toFixed(1)}%</span></p>
           <p className="text-xs text-muted-foreground">Assets {fmt(cryptoTotalAssets_WithHL)} − Debt {fmt(investorDebt + aaveBorrowUsd)}</p>
