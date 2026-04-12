@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Edit2, Plus, Settings, Zap } from "lucide-react";
+import { Edit2, Plus, Settings, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -35,15 +35,43 @@ export default function AaveDetailPage() {
   const [editForm, setEditForm] = useState({});
   const [newCollateral, setNewCollateral] = useState({ token: "", units: "", supply_apy: "", liquidation_threshold: "80" });
   const [priceForm, setPriceForm] = useState({ ...DEFAULT_PRICES });
+  const [fetchingPrices, setFetchingPrices] = useState(false);
 
   const load = async () => {
-    const [c, b] = await Promise.all([
+    const [c, b, assets] = await Promise.all([
       base44.entities.AaveCollateral.list(),
-      base44.entities.AaveBorrow.list()
+      base44.entities.AaveBorrow.list(),
+      base44.entities.CryptoAsset.list("-last_updated", 50),
     ]);
     setCollaterals(c);
     setBorrow(b[0] || null);
+    // Load prices from CryptoAsset entity (updated by fetchLivePrices)
+    const getAssetPrice = (tokens) => {
+      for (const t of tokens) {
+        const a = assets.find(a => a.token?.toUpperCase() === t.toUpperCase());
+        if (a?.current_price_usd) return a.current_price_usd;
+      }
+      return null;
+    };
+    const ethPrice = getAssetPrice(["ETH", "WETH"]);
+    const wbtcPrice = getAssetPrice(["WBTC", "BTC"]);
+    const aavePrice = getAssetPrice(["AAVE"]);
+    const newPrices = {
+      ETH: ethPrice || DEFAULT_PRICES.ETH,
+      WBTC: wbtcPrice || DEFAULT_PRICES.WBTC,
+      AAVE: aavePrice || DEFAULT_PRICES.AAVE,
+    };
+    setPrices(newPrices);
+    setPriceForm(newPrices);
     setLoading(false);
+  };
+
+  const handleFetchLivePrices = async () => {
+    setFetchingPrices(true);
+    await base44.functions.invoke('fetchLivePrices', {});
+    await load();
+    setFetchingPrices(false);
+    toast.success("מחירים עודכנו מהאינטרנט");
   };
 
   useEffect(() => {
@@ -150,9 +178,15 @@ export default function AaveDetailPage() {
               <p className="text-xs text-slate-400">Main Ethereum market</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => { setPriceForm({ ...prices }); setShowPrices(true); }} className="gap-1.5 text-slate-300 hover:text-white border border-[#2d3555]">
-            <Settings className="w-3.5 h-3.5" /> עדכן מחירים
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={handleFetchLivePrices} disabled={fetchingPrices} className="gap-1.5 text-slate-300 hover:text-white border border-[#2d3555]">
+              <RefreshCw className={`w-3.5 h-3.5 ${fetchingPrices ? "animate-spin" : ""}`} />
+              {fetchingPrices ? "מעדכן..." : "עדכן מחירים"}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => { setPriceForm({ ...prices }); setShowPrices(true); }} className="gap-1.5 text-slate-300 hover:text-white border border-[#2d3555]">
+              <Settings className="w-3.5 h-3.5" /> ידני
+            </Button>
+          </div>
         </div>
 
         {/* Stats row */}
