@@ -31,7 +31,7 @@ function SvgPie({ slices, size = 130 }) {
 }
 
 export default function UnifiedOverview({
-  ibNav, cryptoNAV, onChainNAV, totalDeposited, investorDebt,
+  ibNav, onChainNAV, totalDeposited, investorDebt,
   cryptoAssets, aaveCollateral, leveraged, hlTrades = [], openOptions, cryptoOptions,
   offChainInvestors, aaveAccount, realizedPnl, ibPnl, cryptoTotalAssets_WithHL, aaveBorrowUsd
 }) {
@@ -50,9 +50,9 @@ export default function UnifiedOverview({
   const aavePrice = getPrice(["AAVE"]);
   const mstrPrice = getPrice(["MSTR"]);
 
-  // Row 1 calcs — cryptoNAV is already calculated properly in Dashboard
+  // Row 1 calcs — onChainNAV is already calculated properly in Dashboard
   const totalInvested = totalDeposited + investorDebt;
-  const currentValue = ibNav + cryptoNAV; // Net value
+  const currentValue = ibNav + onChainNAV; // Net value
   const totalPnl = currentValue - totalInvested;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
@@ -158,7 +158,7 @@ export default function UnifiedOverview({
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">שווי נוכחי</p>
           <p className={`text-3xl font-bold font-mono ${currentValue >= 0 ? "text-profit" : "text-loss"}`}>{fmt(currentValue)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Off: {fmt(ibNav, 0)} · On: {fmt(cryptoNAV, 0)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Off: {fmt(ibNav, 0)} · On: {fmt(onChainNAV, 0)}</p>
         </div>
         <div className={`border rounded-xl p-5 ${totalPnl >= 0 ? "bg-profit/5 border-profit/20" : "bg-loss/5 border-loss/20"}`}>
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">רווח / הפסד כולל</p>
