@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { RefreshCw, ArrowRight, ArrowUpRight, Zap, AlertTriangle, Calendar, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import PriceUpdateModal from "../components/crypto/PriceUpdateModal";
+import UnifiedOverview from "../components/dashboard/UnifiedOverview";
 
 const fmt = (v, d = 0) => {
   if (v == null || isNaN(v)) return "$0";
@@ -41,11 +42,13 @@ export default function Dashboard() {
   const [aaveAccount, setAaveAccount] = useState(null);
   const [aaveCollateral, setAaveCollateral] = useState([]);
   const [aaveBorrow, setAaveBorrow] = useState(null);
+  const [cryptoOptions, setCryptoOptions] = useState([]);
+  const [offChainInvestors, setOffChainInvestors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -58,6 +61,8 @@ export default function Dashboard() {
       base44.entities.AaveAccount.list(),
       base44.entities.AaveCollateral.list(),
       base44.entities.AaveBorrow.list(),
+      base44.entities.CryptoOptionsPosition.list(),
+      base44.entities.OffChainInvestor.filter({ status: "Active" }),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
@@ -66,6 +71,8 @@ export default function Dashboard() {
     setAaveAccount(aa[0] || null);
     setAaveCollateral(ac);
     setAaveBorrow(ab[0] || null);
+    setCryptoOptions(co || []);
+    setOffChainInvestors(oci || []);
     setLoading(false);
   };
 
@@ -151,6 +158,27 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-5 max-w-7xl mx-auto">
+
+      {/* ══ UNIFIED OVERVIEW ══ */}
+      <UnifiedOverview
+        ibNav={ibNav}
+        cryptoNAV={cryptoNAV}
+        totalDeposited={totalDeposited}
+        investorDebt={investorDebt}
+        cryptoAssets={cryptoAssets}
+        aaveCollateral={aaveCollateral}
+        leveraged={leveraged}
+        openOptions={openOptions}
+        cryptoOptions={cryptoOptions}
+        offChainInvestors={offChainInvestors}
+        aaveAccount={aaveAccount}
+        realizedPnl={realizedPnl}
+        ibPnl={ibPnl}
+      />
+
+      <div className="border-t border-border/40 pt-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-4">פירוט — Off-Chain &amp; On-Chain</p>
+      </div>
 
       {/* ══ HERO BANNER ══ */}
       <div className="bg-card border border-border rounded-2xl p-6">

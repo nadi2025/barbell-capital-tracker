@@ -54,26 +54,60 @@ function svgBars(items, w = 310, barH = 24, gap = 6) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${els}</svg>`;
 }
 
-function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
-  const events = [];
+function getUrgency(daysLeft) {
+  if (daysLeft <= 7) return "red";
+  if (daysLeft <= 30) return "yellow";
+  return "green";
+}
 
-  // Rysk options expiring within 14 days
-  options.filter(o => o.status === "Open" && o.maturity_date).forEach(o => {
-    const d = new Date(o.maturity_date);
-    const daysLeft = differenceInDays(d, today);
-    if (daysLeft >= 0 && daysLeft <= 14) {
-      events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `${o.asset} ${o.option_type} ×${o.size || 1} (Rysk) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
+function getClosedOptions(options, ibOptions, reportDate) {
+  const cutoff = new Date(reportDate);
+  cutoff.setDate(cutoff.getDate() - 30);
+  const closed = [];
+
+  options.forEach(o => {
+    if (["Expired OTM", "Expired ITM", "Exercised"].includes(o.status) && o.maturity_date) {
+      const d = new Date(o.maturity_date);
+      if (d >= cutoff && d <= new Date(reportDate)) {
+        const result = o.status === "Expired OTM" ? "OTM ✓" : o.status === "Expired ITM" ? "ITM — מומשה" : "Exercised";
+        closed.push({ asset: o.asset, type: `${o.direction || "Sell"} ${o.option_type}`, strike: o.strike_price, closeDate: o.maturity_date, result, pnl: o.net_pnl || o.income_usd || 0, source: "Rysk", isWin: o.status === "Expired OTM" });
+      }
     }
   });
 
-  // IB options expiring within 14 days
+  ibOptions.forEach(o => {
+    const closeDate = o.close_date || o.expiration_date;
+    if (["Closed", "Assigned", "Expired"].includes(o.status) && closeDate) {
+      const d = new Date(closeDate);
+      if (d >= cutoff && d <= new Date(reportDate)) {
+        const result = o.status === "Assigned" ? "ITM — מומשה" : o.status === "Expired" ? "OTM ✓" : "Closed early";
+        closed.push({ asset: o.ticker, type: `${o.type || "Sell"} ${o.category}`, strike: o.strike, closeDate, result, pnl: o.pnl || 0, source: "IB", isWin: o.status === "Expired" || (o.pnl || 0) > 0 });
+      }
+    }
+  });
+
+  return closed.sort((a, b) => new Date(b.closeDate) - new Date(a.closeDate));
+}
+
+function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
+  const events = [];
+
+  // Rysk options expiring within 60 days
+  options.filter(o => o.status === "Open" && o.maturity_date).forEach(o => {
+    const d = new Date(o.maturity_date);
+    const daysLeft = differenceInDays(d, today);
+    if (daysLeft >= 0 && daysLeft <= 60) {
+      events.push({ urgency: getUrgency(daysLeft), daysLeft, text: `${o.asset} ${o.option_type} ×${o.size || 1} (Rysk) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
+    }
+  });
+
+  // IB options expiring within 60 days
   ibOptions.filter(o => o.status === "Open" && o.expiration_date).forEach(o => {
     const d = new Date(o.expiration_date);
     const daysLeft = differenceInDays(d, today);
-    if (daysLeft >= 0 && daysLeft <= 14) {
-      events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
+    if (daysLeft >= 0 && daysLeft <= 60) {
+      events.push({ urgency: getUrgency(daysLeft), daysLeft, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
     }
-    // Also catch ones with only year-level date (e.g. "2026")
     if (!o.expiration_date && o.expiration_year) {
       events.push({ urgency: "yellow", daysLeft: 999, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${o.expiration_year} (תאריך מדויק חסר)` });
     }
@@ -99,7 +133,11 @@ function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
     }
   });
 
-  return events.sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 8);
+  const sorted = events.sort((a, b) => a.daysLeft - b.daysLeft);
+  const top8 = sorted.slice(0, 8);
+  const extra = sorted.length - 8;
+  if (extra > 0) top8.push({ urgency: "yellow", daysLeft: 9999, text: `... ועוד ${extra} אירועים נוספים` });
+  return top8;
 }
 
 function tableRow(cells, isHeader = false, highlight = null) {
@@ -241,6 +279,7 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
 
   // Events
   const events = getUpcomingEvents(options, ibOptions, investors, openLev, today);
+  const closedOpts = getClosedOptions(options, ibOptions, periodEnd);
 
   // Investor rows
   const investorRows = investors.map(inv => {
@@ -298,9 +337,10 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
 
   const header = `<div class="hdr"><div><strong>Oasis Project G Ltd. · דוח שבועי</strong> <span>| ${periodStr}</span></div><span>הוכן: נדב | ${todayStr}</span></div>`;
 
+  const urgencyEmoji = { red: "🔴", yellow: "🟡", green: "🟢" };
   const eventsHTML = events.length > 0
-    ? `<div class="sec">📅 אירועים קרובים</div><div>${events.map(e => `<div class="event-${e.urgency}">${e.urgency === "red" ? "🔴" : "🟡"} ${e.text}</div>`).join("")}</div>`
-    : `<div class="event-green">🟢 אין אירועים דחופים בשבועיים הקרובים.</div>`;
+    ? `<div class="sec">📅 אירועים קרובים (60 יום)</div><div>${events.map(e => `<div class="event-${e.urgency}">${urgencyEmoji[e.urgency] || "🟡"} ${e.text}</div>`).join("")}</div>`
+    : `<div class="event-green">🟢 אין אירועים דחופים ב-60 הימים הקרובים.</div>`;
 
   const riskColors = { red: "#fee2e2", yellow: "#fef9c3", green: "#dcfce7" };
   const riskDots = { red: "🔴", yellow: "🟡", green: "🟢" };
@@ -404,10 +444,45 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     openOpts.map(o => ({ cells: [o.asset, `${o.direction} ${o.option_type}`, o.strike_price ? fmt(o.strike_price) : "—", `<span class="g">${fmt(o.income_usd, 2)}</span>`, o.maturity_date ? format(new Date(o.maturity_date), "d.M.yy") : "—"] }))
   ) : "<p style='color:#94a3b8;padding:3px 0;font-size:13px'>אין</p>";
 
+  // Closed options section
+  let closedOptsHTML = "<p style='color:#94a3b8;font-size:12px'>אין עסקאות סגורות ב-30 ימים האחרונים</p>";
+  let analysisHTML = "";
+  if (closedOpts.length > 0) {
+    const wins = closedOpts.filter(o => o.isWin).length;
+    const itm = closedOpts.filter(o => o.result.includes("ITM")).length;
+    const totalPnl = closedOpts.reduce((s, o) => s + (o.pnl || 0), 0);
+    const winRate = Math.round((wins / closedOpts.length) * 100);
+
+    closedOptsHTML = `<table><thead><tr>
+      <th>נכס</th><th>סוג</th><th>Strike</th><th>נסגרה</th><th>תוצאה</th><th>P&L</th><th>מקור</th>
+    </tr></thead><tbody>${closedOpts.map(o => `<tr>
+      <td><strong>${o.asset}</strong></td>
+      <td style="font-size:11px">${o.type}</td>
+      <td>${o.strike ? fmt(o.strike) : "—"}</td>
+      <td>${o.closeDate ? format(new Date(o.closeDate), "d.M.yy") : "—"}</td>
+      <td style="color:${o.isWin ? "#16a34a" : "#dc2626"}">${o.result}</td>
+      <td style="color:${(o.pnl || 0) >= 0 ? "#16a34a" : "#dc2626"};font-weight:bold">${fmt(o.pnl, 2)}</td>
+      <td style="font-size:11px;color:#6b7280">${o.source}</td>
+    </tr>`).join("")}</tbody></table>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:5px 8px;font-size:12px;margin-top:4px">
+      סה״כ 30 יום: <strong>${closedOpts.length}</strong> עסקאות | <strong style="color:#16a34a">${wins} OTM (win)</strong> | <strong style="color:#dc2626">${itm} ITM (assignment)</strong> | P&L נטו: <strong style="color:${totalPnl >= 0 ? "#16a34a" : "#dc2626"}">${fmt(totalPnl, 0)}</strong>
+    </div>`;
+
+    const lines = [];
+    if (winRate >= 70) lines.push(`שיעור הצלחה גבוה של ${winRate}% בתקופה. אסטרטגיית מכירת הפרמיה עובדת.`);
+    else if (winRate < 50) lines.push(`שיעור הצלחה נמוך של ${winRate}%. יש לבחון את בחירת ה-Strike ותנאי השוק.`);
+    else lines.push(`שיעור הצלחה של ${winRate}% בתקופה.`);
+    if (totalPnl > 0) lines.push(`רווח נקי של ${fmt(totalPnl, 0)} מאופציות ב-30 ימים האחרונים.`);
+    else if (totalPnl < 0) lines.push(`הפסד נקי של ${fmt(Math.abs(totalPnl), 0)}. עלות ה-assignment גבוהה מהפרמיה שנגבתה.`);
+    if (itm > 0) lines.push(`${itm} אופציות מומשו — נבדוק אם הנכסים שנרכשו/נמכרו תורמים לתיק.`);
+    analysisHTML = `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:6px 10px;font-size:12px;line-height:1.6;margin-top:4px">${lines.join(" ")}</div>`;
+  }
+
   const offChainContent = `
     <div class="sec">5 · IB — Off-Chain</div>${ibTable}
     <div class="sec">6 · חוב למשקיעים</div>${investorsTable}
-    <div class="sec">9b · אופציות IB</div>${ibOptsTable}
+    <div class="sec" style="font-size:12px">9b · IB אופציות פתוחות</div>${ibOptsTable}
+    <div class="sec" style="font-size:12px">10 · אופציות שנסגרו — 30 ימים אחרונים</div>${closedOptsHTML}${analysisHTML}
   `;
   const onChainContent = `
     <div class="sec">7 · Aave V3 — On-Chain</div>${aaveTable}
