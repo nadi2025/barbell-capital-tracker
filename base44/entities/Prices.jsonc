@@ -1,0 +1,33 @@
+{
+  "name": "Prices",
+  "type": "object",
+  "properties": {
+    "asset": {
+      "type": "string",
+      "enum": [
+        "BTC",
+        "ETH",
+        "AAVE",
+        "MSTR"
+      ],
+      "title": "Asset"
+    },
+    "price_usd": {
+      "type": "number",
+      "title": "Price (USD)"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "asset",
+    "price_usd"
+  ]
+}

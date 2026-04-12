@@ -19,19 +19,21 @@ export default function CryptoDashboard() {
   const [leveraged, setLeveraged] = useState([]);
   const [lpPositions, setLpPositions] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
+  const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const load = async () => {
-    const [a, lo, le, lev, lp, sn] = await Promise.all([
+    const [a, lo, le, lev, lp, sn, pr] = await Promise.all([
       base44.entities.CryptoAsset.list(),
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
       base44.entities.LpPosition.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
+      base44.entities.Prices.list(),
     ]);
-    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn);
+    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setPrices(pr || []);
     setLoading(false);
   };
 
@@ -275,7 +277,7 @@ export default function CryptoDashboard() {
         ))}
       </div>
 
-      <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={load} />
+      <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={load} prices={prices} />
     </div>
   );
 }

@@ -2,29 +2,45 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { CheckCircle2, RefreshCw, AlertTriangle } from "lucide-react";
 
 const fmt = (v, d = 0) => v == null ? "—" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
 
-export default function PriceUpdateModal({ open, onClose, onUpdated }) {
+export default function PriceUpdateModal({ open, onClose, onUpdated, prices = [] }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [manualPrices, setManualPrices] = useState({});
 
   useEffect(() => {
-    if (open) setResult(null);
-  }, [open]);
+    if (open) {
+      setResult(null);
+      const initial = {};
+      prices.forEach(p => { initial[p.asset] = p.price_usd || ''; });
+      setManualPrices(initial);
+    }
+  }, [open, prices]);
 
   const handleUpdate = async () => {
     setLoading(true);
-    const res = await base44.functions.invoke('fetchLivePrices', {});
-    setResult(res.data);
-    setLoading(false);
-    onUpdated && onUpdated();
+    try {
+      for (const [asset, price] of Object.entries(manualPrices)) {
+        if (price) {
+          const existing = prices.find(p => p.asset === asset);
+          if (existing) {
+            await base44.entities.Prices.update(existing.id, { price_usd: parseFloat(price), last_updated: new Date().toISOString() });
+          } else {
+            await base44.entities.Prices.create({ asset, price_usd: parseFloat(price), last_updated: new Date().toISOString() });
+          }
+        }
+      }
+      setResult({ success: true });
+      setLoading(false);
+      onUpdated && onUpdated();
+    } catch (e) {
+      setResult({ success: false, error: e.message });
+      setLoading(false);
+    }
   };
-
-  const cryptoPrices = result?.crypto || {};
-  const stockPrices = result?.stocks || {};
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -38,64 +54,46 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
 
         {!result ? (
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">לחץ על הכפתור כדי לשלוף מחירי קריפטו ומניות בזמן אמת ולעדכן את כל הנכסים אוטומטית.</p>
-            <ul className="text-xs text-muted-foreground space-y-1 bg-muted/40 rounded-lg p-3">
-              <li>₿ BTC, ETH, AAVE — מחיר שוק עדכני</li>
-              <li>📈 מניות מ-IB — מחיר מניה עדכני</li>
-              <li>💵 Stablecoins — נשאר $1</li>
-              <li>📸 Snapshot אוטומטי יישמר</li>
-            </ul>
+            <p className="text-sm text-muted-foreground">הזן מחירי קריפטו עדכניים:</p>
+            <div className="space-y-2">
+              {['BTC', 'ETH', 'AAVE', 'MSTR'].map(asset => (
+                <div key={asset} className="flex items-center gap-2">
+                  <label className="w-12 text-sm font-medium">{asset}</label>
+                  <input 
+                    type="number" 
+                    value={manualPrices[asset] || ''} 
+                    onChange={(e) => setManualPrices(p => ({ ...p, [asset]: e.target.value }))} 
+                    className="flex-1 px-2 py-1 border border-border rounded text-sm font-mono" 
+                    placeholder="0" 
+                  />
+                </div>
+              ))}
+            </div>
             <Button className="w-full gap-2" onClick={handleUpdate} disabled={loading}>
               {loading
-                ? <><RefreshCw className="w-4 h-4 animate-spin" /> מעדכן מחירים...</>
-                : <><RefreshCw className="w-4 h-4" /> עדכן מחירים עכשיו</>}
+                ? <><RefreshCw className="w-4 h-4 animate-spin" /> משדכן...</>
+                : <><RefreshCw className="w-4 h-4" /> עדכן מחירים</>
+              }
             </Button>
           </div>
-        ) : (
+        ) : result.success ? (
           <div className="space-y-4 pt-2">
             <div className="flex items-center gap-2 text-profit">
               <CheckCircle2 className="w-5 h-5" />
               <span className="font-semibold text-sm">עדכון הושלם בהצלחה!</span>
             </div>
-
-            {/* Crypto prices */}
-            {Object.keys(cryptoPrices).length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">מחירי קריפטו</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(cryptoPrices).filter(([, v]) => v > 0).map(([token, price]) => (
-                    <div key={token} className="bg-muted/40 rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground">{token}</p>
-                      <p className="text-sm font-bold font-mono">{fmt(price, token === "AAVE" ? 2 : 0)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stock prices */}
-            {Object.keys(stockPrices).length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">מחירי מניות</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(stockPrices).map(([ticker, price]) => (
-                    <div key={ticker} className="bg-muted/40 rounded-lg p-2 text-center">
-                      <p className="text-xs text-muted-foreground">{ticker}</p>
-                      <p className="text-sm font-bold font-mono">{fmt(price, 2)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Failed tickers */}
-            {result.tickers_failed?.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>לא עודכנו: {result.tickers_failed.join(", ")}</span>
-              </div>
-            )}
-
+            <div className="bg-profit/10 rounded-lg p-3">
+              <p className="text-xs text-profit">המחירים עודכנו בכל המערכת</p>
+            </div>
+            <Button className="w-full" onClick={onClose}>סגור</Button>
+          </div>
+        ) : (
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 text-loss">
+              <AlertTriangle className="w-5 h-5" />
+              <span className="font-semibold text-sm">שגיאה בעדכון</span>
+            </div>
+            <p className="text-xs text-loss">{result.error}</p>
             <Button className="w-full" onClick={onClose}>סגור</Button>
           </div>
         )}

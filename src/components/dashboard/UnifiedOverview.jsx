@@ -33,18 +33,25 @@ function SvgPie({ slices, size = 130 }) {
 export default function UnifiedOverview({
   ibNav, onChainNAV, totalDeposited, investorDebt,
   cryptoAssets, aaveCollateral, leveraged, hlTrades = [], openOptions, cryptoOptions,
-  offChainInvestors, aaveAccount, realizedPnl, ibPnl, cryptoTotalAssets_WithHL, aaveBorrowUsd
+  offChainInvestors, aaveAccount, realizedPnl, ibPnl, cryptoTotalAssets_WithHL, aaveBorrowUsd, prices = []
 }) {
   const today = new Date();
 
-  // Prices from cryptoAssets
+  // Prices from central Prices entity, fallback to cryptoAssets
   const getPrice = (tokens) => {
+    for (const t of tokens) {
+      const p = prices.find(x => x.asset?.toUpperCase() === t.toUpperCase());
+      if (p?.price_usd) return p.price_usd;
+    }
     for (const t of tokens) {
       const a = cryptoAssets.find(x => x.token?.toUpperCase() === t.toUpperCase());
       if (a?.current_price_usd) return a.current_price_usd;
     }
     return 0;
   };
+
+  // Get last updated time
+  const lastPriceUpdate = prices.length > 0 ? prices[0].last_updated : null;
   const btcPrice = getPrice(["BTC", "WBTC"]);
   const ethPrice = getPrice(["ETH", "WETH"]);
   const aavePrice = getPrice(["AAVE"]);
@@ -146,6 +153,13 @@ export default function UnifiedOverview({
   const urgencyStyle = { red: "bg-red-100 text-red-700 border-red-200", yellow: "bg-amber-50 text-amber-700 border-amber-200", green: "bg-emerald-50 text-emerald-700 border-emerald-200" };
   const urgencyDot = { red: "🔴", yellow: "🟡", green: "🟢" };
 
+  // Format last updated
+  const formatLastUpdate = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('he-IL') + ' ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  };
+
   return (
     <div className="space-y-4">
       {/* Row 1: Big 3 KPI cards */}
@@ -236,6 +250,7 @@ export default function UnifiedOverview({
           <p className={`text-2xl font-bold font-mono ${onChainNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(onChainNAV)}</p>
           <p className="text-xs mt-1">Perf: <span className={onChainNAV >= 0 ? "text-profit" : "text-loss"}>{((onChainNAV / investorDebt) * 100).toFixed(1)}%</span></p>
           <p className="text-xs text-muted-foreground">Assets {fmt(cryptoTotalAssets_WithHL)} − Debt {fmt(investorDebt + aaveBorrowUsd)}</p>
+          {lastPriceUpdate && <p className="text-xs text-muted-foreground mt-1">📊 מחירים: {formatLastUpdate(lastPriceUpdate)}</p>}
           <p className="text-xs text-muted-foreground mt-1.5">Crypto Dashboard →</p>
         </Link>
       </div>

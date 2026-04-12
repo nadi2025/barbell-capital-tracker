@@ -45,11 +45,12 @@ export default function Dashboard() {
   const [aaveBorrow, setAaveBorrow] = useState(null);
   const [cryptoOptions, setCryptoOptions] = useState([]);
   const [offChainInvestors, setOffChainInvestors] = useState([]);
+  const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci, hlt] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci, hlt, pr] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -65,6 +66,7 @@ export default function Dashboard() {
       base44.entities.CryptoOptionsPosition.list(),
       base44.entities.OffChainInvestor.filter({ status: "Active" }),
       base44.entities.HLTrade.list("-trade_date", 500),
+      base44.entities.Prices.list(),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
@@ -76,6 +78,7 @@ export default function Dashboard() {
     setAaveBorrow(ab[0] || null);
     setCryptoOptions(co || []);
     setOffChainInvestors(oci || []);
+    setPrices(pr || []);
     setLoading(false);
   };
 
@@ -101,9 +104,10 @@ export default function Dashboard() {
   const ibPnl = ibNav - totalDeposited;
   const ibPnlPct = totalDeposited > 0 ? ibPnl / totalDeposited : 0;
 
-  // ── On-Chain calcs ── (prices from CryptoAsset entity)
+  // ── On-Chain calcs ── (prices from Prices entity, fallback to CryptoAsset)
   const TOKEN_PRICES = {};
-  cryptoAssets.forEach(a => { if (a.token && a.current_price_usd) TOKEN_PRICES[a.token.toUpperCase()] = a.current_price_usd; });
+  prices.forEach(p => { if (p.asset && p.price_usd) TOKEN_PRICES[p.asset.toUpperCase()] = p.price_usd; });
+  cryptoAssets.forEach(a => { if (a.token && a.current_price_usd && !TOKEN_PRICES[a.token.toUpperCase()]) TOKEN_PRICES[a.token.toUpperCase()] = a.current_price_usd; });
   if (!TOKEN_PRICES["WBTC"] && TOKEN_PRICES["BTC"]) TOKEN_PRICES["WBTC"] = TOKEN_PRICES["BTC"];
   if (!TOKEN_PRICES["BTC"] && TOKEN_PRICES["WBTC"]) TOKEN_PRICES["BTC"] = TOKEN_PRICES["WBTC"];
   if (!TOKEN_PRICES["WETH"] && TOKEN_PRICES["ETH"]) TOKEN_PRICES["WETH"] = TOKEN_PRICES["ETH"];
@@ -200,6 +204,7 @@ export default function Dashboard() {
         ibPnl={ibPnl}
         cryptoTotalAssets_WithHL={cryptoTotalAssets_WithHL}
         aaveBorrowUsd={aaveBorrowUsd}
+        prices={prices}
       />
 
       <div className="border-t border-border/40 pt-4">
@@ -372,7 +377,7 @@ export default function Dashboard() {
         );
       })()}
 
-      <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={loadAll} />
+      <PriceUpdateModal open={priceModalOpen} onClose={() => setPriceModalOpen(false)} onUpdated={loadAll} prices={prices} />
     </div>
   );
 }
