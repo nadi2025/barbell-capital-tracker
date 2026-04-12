@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { format, subDays } from "date-fns";
-import { FileText, Plus, Trash2, Send, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FileText, Plus, Trash2, Send, RefreshCw, CheckCircle2, AlertTriangle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -191,6 +191,39 @@ export default function WeeklyReportPage() {
     }
   };
 
+  const handleDownloadReport = (r) => {
+    if (!appData) return;
+    const wizardAnswers = {
+      ib_nav: r.ib_nav,
+      ib_options_pnl: r.wizard_ib_options_pnl,
+      ib_stocks_pnl: r.wizard_ib_stocks_pnl,
+      ib_premium_total: r.wizard_ib_premium_total,
+      ib_win_rate: r.wizard_ib_win_rate,
+      btc_price: r.wizard_btc_price,
+      eth_price: r.wizard_eth_price,
+      aave_price: r.wizard_aave_price,
+      mstr_price: r.wizard_mstr_price,
+      aave_borrowed: r.wizard_aave_borrowed,
+      aave_hf: r.wizard_aave_hf,
+      manager_notes: r.notes || "",
+    };
+    const html = generateReportHTML({
+      wizardAnswers,
+      prevReport: null,
+      investors: appData.investors,
+      investorPayments: appData.payments,
+      options: appData.options,
+      leveraged: appData.leveraged,
+      aaveCollateral: appData.aaveCollateral,
+      periodStart: r.period_start,
+      periodEnd: r.period_end,
+      ibOptions: appData.ibOptions,
+    });
+    const w = window.open("", "_blank");
+    w.document.write(html);
+    w.document.close();
+  };
+
   const handleMarkSent = async (id) => {
     await base44.entities.WeeklyReport.update(id, { status: "Sent" });
     toast.success("סומן כנשלח");
@@ -328,6 +361,9 @@ export default function WeeklyReportPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 justify-start">
+                          <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs text-blue-500 hover:text-blue-700" onClick={() => handleDownloadReport(r)}>
+                            <Download className="w-3 h-3" /> PDF
+                          </Button>
                           {r.status !== "Sent" && (
                             <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-xs text-emerald-600" onClick={() => handleMarkSent(r.id)}>
                               <Send className="w-3 h-3" /> שלח
