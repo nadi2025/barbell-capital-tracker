@@ -287,8 +287,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   .kpi .sub { font-size: 10px; color: #94a3b8; margin-top: 2px; }
   .kpi .change { font-size: 11px; margin-top: 1px; }
   .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; }
+  .chart-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; overflow: hidden; }
   .chart-box .title { font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; }
+  canvas { max-width: 100% !important; height: auto !important; }
   .sec { font-size: 12px; font-weight: 700; background: #1e40af; color: white; padding: 3px 10px; border-radius: 4px; margin: 8px 0 5px; }
   .sec-green { background: #166534; }
   table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 12px; }
@@ -348,11 +349,11 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 <div class="charts-row">
   <div class="chart-box">
     <div class="title">הקצאת נכסים</div>
-    <canvas id="pieChart" width="340" height="240"></canvas>
+    <canvas id="pieChart"></canvas>
   </div>
   <div class="chart-box">
     <div class="title">ביצועים לפי אסטרטגיה</div>
-    <canvas id="barChart" width="340" height="240"></canvas>
+    <canvas id="barChart"></canvas>
   </div>
 </div>
 
@@ -477,8 +478,8 @@ ${closedOpts.length > 0 ? `<table>
 (function() {
   const pieData = ${pieChartJson};
   const barData = ${barChartJson};
-  new Chart(document.getElementById('pieChart'), { type: 'pie', data: pieData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', align: 'center', labels: { font: { size: 11, weight: '500', family: 'Assistant, Arial' }, boxWidth: 14, padding: 10, usePointStyle: true, pointStyle: 'circle' } }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } } } });
-  new Chart(document.getElementById('barChart'), { type: 'bar', data: barData, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } }, scales: { x: { ticks: { font: { size: 10, family: 'Assistant, Arial' }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb', drawBorder: false }, beginAtZero: true }, y: { ticks: { font: { size: 10, family: 'Assistant, Arial' } }, grid: { display: false } } } } });
+  new Chart(document.getElementById('pieChart'), { type: 'pie', data: pieData, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'right', align: 'center', labels: { font: { size: 11, weight: '500', family: 'Assistant, Arial' }, boxWidth: 14, padding: 10, usePointStyle: true, pointStyle: 'circle' } }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } } } });
+  new Chart(document.getElementById('barChart'), { type: 'bar', data: barData, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } }, scales: { x: { ticks: { font: { size: 10, family: 'Assistant, Arial' }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb', drawBorder: false }, beginAtZero: true }, y: { ticks: { font: { size: 10, family: 'Assistant, Arial' } }, grid: { display: false } } } } });
 })();
 </script>
 </body>
