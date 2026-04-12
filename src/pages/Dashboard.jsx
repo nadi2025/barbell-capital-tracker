@@ -48,6 +48,7 @@ export default function Dashboard() {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
+  const [fetchingLivePrices, setFetchingLivePrices] = useState(false);
 
   const loadAll = async () => {
     const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci, hlt, pr] = await Promise.all([
@@ -83,6 +84,18 @@ export default function Dashboard() {
   };
 
   useEffect(() => { loadAll(); }, []);
+
+  const handleFetchLivePrices = async () => {
+    setFetchingLivePrices(true);
+    try {
+      await base44.functions.invoke('updatePricesDaily', {});
+      await loadAll();
+    } catch (e) {
+      console.error('Error fetching prices:', e);
+    } finally {
+      setFetchingLivePrices(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -221,8 +234,11 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{new Date().toLocaleDateString("he-IL")}</span>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleFetchLivePrices} disabled={fetchingLivePrices}>
+              <RefreshCw className={`w-3.5 h-3.5 ${fetchingLivePrices ? 'animate-spin' : ''}`} /> {fetchingLivePrices ? 'טוען...' : 'מהאינטרנט'}
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPriceModalOpen(true)}>
-              <RefreshCw className="w-3.5 h-3.5" /> עדכן
+              <RefreshCw className="w-3.5 h-3.5" /> ידני
             </Button>
           </div>
         </div>
