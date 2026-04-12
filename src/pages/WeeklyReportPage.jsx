@@ -235,8 +235,15 @@ export default function WeeklyReportPage() {
               </div>
             ))}
           </div>
-          {refreshResult.tickers_updated?.length > 0 && (
-            <p className="text-xs text-muted-foreground">מניות עודכנו: {refreshResult.tickers_updated.join(", ")}</p>
+          {Object.keys(refreshResult.stocks || {}).length > 0 && (
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-xs">
+              {Object.entries(refreshResult.stocks).map(([ticker, price]) => (
+                <div key={ticker} className="bg-muted/40 rounded-lg px-3 py-2">
+                  <p className="text-muted-foreground">{ticker}</p>
+                  <p className="font-mono font-bold">${price?.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
           )}
           {refreshResult.tickers_failed?.length > 0 && (
             <div className="flex items-center gap-1 text-xs text-amber-600">
