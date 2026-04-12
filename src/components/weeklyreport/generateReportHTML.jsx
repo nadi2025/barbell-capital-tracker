@@ -1,4 +1,4 @@
-import { format, differenceInDays, addMonths } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 
 const fmt = (v, d = 0) => {
   if (v == null || isNaN(v)) return "—";
@@ -8,19 +8,21 @@ const fmt = (v, d = 0) => {
 };
 const fmtILS = (v) => v == null ? "—" : `₪${Math.abs(v).toLocaleString("he-IL")}`;
 const fmtPct = (v) => v == null || isNaN(v) ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
-const diffStr = (curr, prev) => {
+
+const diffStr = (curr, prev, isFirst) => {
+  if (isFirst) return `<span style="color:#6b7280;font-size:10px">דוח ראשון</span>`;
   if (prev == null || curr == null) return "—";
   const d = curr - prev;
-  const pct = ((d / Math.abs(prev)) * 100).toFixed(1);
+  const pct = prev !== 0 ? ((d / Math.abs(prev)) * 100).toFixed(1) : "0.0";
   const sign = d >= 0 ? "+" : "";
   const color = d >= 0 ? "#16a34a" : "#dc2626";
   return `<span style="color:${color}">${sign}${fmt(d)} (${sign}${pct}%)</span>`;
 };
 
-function svgPie(slices, size = 130) {
+function svgPie(slices, size = 140) {
   const total = slices.reduce((s, sl) => s + sl.val, 0);
   if (!total) return `<svg width="${size}" height="${size}"></svg>`;
-  const cx = size / 2, cy = size / 2, r = size / 2 - 4;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 5;
   let paths = "", angle = -Math.PI / 2;
   for (const sl of slices) {
     if (!sl.val) continue;
@@ -28,26 +30,26 @@ function svgPie(slices, size = 130) {
     const end = angle + sweep;
     const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
     const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
-    paths += `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${sweep > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${sl.color}" stroke="white" stroke-width="1.5"/>`;
+    paths += `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${sweep > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${sl.color}" stroke="white" stroke-width="2"/>`;
     angle = end;
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${paths}</svg>`;
 }
 
-function svgBars(items, w = 290, barH = 13, gap = 5) {
+function svgBars(items, w = 310, barH = 24, gap = 6) {
   const maxAbs = Math.max(...items.map(i => Math.abs(i.val)), 1);
-  const labelW = 115, barMaxW = w - labelW - 75;
+  const labelW = 130, barMaxW = w - labelW - 90;
   const h = items.length * (barH + gap) + 8;
   let els = "";
   items.forEach((it, i) => {
     const y = i * (barH + gap) + 4;
     const bw = (Math.abs(it.val) / maxAbs) * barMaxW;
-    const color = it.val >= 0 ? "#16a34a" : "#dc2626";
+    const color = it.val >= 0 ? "#22C55E" : "#EF4444";
     const sign = it.val >= 0 ? "+" : "";
     const valStr = `${sign}$${Math.abs(it.val).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-    els += `<text x="${labelW - 4}" y="${y + barH - 2}" font-size="9" fill="#374151" text-anchor="end" font-family="Arial">${it.label}</text>`;
-    if (bw > 0) els += `<rect x="${labelW}" y="${y}" width="${bw.toFixed(1)}" height="${barH}" fill="${color}" rx="2" opacity="0.85"/>`;
-    els += `<text x="${labelW + bw + 4}" y="${y + barH - 2}" font-size="9" fill="${color}" font-family="Arial">${valStr}</text>`;
+    els += `<text x="${labelW - 5}" y="${y + barH - 5}" font-size="12" fill="#374151" text-anchor="end" font-family="Arial">${it.label}</text>`;
+    if (bw > 0) els += `<rect x="${labelW}" y="${y}" width="${bw.toFixed(1)}" height="${barH}" fill="${color}" rx="3" opacity="0.9"/>`;
+    els += `<text x="${labelW + bw + 6}" y="${y + barH - 5}" font-size="12" fill="${color}" font-weight="bold" font-family="Arial">${valStr}</text>`;
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${els}</svg>`;
 }
@@ -71,6 +73,10 @@ function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
     if (daysLeft >= 0 && daysLeft <= 14) {
       events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
     }
+    // Also catch ones with only year-level date (e.g. "2026")
+    if (!o.expiration_date && o.expiration_year) {
+      events.push({ urgency: "yellow", daysLeft: 999, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${o.expiration_year} (תאריך מדויק חסר)` });
+    }
   });
 
   // Investor payments within 30 days
@@ -93,7 +99,7 @@ function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
     }
   });
 
-  return events.sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 6);
+  return events.sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 8);
 }
 
 function tableRow(cells, isHeader = false, highlight = null) {
@@ -107,77 +113,113 @@ function table(headers, rows) {
   return `<table><thead>${tableRow(headers, true)}</thead><tbody>${rows.map(r => tableRow(r.cells, false, r.highlight)).join("")}</tbody></table>`;
 }
 
-export function generateReportHTML({ wizardAnswers, prevReport, investors, investorPayments, options, leveraged, aaveCollateral, periodStart, periodEnd, ibOptions = [] }) {
+function sectionBlock(color, title, content) {
+  const bg = color === "blue" ? "#F0F7FF" : "#F0FFF4";
+  const border = color === "blue" ? "#1e40af" : "#166534";
+  return `<div style="background:${bg};border-radius:6px;padding:6px 8px;margin-bottom:8px;border-right:4px solid ${border}">
+    <div style="font-size:11px;font-weight:bold;color:${border};margin-bottom:6px;letter-spacing:0.3px">${color === "blue" ? "🏢 OFF-CHAIN · Interactive Brokers + Leumi Notes" : "⛓ ON-CHAIN · DeFi · Crypto"}</div>
+    ${content}
+  </div>`;
+}
+
+export function generateReportHTML({ wizardAnswers, prevReport, investors, investorPayments, options, leveraged, aaveCollateral, periodStart, periodEnd, ibOptions = [], assets = [] }) {
   const today = new Date();
   const todayStr = format(today, "dd.MM.yyyy");
   const periodStr = `${format(new Date(periodStart), "d.M.yy")} — ${format(new Date(periodEnd), "d.M.yy")}`;
 
-  const { ib_nav, ib_options_pnl, ib_stocks_pnl, ib_win_rate, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf, manager_notes } = wizardAnswers;
+  const { ib_nav, ib_options_pnl, ib_stocks_pnl, manager_notes, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf, ib_win_rate } = wizardAnswers;
   const IB_DEPOSITED = 413000;
+  const isFirstReport = !prevReport;
 
-  // Aave collateral
-  const ethUnits = aaveCollateral.find(a => a.token?.toUpperCase().includes("ETH") && !a.token?.toUpperCase().includes("WETH"))?.units ||
-                   aaveCollateral.find(a => a.token?.toUpperCase() === "ETH" || a.token?.toUpperCase() === "WETH")?.units || 0;
-  const wbtcUnits = aaveCollateral.find(a => a.token?.toUpperCase().includes("BTC") || a.token?.toUpperCase().includes("WBTC"))?.units || 0;
+  // Aave collateral units
+  const ethUnits = aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
+  const wbtcUnits = aaveCollateral.find(a => /btc|wbtc/i.test(a.token))?.units || 0;
   const aaveTokenUnits = aaveCollateral.find(a => a.token?.toUpperCase() === "AAVE")?.units || 0;
 
-  // Also try alternate ETH token names
-  const ethUnitsAlt = ethUnits || aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
-
   const btcVal = wbtcUnits * (btc_price || 0);
-  const ethVal = (ethUnitsAlt || ethUnits) * (eth_price || 0);
+  const ethVal = ethUnits * (eth_price || 0);
   const aaveTokenVal = aaveTokenUnits * (aave_price || 0);
   const collateralUSD = btcVal + ethVal + aaveTokenVal;
   const onChainNav = collateralUSD - (aave_borrowed || 0);
   const totalNav = (ib_nav || 0) + onChainNav;
 
-  const prev = prevReport;
-  const prevTotal = prev ? (prev.ib_nav || 0) + (prev.on_chain_nav || 0) : null;
-  const prevIbNav = prev?.ib_nav;
-  const prevBtc = prev?.btc_price;
-  const prevEth = prev?.eth_price;
-  const prevOnChain = prev?.on_chain_nav;
+  const prevTotal = prevReport ? (prevReport.ib_nav || 0) + (prevReport.on_chain_nav || 0) : null;
+  const prevIbNav = prevReport?.ib_nav;
+  const prevBtc = prevReport?.btc_price;
+  const prevEth = prevReport?.eth_price;
+  const prevOnChain = prevReport?.on_chain_nav;
 
   // Leveraged positions with calcs
+  const priceByToken = (token) => {
+    const t = token?.toUpperCase();
+    if (t === "BTC") return btc_price;
+    if (t === "ETH") return eth_price;
+    if (t === "AAVE") return aave_price;
+    if (t === "MSTR") return mstr_price;
+    return null;
+  };
+
   const openLev = leveraged.filter(l => l.status === "Open").map(l => {
-    const priceMap = { BTC: btc_price, ETH: eth_price, AAVE: aave_price, MSTR: mstr_price };
-    const currentPrice = priceMap[l.asset?.toUpperCase()] || l.mark_price;
+    const currentPrice = priceByToken(l.asset) || l.mark_price;
     const size = l.size || 0;
-    const posValue = currentPrice && size ? currentPrice * size : l.position_value_usd;
-    const pnl = l.entry_price && size && currentPrice ? (currentPrice - l.entry_price) * size * (l.direction === "Short" ? -1 : 1) : l.pnl_usd;
+    const posValue = currentPrice && size ? currentPrice * size : l.position_value_usd || 0;
+    const pnl = l.entry_price && size && currentPrice ? (currentPrice - l.entry_price) * size * (l.direction === "Short" ? -1 : 1) : (l.pnl_usd || 0);
     const roe = pnl != null && l.margin_usd ? (pnl / l.margin_usd) * 100 : null;
     const distLiq = currentPrice && l.liquidation_price ? Math.abs((currentPrice - l.liquidation_price) / currentPrice * 100) : null;
     return { ...l, calcValue: posValue, calcPnl: pnl, calcRoe: roe, distLiq, currentPrice };
   });
 
-  // Auto-detect upcoming events
-  const events = getUpcomingEvents(options, ibOptions, investors, openLev, today);
+  // === PIE CHART: Asset type allocation across entire portfolio ===
+  // Group HL positions by asset
+  const hlByAsset = {};
+  openLev.forEach(l => {
+    const key = l.asset?.toUpperCase();
+    if (!hlByAsset[key]) hlByAsset[key] = 0;
+    hlByAsset[key] += Math.abs(l.calcValue || 0);
+  });
 
-  // Asset allocation (PIE CHART) — from ALL sources
-  const mstrLevVal = openLev.filter(l => l.asset?.toUpperCase() === "MSTR").reduce((s, l) => s + Math.abs(l.calcValue || 0), 0);
-  const ibOther = Math.max(0, (ib_nav || 0) - mstrLevVal);
+  const pieBTC = btcVal + (hlByAsset["BTC"] || 0);
+  const pieETH = ethVal + (hlByAsset["ETH"] || 0);
+  const pieAAVE = aaveTokenVal + (hlByAsset["AAVE"] || 0);
+  const pieMSTR = hlByAsset["MSTR"] || 0;
+
+  // Stablecoins from assets list
+  const stablecoins = (assets || []).filter(a => /usdc|usdt|dai|busd/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
+
+  // IB remaining (IB NAV minus known HL MSTR allocation — approximate)
+  const ibRemaining = Math.max(0, (ib_nav || 0) - pieMSTR);
+
   const pieSlices = [
-    { name: "WBTC", val: btcVal, color: "#f7931a" },
-    { name: "ETH", val: ethVal, color: "#627eea" },
-    { name: "AAVE", val: aaveTokenVal, color: "#b878e8" },
-    { name: "MSTR", val: mstrLevVal, color: "#3b82f6" },
-    { name: "IB", val: ibOther, color: "#10b981" },
-  ].filter(s => s.val > 0);
+    { name: "WBTC/BTC", val: pieBTC, color: "#f7931a" },
+    { name: "ETH", val: pieETH, color: "#627eea" },
+    { name: "AAVE", val: pieAAVE, color: "#b878e8" },
+    { name: "MSTR", val: pieMSTR, color: "#3b82f6" },
+    { name: "IB Stocks", val: ibRemaining, color: "#10b981" },
+    { name: "Stablecoins", val: stablecoins, color: "#94a3b8" },
+  ].filter(s => s.val > 100);
   const pieTotal = pieSlices.reduce((s, sl) => s + sl.val, 0) || 1;
 
-  // P&L by strategy (BAR CHART)
+  // === BAR CHART: P&L by strategy ===
   const ryskPremium = options.reduce((s, o) => s + (o.income_usd || 0), 0);
   const levPnl = openLev.reduce((s, l) => s + (l.calcPnl || 0), 0);
-  const aaveYield = aaveCollateral.reduce((s, a) => s + ((a.supply_apy || 0) / 100) * (a.units || 0) * ((a.token?.toUpperCase().includes("ETH") ? eth_price : a.token?.toUpperCase().includes("BTC") ? btc_price : a.token?.toUpperCase() === "AAVE" ? aave_price : 0) || 0) / 52, 0);
-  const barItems = [
-    { label: "IB Options", val: ib_options_pnl || 0 },
-    { label: "Rysk Finance", val: ryskPremium },
-    { label: "Aave Yield", val: Math.round(aaveYield) },
-    { label: "IB Stocks", val: ib_stocks_pnl || 0 },
-    { label: "HyperLiquid", val: Math.round(levPnl) },
-  ].filter(i => i.val !== 0);
+  const aaveYield = aaveCollateral.reduce((s, a) => {
+    const p = priceByToken(a.token) || 0;
+    return s + ((a.supply_apy || 0) / 100) * (a.units || 0) * p / 52;
+  }, 0);
 
-  // Risk assessment
+  // IB Options premium from closed trades
+  const ibOptsPremium = (ibOptions || []).filter(o => ["Closed", "Assigned", "Expired"].includes(o.status) && (o.pnl || 0) > 0).reduce((s, o) => s + (o.pnl || 0), 0);
+
+  const barItems = [
+    ib_options_pnl ? { label: "IB Options P&L", val: ib_options_pnl } : null,
+    ibOptsPremium > 0 ? { label: "IB Options (סה\"כ)", val: ibOptsPremium } : null,
+    ryskPremium ? { label: "Rysk Finance", val: ryskPremium } : null,
+    Math.round(aaveYield) ? { label: "Aave Yield", val: Math.round(aaveYield) } : null,
+    ib_stocks_pnl ? { label: "IB Stocks", val: ib_stocks_pnl } : null,
+    Math.round(levPnl) ? { label: "HyperLiquid", val: Math.round(levPnl) } : null,
+  ].filter(Boolean).filter(i => i.val !== 0);
+
+  // === RISK ===
   const risks = [];
   openLev.forEach(l => {
     if (l.calcRoe != null && l.calcRoe < -100) risks.push({ color: "red", text: `${l.asset} ${l.leverage || ""}x — הפסד ${l.calcRoe.toFixed(0)}%, מרחק חיסול ${l.distLiq?.toFixed(1) || "?"}%. לשקול סגירה.` });
@@ -189,9 +231,16 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     else if (aave_hf < 2.0) risks.push({ color: "yellow", text: `Aave HF ${aave_hf} — זהירות.` });
     else risks.push({ color: "green", text: `Aave HF ${aave_hf} — בטוח.` });
   }
+  // Aave borrow sanity check
+  if (aave_borrowed && aave_borrowed < 100000 && collateralUSD > 500000) {
+    risks.push({ color: "yellow", text: `⚠ חוב Aave (${fmt(aave_borrowed)}) נראה נמוך ביחס לבטוחות (${fmt(collateralUSD)}). בדוק את הנתון!` });
+  }
   const ibPct = ib_nav ? ((ib_nav - IB_DEPOSITED) / IB_DEPOSITED * 100) : null;
   if (ibPct != null && ibPct < -20) risks.push({ color: ibPct < -40 ? "red" : "yellow", text: `תיק IB ירד ${Math.abs(ibPct).toFixed(1)}% מההשקעה המקורית.` });
   if (risks.length === 0) risks.push({ color: "green", text: "לא זוהו סיכונים מהותיים." });
+
+  // Events
+  const events = getUpcomingEvents(options, ibOptions, investors, openLev, today);
 
   // Investor rows
   const investorRows = investors.map(inv => {
@@ -200,15 +249,12 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     const payDay = inv.payment_day_of_month || 1;
     let nextPay = new Date(today.getFullYear(), today.getMonth(), payDay);
     if (nextPay <= today) nextPay = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
-
     const scheduleStr = inv.interest_schedule === "Monthly"
       ? (isILS ? `${fmtILS(inv.monthly_payment)}/חודש נטו` : `${fmt(inv.monthly_payment)}/חודש`)
       : "בפירעון";
-
     const nextPayStr = inv.interest_schedule === "Monthly"
       ? format(nextPay, "d.M.yy")
       : format(new Date(inv.maturity_date), "M/yyyy");
-
     return { name: inv.name, principal: fmt(inv.principal_usd), rate: `${inv.interest_rate}%`, schedule: scheduleStr, paid: fmt(paid), next: nextPayStr };
   });
   const totalPrincipal = investors.reduce((s, i) => s + (i.principal_usd || 0), 0);
@@ -217,66 +263,63 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
   const openOpts = options.filter(o => o.status === "Open");
   const openIbOpts = ibOptions.filter(o => o.status === "Open");
 
+  // === CSS ===
   const css = `
+    @page { size: A4; margin: 15mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; direction: rtl; font-size: 10px; color: #1e293b; background: white; }
-    .page { width: 210mm; min-height: 297mm; padding: 8mm 10mm; position: relative; page-break-after: always; }
-    .page:last-child { page-break-after: auto; }
-    .hdr { background: #0f1e3c; color: white; padding: 5px 10px; border-radius: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
-    .hdr strong { font-size: 12px; }
-    .sec { font-size: 9px; font-weight: bold; background: #1e40af; color: white; padding: 3px 8px; border-radius: 3px; margin: 7px 0 4px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9px; }
-    th { background: #1e293b; color: white; padding: 3px 6px; text-align: right; }
-    td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; }
+    body { font-family: Arial, sans-serif; direction: rtl; font-size: 13px; color: #1e293b; background: white; }
+    .page { width: 100%; padding: 0; }
+    .page2 { page-break-before: always; }
+    .hdr { background: #0f1e3c; color: white; padding: 6px 12px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .hdr strong { font-size: 13px; }
+    .hdr span { font-size: 11px; }
+    .sec { font-size: 14px; font-weight: bold; background: #1e40af; color: white; padding: 4px 10px; border-radius: 4px; margin: 9px 0 5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 7px; font-size: 13px; }
+    th { background: #1e293b; color: white; padding: 4px 7px; text-align: right; font-size: 13px; font-weight: bold; }
+    td { padding: 4px 7px; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
     tr:nth-child(even) td { background: #f8fafc; }
     .g { color: #16a34a; font-weight: bold; }
     .r { color: #dc2626; font-weight: bold; }
     .y { color: #b45309; }
-    .event-red { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
-    .event-yellow { background: #fef9c3; border: 1px solid #fde047; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
-    .event-green { background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
-    .row2col { display: flex; gap: 10px; align-items: flex-start; }
+    .event-red { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; padding: 4px 10px; margin: 3px 0; font-size: 13px; }
+    .event-yellow { background: #fef9c3; border: 1px solid #fde047; border-radius: 4px; padding: 4px 10px; margin: 3px 0; font-size: 13px; }
+    .event-green { background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 4px 10px; margin: 3px 0; font-size: 13px; }
+    .row2col { display: flex; gap: 12px; align-items: flex-start; }
     .col-table { flex: 1.4; }
     .col-chart { flex: 1; }
-    .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
-    .legend-item { font-size: 8px; display: flex; align-items: center; gap: 3px; }
-    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
-    .footer { position: absolute; bottom: 6mm; left: 10mm; right: 10mm; border-top: 1px solid #e2e8f0; padding-top: 3px; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; }
-    .risk-line { padding: 3px 8px; margin: 2px 0; font-size: 9px; border-radius: 3px; }
-    .notes-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; padding: 5px 8px; font-size: 9px; line-height: 1.5; }
-    @media print { .page { page-break-after: always; } }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 5px; }
+    .legend-item { font-size: 11px; display: flex; align-items: center; gap: 3px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .footer { margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 4px; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+    .risk-line { padding: 4px 10px; margin: 3px 0; font-size: 13px; border-radius: 3px; }
+    .notes-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; padding: 6px 10px; font-size: 13px; line-height: 1.5; }
+    @media print { .page2 { page-break-before: always; } }
   `;
 
-  const header = `<div class="hdr"><div><strong>Oasis Project G Ltd. · דוח שבועי</strong> | ${periodStr}</div><div>הוכן: נדב | ${todayStr}</div></div>`;
+  const header = `<div class="hdr"><div><strong>Oasis Project G Ltd. · דוח שבועי</strong> <span>| ${periodStr}</span></div><span>הוכן: נדב | ${todayStr}</span></div>`;
 
-  // Events box HTML
   const eventsHTML = events.length > 0
     ? `<div class="sec">📅 אירועים קרובים</div><div>${events.map(e => `<div class="event-${e.urgency}">${e.urgency === "red" ? "🔴" : "🟡"} ${e.text}</div>`).join("")}</div>`
     : `<div class="event-green">🟢 אין אירועים דחופים בשבועיים הקרובים.</div>`;
 
-  // Risks HTML
   const riskColors = { red: "#fee2e2", yellow: "#fef9c3", green: "#dcfce7" };
   const riskDots = { red: "🔴", yellow: "🟡", green: "🟢" };
   const risksHTML = risks.map(r => `<div class="risk-line" style="background:${riskColors[r.color]}">${riskDots[r.color]} ${r.text}</div>`).join("");
 
-  // Summary table
   const summaryTable = table(
     ["מדד", "ערך", "שינוי"],
     [
-      { cells: ["שווי תיק כולל", `<strong>${fmt(totalNav)}</strong>`, diffStr(totalNav, prevTotal)] },
-      { cells: ["Off-Chain (IB)", fmt(ib_nav), diffStr(ib_nav, prevIbNav)] },
-      { cells: ["On-Chain (קריפטו)", fmt(onChainNav), diffStr(onChainNav, prevOnChain)] },
-      { cells: ["BTC", fmt(btc_price), diffStr(btc_price, prevBtc)] },
-      { cells: ["ETH", fmt(eth_price), diffStr(eth_price, prevEth)] },
+      { cells: ["שווי תיק כולל", `<strong>${fmt(totalNav)}</strong>`, diffStr(totalNav, prevTotal, isFirstReport)] },
+      { cells: ["Off-Chain (IB)", fmt(ib_nav), diffStr(ib_nav, prevIbNav, isFirstReport)] },
+      { cells: ["On-Chain (קריפטו)", fmt(onChainNav), diffStr(onChainNav, prevOnChain, isFirstReport)] },
+      { cells: ["BTC", fmt(btc_price), diffStr(btc_price, prevBtc, isFirstReport)] },
+      { cells: ["ETH", fmt(eth_price), diffStr(eth_price, prevEth, isFirstReport)] },
     ]
   );
 
-  // Pie chart + legend
-  const pieSvg = svgPie(pieSlices, 130);
+  const pieSvg = svgPie(pieSlices, 140);
   const legend = `<div class="legend">${pieSlices.map(sl => `<span class="legend-item"><span class="dot" style="background:${sl.color}"></span>${sl.name} ${((sl.val / pieTotal) * 100).toFixed(1)}%</span>`).join("")}</div>`;
-
-  // Bar chart
-  const barSvg = svgBars(barItems);
+  const barSvg = barItems.length > 0 ? svgBars(barItems) : "<p style='color:#94a3b8;font-size:13px'>אין נתוני ביצועים</p>";
 
   const page1 = `
 <div class="page">
@@ -285,10 +328,7 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
   <div class="sec">1 · תמונה כוללת</div>
   <div class="row2col">
     <div class="col-table">${summaryTable}</div>
-    <div class="col-chart">
-      ${pieSvg}
-      ${legend}
-    </div>
+    <div class="col-chart">${pieSvg}${legend}</div>
   </div>
   <div class="sec">2 · ביצועים לפי אסטרטגיה</div>
   ${barSvg}
@@ -300,7 +340,6 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
 
   // === PAGE 2 ===
 
-  // IB table
   const ibTable = table(
     ["מדד", "סכום"],
     [
@@ -312,7 +351,6 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     ]
   );
 
-  // Investors table
   const investorsTable = table(
     ["משקיע", "קרן", "ריבית", "תשלום", "ששולם", "הבא"],
     [
@@ -321,10 +359,19 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     ]
   );
 
-  // Aave table
+  const ibOptsTable = openIbOpts.length > 0 ? table(
+    ["Ticker", "סוג", "Strike", "Fill", "Qty", "פקיעה"],
+    openIbOpts.map(o => {
+      const daysLeft = o.expiration_date ? differenceInDays(new Date(o.expiration_date), today) : null;
+      return {
+        cells: [`<strong>${o.ticker}</strong>`, `${o.type} ${o.category}`, o.strike ? fmt(o.strike) : "—", `$${o.fill_price || 0}`, o.quantity || "—", o.expiration_date ? format(new Date(o.expiration_date), "d.M.yy") : "—"],
+        highlight: daysLeft != null && daysLeft <= 7 ? "yellow" : null
+      };
+    })
+  ) : "<p style='color:#94a3b8;padding:3px 0;font-size:13px'>אין</p>";
+
   const aaveRows = aaveCollateral.map(a => {
-    const priceMap = { "ETH": eth_price, "WETH": eth_price, "WBTC": btc_price, "BTC": btc_price, "AAVE": aave_price };
-    const p = Object.entries(priceMap).find(([k]) => a.token?.toUpperCase().includes(k))?.[1] || 0;
+    const p = priceByToken(a.token) || 0;
     const val = (a.units || 0) * p;
     return { cells: [a.token, (a.units || 0).toFixed(4), fmt(val)] };
   });
@@ -338,7 +385,6 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     ]
   );
 
-  // HL table
   const hlTable = openLev.length > 0 ? table(
     ["נכס", "כיוון", "מינוף", "שווי", "P&L", "ROE%", "מרחק חיסול"],
     openLev.map(l => ({
@@ -351,52 +397,30 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
       ],
       highlight: l.distLiq < 25 ? "red" : (l.calcRoe != null && l.calcRoe < -100) ? "red" : null
     }))
-  ) : "<p style='color:#94a3b8;padding:4px 0;'>אין פוזיציות פתוחות</p>";
+  ) : "<p style='color:#94a3b8;padding:4px 0;font-size:13px'>אין פוזיציות פתוחות</p>";
 
-  // Rysk options
   const ryskTable = openOpts.length > 0 ? table(
     ["נכס", "סוג", "Strike", "פרמיה", "פקיעה"],
     openOpts.map(o => ({ cells: [o.asset, `${o.direction} ${o.option_type}`, o.strike_price ? fmt(o.strike_price) : "—", `<span class="g">${fmt(o.income_usd, 2)}</span>`, o.maturity_date ? format(new Date(o.maturity_date), "d.M.yy") : "—"] }))
-  ) : "<p style='color:#94a3b8;padding:3px 0;'>אין</p>";
+  ) : "<p style='color:#94a3b8;padding:3px 0;font-size:13px'>אין</p>";
 
-  // IB options
-  const ibOptsTable = openIbOpts.length > 0 ? table(
-    ["Ticker", "סוג", "Strike", "Fill", "Qty", "Collateral", "פקיעה"],
-    openIbOpts.map(o => {
-      const daysLeft = o.expiration_date ? differenceInDays(new Date(o.expiration_date), today) : null;
-      return {
-        cells: [`<strong>${o.ticker}</strong>`, `${o.type} ${o.category}`, o.strike ? fmt(o.strike) : "—", `$${o.fill_price || 0}`, o.quantity || "—", fmt(o.collateral), o.expiration_date ? format(new Date(o.expiration_date), "d.M.yy") : "—"],
-        highlight: daysLeft != null && daysLeft <= 7 ? "yellow" : null
-      };
-    })
-  ) : "<p style='color:#94a3b8;padding:3px 0;'>אין</p>";
+  const offChainContent = `
+    <div class="sec">5 · IB — Off-Chain</div>${ibTable}
+    <div class="sec">6 · חוב למשקיעים</div>${investorsTable}
+    <div class="sec">9b · אופציות IB</div>${ibOptsTable}
+  `;
+  const onChainContent = `
+    <div class="sec">7 · Aave V3 — On-Chain</div>${aaveTable}
+    <div class="sec">8 · HyperLiquid — ממונף</div>${hlTable}
+    <div class="sec">9a · אופציות Rysk</div>${ryskTable}
+  `;
 
   const page2 = `
-<div class="page">
+<div class="page page2">
   ${header}
-  <div class="row2col" style="align-items:flex-start;gap:12px;">
-    <div style="flex:1">
-      <div class="sec">5 · IB — Off-Chain</div>
-      ${ibTable}
-      <div class="sec">6 · חוב למשקיעים</div>
-      ${investorsTable}
-    </div>
-    <div style="flex:1">
-      <div class="sec">7 · Aave V3 — On-Chain</div>
-      ${aaveTable}
-    </div>
-  </div>
-  <div class="sec">8 · HyperLiquid — ממונף</div>
-  ${hlTable}
-  <div class="row2col" style="gap:12px;">
-    <div style="flex:1">
-      <div class="sec">9a · אופציות Rysk</div>
-      ${ryskTable}
-    </div>
-    <div style="flex:1">
-      <div class="sec">9b · אופציות IB</div>
-      ${ibOptsTable}
-    </div>
+  <div class="row2col" style="align-items:flex-start;gap:14px;">
+    <div style="flex:1">${sectionBlock("blue", "off-chain", offChainContent)}</div>
+    <div style="flex:1">${sectionBlock("green", "on-chain", onChainContent)}</div>
   </div>
   <div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 2 מתוך 2</span></div>
 </div>`;

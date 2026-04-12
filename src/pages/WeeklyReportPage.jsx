@@ -119,6 +119,22 @@ export default function WeeklyReportPage() {
       const collateral = (ethUnits * eth_price) + (wbtcUnits * btc_price) + (aaveTokenUnits * aave_price);
       const onChainNav = collateral - aave_borrowed;
 
+      // Pre-calculate collateral for validation
+      const ethUnitsV = appData.aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
+      const wbtcUnitsV = appData.aaveCollateral.find(a => /btc|wbtc/i.test(a.token))?.units || 0;
+      const aaveTokenUnitsV = appData.aaveCollateral.find(a => a.token === "AAVE")?.units || 0;
+      const collateralUSD = (ethUnitsV * eth_price) + (wbtcUnitsV * btc_price) + (aaveTokenUnitsV * aave_price);
+
+      // Validate prices
+      if (!btc_price || !eth_price || !aave_price) {
+        toast.error("מחירי BTC/ETH/AAVE חסרים — עדכן מחירים לפני הפקת הדוח");
+        setStep(null);
+        return;
+      }
+      if (aave_borrowed && aave_borrowed < 100000 && collateralUSD > 500000) {
+        toast.warning(`חוב Aave (${fmtUSD(aave_borrowed)}) נראה נמוך מהצפוי — וודא שהנתון נכון`);
+      }
+
       // Generate HTML report
       const html = generateReportHTML({
         wizardAnswers: fullAnswers,
@@ -131,6 +147,7 @@ export default function WeeklyReportPage() {
         periodStart,
         periodEnd: today,
         ibOptions: appData.ibOptions,
+        assets: appData.assets,
       });
       setLastHtml(html);
 
