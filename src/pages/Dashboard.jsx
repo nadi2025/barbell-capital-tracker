@@ -123,8 +123,11 @@ export default function Dashboard() {
   }, 0);
   const vaultValue = 0;
   const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
+  const stablecoinsValue = cryptoAssets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const ryskOptions = cryptoOptions.filter(o => o.status === "Open").reduce((s, o) => s + (o.income_usd || 0), 0);
+  const aaveNetWorth = aaveCollateralUsd - aaveBorrowUsd;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const cryptoNAV = cryptoTotalAssets_WithHL - cryptoTotalDebt;
+  const cryptoNAV = aaveNetWorth + stablecoinsValue + ryskOptions + loansGivenValue;
 
   // ── Aave health ──
   const healthFactor = aaveAccount?.health_factor || (aaveCollateral.reduce((s, c) => {

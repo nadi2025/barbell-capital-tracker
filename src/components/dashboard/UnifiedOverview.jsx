@@ -33,7 +33,7 @@ function SvgPie({ slices, size = 130 }) {
 export default function UnifiedOverview({
   ibNav, cryptoNAV, totalDeposited, investorDebt,
   cryptoAssets, aaveCollateral, leveraged, hlTrades = [], openOptions, cryptoOptions,
-  offChainInvestors, aaveAccount, realizedPnl, ibPnl
+  offChainInvestors, aaveAccount, realizedPnl, ibPnl, cryptoTotalAssets_WithHL, aaveBorrowUsd
 }) {
   const today = new Date();
 
@@ -50,19 +50,9 @@ export default function UnifiedOverview({
   const aavePrice = getPrice(["AAVE"]);
   const mstrPrice = getPrice(["MSTR"]);
 
-  // Row 1 calcs (need total assets, not NAV for display)
+  // Row 1 calcs — cryptoNAV is already calculated properly in Dashboard
   const totalInvested = totalDeposited + investorDebt;
-  const ibAssets = ibNav; // IB gross assets = NAV (no debts to subtract)
-  const cryptoAssets_WithHL = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0) + 
-    leveraged.reduce((s, l) => {
-      const pnl = l.mark_price && l.entry_price && l.size
-        ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
-        : 0;
-      return s + (l.margin_usd || 0) + pnl;
-    }, 0);
-  const totalGrossAssets = ibAssets + cryptoAssets_WithHL; // Total assets (no debts)
-  const totalAllDebts = (investorDebt * 0) + (aaveAccount?.borrow_usd || 0); // Just Aave borrow for now
-  const currentValue = totalGrossAssets - totalAllDebts; // Net value
+  const currentValue = ibNav + cryptoNAV; // Net value
   const totalPnl = currentValue - totalInvested;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
@@ -90,7 +80,7 @@ export default function UnifiedOverview({
     { name: "ETH", val: ethCollVal + (hlByAsset["ETH"] || 0), color: "#627eea" },
     { name: "AAVE", val: aaveCollVal + (hlByAsset["AAVE"] || 0), color: "#b878e8" },
     { name: "MSTR", val: hlByAsset["MSTR"] || 0, color: "#3b82f6" },
-    { name: "IB Stocks", val: Math.max(0, ibNav - (hlByAsset["MSTR"] || 0)), color: "#10b981" },
+    { name: "IB", val: ibNav, color: "#10b981" },
     { name: "Stablecoins", val: stablecoins, color: "#94a3b8" },
   ].filter(s => s.val > 500);
   const pieTotal = pieSlices.reduce((s, sl) => s + sl.val, 0) || 1;

@@ -43,9 +43,12 @@ export default function CryptoDashboard() {
     </div>
   );
 
-  // CORRECT ACCOUNTING MODEL:
-  // Assets = things we OWN at current market value
+  // NAV = Aave net (collateral - borrow) + Stablecoins + Rysk options + Loans given
   const walletValue = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const aaveCollateralValue = assets.filter(a => a.asset_category === "Collateral on Aave").reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const aaveBorrow = 327000; // Aave USDC borrow
+  const aaveNetWorth = aaveCollateralValue - aaveBorrow;
+  const stablecoinsValue = assets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const hlEquity = leveraged.reduce((s, l) => {
     const pnl = l.mark_price && l.entry_price && l.size
       ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
@@ -54,14 +57,10 @@ export default function CryptoDashboard() {
   }, 0);
   const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
   const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
-  const totalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + lentValue;
-  
-  // Liabilities = things we OWE
-  // S&T investor debt + Aave borrow (if any)
   const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
-  const aaveBorrow = 327000; // Aave USDC borrow against collateral — MUST be included
+  const totalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + lentValue;
   const totalDebt = investorDebt + aaveBorrow;
-  const nav = totalAssets - totalDebt;
+  const nav = aaveNetWorth + stablecoinsValue + lentValue;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
 
   const activeLoan = loans[0];
