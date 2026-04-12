@@ -202,10 +202,17 @@ export default function WeeklyReportPage() {
         notes: `Auto-snapshot from weekly report ${today}`,
       });
 
-      // Open HTML in new window for print-to-PDF
-      const win = window.open("", "_blank");
-      win.document.write(html);
-      win.document.close();
+      // Open HTML via blob URL to avoid popup blockers
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.target = "_blank";
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
 
       toast.success("הדוח נפתח בחלון חדש — השתמש ב-Ctrl+P לשמירה כ-PDF");
       setStep(null);
@@ -244,9 +251,16 @@ export default function WeeklyReportPage() {
       periodEnd: r.period_end,
       ibOptions: appData.ibOptions,
     });
-    const w = window.open("", "_blank");
-    w.document.write(html);
-    w.document.close();
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
   };
 
   const handleMarkSent = async (id) => {
@@ -278,7 +292,7 @@ export default function WeeklyReportPage() {
         {!step && (
           <div className="flex gap-2">
             {lastHtml && (
-              <Button variant="outline" onClick={() => { const w = window.open("","_blank"); w.document.write(lastHtml); w.document.close(); }} className="gap-2">
+              <Button variant="outline" onClick={() => { const bl = new Blob([lastHtml], {type:"text/html;charset=utf-8"}); const u = URL.createObjectURL(bl); const a = document.createElement("a"); a.href=u; a.target="_blank"; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(u),10000); }} className="gap-2">
                 <FileText className="w-4 h-4" /> הורד PDF
               </Button>
             )}
