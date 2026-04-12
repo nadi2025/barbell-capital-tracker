@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [cryptoLoans, setCryptoLoans] = useState([]);
   const [cryptoLending, setCryptoLending] = useState([]);
   const [leveraged, setLeveraged] = useState([]);
+  const [cryptoOptionsPositions, setCryptoOptionsPositions] = useState([]);
   const [hlTrades, setHlTrades] = useState([]);
   const [aaveCollateral, setAaveCollateral] = useState([]);
   const [aaveBorrow, setAaveBorrow] = useState({});
@@ -50,7 +51,7 @@ export default function Dashboard() {
   const [fetchingLivePrices, setFetchingLivePrices] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, co, oci, hlt, pr, aavePos] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, co, cop, oci, hlt, pr, aavePos] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -61,6 +62,7 @@ export default function Dashboard() {
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
       base44.entities.CryptoOptionsPosition.list(),
+      base44.entities.CryptoOptionsPosition.filter({ status: "Open" }),
       base44.entities.OffChainInvestor.filter({ status: "Active" }),
       base44.entities.HLTrade.list("-trade_date", 500),
       base44.entities.Prices.list(),
@@ -70,6 +72,7 @@ export default function Dashboard() {
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
     setCryptoAssets(ca); setCryptoLoans(cl); setCryptoLending(cle);
     setLeveraged(lev);
+    setCryptoOptionsPositions(cop || []);
     setHlTrades(hlt || []);
     setAaveCollateral(aavePos?.data?.collateralDetails || []);
     setAaveBorrow({ borrow_usd: aavePos?.data?.borrowedAmount || 0, health_factor: aavePos?.data?.healthFactor || 0, borrow_power_used: aavePos?.data?.borrowPowerUsed || 0 });
@@ -125,13 +128,14 @@ export default function Dashboard() {
     return s + (l.margin_usd || 0) + pnl;
   }, 0);
   const stablecoinsValue = cryptoAssets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const activeNotionalCrypto = cryptoOptionsPositions.reduce((s, o) => s + (o.notional_usd || 0), 0);
   
-  // On-Chain NAV = Aave Net + Stablecoins + Lending (SAME FORMULA AS CRYPTODASHBOARD)
+  // On-Chain NAV = Aave Net + Stablecoins + Lending + Options (SAME FORMULA AS CRYPTODASHBOARD)
   const aaveNetWorth = aaveCollateralValue - aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue;
+  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotionalCrypto;
   
   // Total assets and debt
-  const cryptoTotalAssets = aaveCollateralValue + stablecoinsValue + loansGivenValue;
+  const cryptoTotalAssets = aaveCollateralValue + stablecoinsValue + loansGivenValue + activeNotionalCrypto;
   const vaultValue = 0;
   const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;

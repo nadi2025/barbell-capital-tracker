@@ -20,11 +20,12 @@ export default function CryptoDashboard() {
   const [lpPositions, setLpPositions] = useState([]);
   const [snapshots, setSnapshots] = useState([]);
   const [prices, setPrices] = useState([]);
+  const [cryptoOptions, setCryptoOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const load = async () => {
-    const [a, lo, le, lev, lp, sn, pr] = await Promise.all([
+    const [a, lo, le, lev, lp, sn, pr, co] = await Promise.all([
       base44.entities.CryptoAsset.list(),
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
@@ -32,8 +33,9 @@ export default function CryptoDashboard() {
       base44.entities.LpPosition.filter({ status: "Active" }),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 20),
       base44.entities.Prices.list(),
+      base44.entities.CryptoOptionsPosition.filter({ status: "Open" }),
     ]);
-    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setPrices(pr || []);
+    setAssets(a); setLoans(lo); setLending(le); setLeveraged(lev); setLpPositions(lp); setSnapshots(sn); setPrices(pr || []); setCryptoOptions(co || []);
     setLoading(false);
   };
 
@@ -51,13 +53,14 @@ export default function CryptoDashboard() {
   const aaveBorrow = 327000; // Aave USDC borrow
   const aaveNetWorth = aaveCollateralValue - aaveBorrow;
   const stablecoinsValue = assets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const activeNotional = cryptoOptions.reduce((s, o) => s + (o.notional_usd || 0), 0);
   const totalMarginFromPositions = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
   const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
-  const totalAssets = walletValue + Math.max(0, totalMarginFromPositions) + vaultValue + lentValue;
+  const totalAssets = walletValue + Math.max(0, totalMarginFromPositions) + vaultValue + lentValue + activeNotional;
   const totalDebt = investorDebt + aaveBorrow;
-  const nav = aaveNetWorth + stablecoinsValue + lentValue;
+  const nav = aaveNetWorth + stablecoinsValue + lentValue + activeNotional;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
 
   const activeLoan = loans[0];
@@ -113,10 +116,11 @@ export default function CryptoDashboard() {
   const mstrExposure = leveraged.filter(l => l.asset === "MSTR").reduce((s, l) => s + (l.position_value_usd || 0), 0);
   const stableExposure = assets.filter(a => a.asset_category === "Stablecoin")
     .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const optionsExposure = activeNotional;
   const otherExposure = assets.filter(a => !["awBTC","wBTC","BTC","aETH","ETH","aAAVE","AAVE"].includes(a.token) && a.asset_category !== "Stablecoin")
     .reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
 
-  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + mstrExposure + stableExposure + otherExposure || 1;
+  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + mstrExposure + stableExposure + optionsExposure + otherExposure || 1;
 
   const pieData = [
     { name: "BTC", value: btcExposure },
@@ -124,6 +128,7 @@ export default function CryptoDashboard() {
     { name: "AAVE", value: aaveExposure },
     { name: "MSTR", value: mstrExposure },
     { name: "Stablecoins", value: stableExposure },
+    { name: "Options", value: optionsExposure },
     { name: "Other", value: otherExposure },
   ].filter(d => d.value > 0);
 
@@ -186,7 +191,12 @@ export default function CryptoDashboard() {
       </div>
 
       {/* Second row */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Active Notional (Options)</p>
+          <p className="text-xl font-bold font-mono text-foreground">{fmt(activeNotional)}</p>
+          <p className="text-xs text-muted-foreground mt-1">{cryptoOptions.length} open positions</p>
+        </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Borrow Power Used</p>
           <p className={`text-xl font-bold font-mono ${borrowPowerUsed > 0.7 ? "text-loss" : borrowPowerUsed > 0.5 ? "text-amber-400" : "text-profit"}`}>
