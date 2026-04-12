@@ -32,7 +32,7 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const periodStart = format(new Date(new Date().setDate(today.getDate() - 7)), "d.M.yy");
   const periodEnd = format(today, "d.M.yy");
 
-  const { assets, aaveCollateral, aaveAccount, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [] } = appData;
+  const { assets, aaveCollateral, aaveAccount, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [], hlTrades = [] } = appData;
   // Auto-calculate IB stocks P&L from StockPosition entity
   const ibStocksPnl = stocks.reduce((s, st) => s + (st.gain_loss || 0), 0);
 
@@ -78,6 +78,11 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     return { ...l, posVal, pnlCalc, roe, distLiq };
   });
   const hlPnl = openLev.reduce((s, l) => s + l.pnlCalc, 0);
+  // HL realized P&L from trade history
+  const hlRealizedPnl = hlTrades
+    .filter(t => t.direction?.toLowerCase().includes("close"))
+    .reduce((s, t) => s + (t.closed_pnl || 0), 0);
+  const hlTotalPnl = hlPnl + hlRealizedPnl;
 
   // On-chain NAV
   const stablecoins = assets.filter(a => /usdc|usdt|dai/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
@@ -131,7 +136,8 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     { label: "Rysk Premium", val: ryskPremium },
     { label: "Aave Yield", val: Math.round(aaveYield) },
     { label: "IB Stocks", val: ibStocksPnl },
-    { label: "HyperLiquid", val: Math.round(hlPnl) },
+    { label: "HyperLiquid (unrealized)", val: Math.round(hlPnl) },
+    { label: "HyperLiquid (realized)", val: Math.round(hlRealizedPnl) },
   ].filter(b => b.val !== 0);
 
   // Events (60 days)
@@ -416,6 +422,7 @@ ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<
     </table>
 
     <div class="sec sec-green">E · HyperLiquid</div>
+    <div style="font-size:11px;color:#475569;margin-bottom:4px">P&L ממומש (היסטוריה): <strong class="${clr(hlRealizedPnl)}">${$(hlRealizedPnl)}</strong> · P&L לא ממומש: <strong class="${clr(hlPnl)}">${$(hlPnl)}</strong> · סה"כ: <strong class="${clr(hlTotalPnl)}">${$(hlTotalPnl)}</strong></div>
     ${openLev.length > 0 ? `<table>
       <tr><th>נכס</th><th>כיוון</th><th>×מינוף</th><th>שווי</th><th>P&L</th><th>ROE</th><th>חיסול%</th></tr>
       ${hlTableRows}

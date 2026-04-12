@@ -98,10 +98,14 @@ export default function Dashboard() {
   const ibPnl = ibNav - totalDeposited;
   const ibPnlPct = totalDeposited > 0 ? ibPnl / totalDeposited : 0;
 
-  // ── On-Chain calcs ──
-  const TOKEN_PRICES = { ETH: 2165.35, WBTC: 70794.27, AAVE: 177 };
+  // ── On-Chain calcs ── (prices from CryptoAsset entity)
+  const TOKEN_PRICES = {};
+  cryptoAssets.forEach(a => { if (a.token && a.current_price_usd) TOKEN_PRICES[a.token.toUpperCase()] = a.current_price_usd; });
+  if (!TOKEN_PRICES["WBTC"] && TOKEN_PRICES["BTC"]) TOKEN_PRICES["WBTC"] = TOKEN_PRICES["BTC"];
+  if (!TOKEN_PRICES["BTC"] && TOKEN_PRICES["WBTC"]) TOKEN_PRICES["BTC"] = TOKEN_PRICES["WBTC"];
+  if (!TOKEN_PRICES["WETH"] && TOKEN_PRICES["ETH"]) TOKEN_PRICES["WETH"] = TOKEN_PRICES["ETH"];
   const aaveCollateralUsd = aaveCollateral.reduce((s, c) => {
-    const price = TOKEN_PRICES[c.token] || 0;
+    const price = TOKEN_PRICES[c.token?.toUpperCase()] || 0;
     return s + c.units * price;
   }, 0);
   const aaveBorrowUsd = aaveBorrow?.borrowed_amount || aaveAccount?.borrow_usd || 0;
@@ -114,7 +118,7 @@ export default function Dashboard() {
       ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size : 0;
     return s + (l.margin_usd || 0) + pnl;
   }, 0);
-  const vaultValue = 0; // LP positions not fetched here
+  const vaultValue = 0;
   const cryptoNAV = cryptoTotalAssets + loansGivenValue - cryptoTotalDebt;
 
   // ── Aave health ──
@@ -152,6 +156,14 @@ export default function Dashboard() {
   if (bigLoss) {
     alerts.push({ icon: TrendingDown, color: "text-loss", label: `${bigLoss.ticker}: ${pct(bigLoss.gain_loss_pct)} ROE (${fmt(bigLoss.gain_loss)})`, category: "risk" });
   }
+  leveraged.forEach(p => {
+    if (p.mark_price && p.liquidation_price) {
+      const dist = Math.abs((p.mark_price - p.liquidation_price) / p.mark_price) * 100;
+      if (dist < 25) {
+        alerts.push({ icon: AlertTriangle, color: dist < 15 ? "text-loss" : "text-amber-400", label: `HL ${p.asset} ${p.direction}: מרחק חיסול ${dist.toFixed(1)}% ${dist < 15 ? "⚠ פעולה דחופה!" : ""}`, category: "risk" });
+      }
+    }
+  });
 
   const hfColor = healthFactor > 2 ? "text-profit" : healthFactor < 1.5 ? "text-loss" : "text-amber-400";
   const hfDot = healthFactor > 2 ? "bg-profit" : healthFactor < 1.5 ? "bg-loss" : "bg-amber-400";
