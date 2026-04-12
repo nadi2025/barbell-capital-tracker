@@ -232,14 +232,10 @@ export default function UnifiedOverview({
           <p className="text-xs text-muted-foreground mt-1.5">IB Dashboard →</p>
         </Link>
         <Link to="/crypto" className="block bg-card border border-border rounded-xl p-4 hover:border-orange-400/40 transition-colors">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 rounded-full bg-orange-400" />
-            <p className="text-xs font-semibold uppercase tracking-wider text-orange-400/80">ON-CHAIN · DEFI</p>
-          </div>
-          <p className={`text-xl font-bold font-mono ${cryptoNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(cryptoNAV)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Aave HF: <span className={aaveAccount?.health_factor ? (aaveAccount.health_factor > 2 ? "text-profit font-semibold" : aaveAccount.health_factor < 1.5 ? "text-loss font-semibold" : "text-amber-400 font-semibold") : ""}>{aaveAccount?.health_factor?.toFixed(2) || "—"}</span>
-          </p>
+          <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
+          <p className={`text-2xl font-bold font-mono ${cryptoNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(cryptoNAV)}</p>
+          <p className="text-xs mt-1">Perf: <span className={cryptoNAV >= 0 ? "text-profit" : "text-loss"}>{((cryptoNAV / investorDebt) * 100).toFixed(1)}%</span></p>
+          <p className="text-xs text-muted-foreground">Assets {fmt(cryptoTotalAssets_WithHL)} − Debt {fmt(investorDebt + aaveBorrowUsd)}</p>
           <p className="text-xs text-muted-foreground mt-1.5">Crypto Dashboard →</p>
         </Link>
       </div>
