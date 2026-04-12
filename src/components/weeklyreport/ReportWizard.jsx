@@ -3,14 +3,11 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const fmtUSD = (v) => v == null ? "" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
 export default function ReportWizard({ defaults, onComplete, onCancel }) {
   const QUESTIONS = [
     { key: "ib_nav", label: "מה ה-NAV הנוכחי בתיק IB?", type: "number", unit: "USD", hint: "היכנס ל-IB ובדוק את שווי התיק הנוכחי" },
     { key: "ib_options_pnl", label: "מה ה-P&L הממומש על אופציות ב-IB השבוע?", type: "number", unit: "USD", hint: "יכול להיות שלילי. בדוק ב-IB תחת Realized P&L" },
     { key: "ib_stocks_pnl", label: "מה ה-P&L הלא ממומש על מניות ב-IB?", type: "number", unit: "USD", hint: "Unrealized P&L על פוזיציות מניות פתוחות" },
-    { key: "ib_premium_total", label: "מה סכום הפרמיה שנגבתה ב-IB (מצטבר)?", type: "number", unit: "USD", hint: "סה״כ פרמיה שנגבה מתחילת הפעילות" },
     { key: "ib_win_rate", label: "מה ה-Win Rate על אופציות ב-IB?", type: "number", unit: "%", hint: "אחוז עסקאות שהסתיימו ברווח" },
     { key: "btc_price", label: "מה מחיר ה-BTC הנוכחי?", type: "number", unit: "USD", hint: "מחיר Bitcoin עכשיו" },
     { key: "eth_price", label: "מה מחיר ה-ETH הנוכחי?", type: "number", unit: "USD", hint: "מחיר Ethereum עכשיו" },
@@ -57,7 +54,7 @@ export default function ReportWizard({ defaults, onComplete, onCancel }) {
       <div className="bg-card border border-border rounded-2xl p-6 max-w-lg mx-auto space-y-4" dir="rtl">
         <h2 className="text-lg font-bold">סיכום לפני הפקת דוח</h2>
         <div className="space-y-2 max-h-80 overflow-y-auto">
-          {QUESTIONS.map((q, i) => (
+          {QUESTIONS.map((q) => (
             <div key={q.key} className="flex justify-between items-start text-sm py-1.5 border-b border-border/30">
               <span className="text-muted-foreground text-xs flex-1 ml-4">{q.label}</span>
               <span className="font-mono font-medium text-right">
