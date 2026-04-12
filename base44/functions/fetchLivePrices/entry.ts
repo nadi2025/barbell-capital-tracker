@@ -77,6 +77,20 @@ Deno.serve(async (req) => {
     }
   }
 
+  // 5. Update Asset entity with all fetched prices
+  const assetRecords = await base44.asServiceRole.entities.Asset.list();
+  const now = new Date().toISOString();
+  for (const asset of assetRecords) {
+    const sym = asset.symbol?.toUpperCase();
+    const newPrice = cryptoPrices[sym] || stockPrices[sym];
+    if (newPrice) {
+      await base44.asServiceRole.entities.Asset.update(asset.id, {
+        current_price_usd: newPrice,
+        last_updated: now,
+      });
+    }
+  }
+
   return Response.json({
     crypto: cryptoPrices,
     stocks: stockPrices,
