@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmtILS = (v) => v == null ? "₪0" : `₪${Math.abs(v).toLocaleString("he-IL")}`;
 
 export default function MonthlyInvestorCard({ investor, payments, onRecordPayment, onEdit }) {
   const [showHistory, setShowHistory] = useState(false);
@@ -12,19 +13,28 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
   const today = new Date();
   const start = new Date(investor.start_date);
   const maturity = new Date(investor.maturity_date);
+  const isILS = investor.interest_currency === "ILS";
 
   const termMonths = differenceInMonths(maturity, start);
   const termYears = (termMonths / 12).toFixed(1);
   const monthsElapsed = differenceInMonths(today, start);
   const monthly = investor.monthly_payment || (investor.principal_usd * investor.interest_rate / 100 / 12);
+  const grossUSD = investor.principal_usd * investor.interest_rate / 100 / 12;
   const totalInterest = investor.principal_usd * (investor.interest_rate / 100) * (termMonths / 12);
-  const paidToDate = payments.length * monthly;
+  const paidToDate = payments.length * grossUSD;
   const remaining = totalInterest - paidToDate;
   const remainingMonths = termMonths - payments.length;
   const progressPct = Math.min(100, (payments.length / termMonths) * 100);
 
-  // Next payment date
-  const nextPaymentDate = addMonths(start, payments.length + 1);
+  // Next payment date — use payment_day_of_month if set
+  const payDay = investor.payment_day_of_month;
+  let nextPaymentDate;
+  if (payDay) {
+    nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), payDay);
+    if (nextPaymentDate <= today) nextPaymentDate = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
+  } else {
+    nextPaymentDate = addMonths(start, payments.length + 1);
+  }
   const daysUntilNext = differenceInDays(nextPaymentDate, today);
 
   const isOverdue = daysUntilNext < 0;
@@ -65,11 +75,15 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
         </div>
         <div>
           <p className="text-muted-foreground">Monthly Payment</p>
-          <p className="font-bold text-sm text-emerald-600">{fmtUSD(monthly)}/mo</p>
+          <p className="font-bold text-sm text-emerald-600">{isILS ? fmtILS(monthly) : fmtUSD(monthly)}/mo</p>
+          {isILS && investor.tax_withholding_percent && (
+            <p className="text-xs text-muted-foreground">ברוטו {fmtUSD(grossUSD)} | {investor.tax_withholding_percent}% מס</p>
+          )}
         </div>
         <div>
           <p className="text-muted-foreground">Currency</p>
-          <p className="font-bold text-sm">USD ($)</p>
+          <p className="font-bold text-sm">{isILS ? "ILS (₪)" : "USD ($)"}</p>
+          {payDay && <p className="text-xs text-muted-foreground">יום {payDay} לחודש</p>}
         </div>
       </div>
 
@@ -110,8 +124,8 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
       <div className={`rounded-lg px-3 py-2.5 text-xs flex items-center gap-2 ${isOverdue ? "bg-red-50 text-red-700" : isDueSoon ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700"}`}>
         <Clock className="w-3.5 h-3.5 flex-shrink-0" />
         {isOverdue
-          ? <span><strong>OVERDUE:</strong> Payment of {fmtUSD(monthly)} was expected on {format(nextPaymentDate, "MMM d, yyyy")} ({Math.abs(daysUntilNext)} days ago)</span>
-          : <span>Next payment: <strong>{fmtUSD(monthly)}</strong> on {format(nextPaymentDate, "MMM d, yyyy")} (in {daysUntilNext} days)</span>
+          ? <span><strong>OVERDUE:</strong> Payment of {isILS ? fmtILS(monthly) : fmtUSD(monthly)} was expected on {format(nextPaymentDate, "MMM d, yyyy")} ({Math.abs(daysUntilNext)} days ago)</span>
+          : <span>Next payment: <strong>{isILS ? fmtILS(monthly) : fmtUSD(monthly)}</strong> on {format(nextPaymentDate, "MMM d, yyyy")} (in {daysUntilNext} days)</span>
         }
       </div>
 

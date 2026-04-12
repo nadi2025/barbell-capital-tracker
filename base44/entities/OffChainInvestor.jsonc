@@ -36,7 +36,15 @@
     },
     "monthly_payment": {
       "type": "number",
-      "title": "Monthly Payment (USD)"
+      "title": "Monthly Payment (net, in interest_currency)"
+    },
+    "tax_withholding_percent": {
+      "type": "number",
+      "title": "Tax Withholding (%)"
+    },
+    "payment_day_of_month": {
+      "type": "integer",
+      "title": "Payment Day of Month (1-31)"
     },
     "start_date": {
       "type": "string",

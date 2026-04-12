@@ -1,61 +1,134 @@
 import { format, differenceInDays, addMonths } from "date-fns";
 
-const fmt = (v, decimals = 0) => {
+const fmt = (v, d = 0) => {
   if (v == null || isNaN(v)) return "—";
   const abs = Math.abs(v);
-  const s = abs.toLocaleString("he-IL", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  const s = abs.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   return (v < 0 ? "-$" : "$") + s;
 };
+const fmtILS = (v) => v == null ? "—" : `₪${Math.abs(v).toLocaleString("he-IL")}`;
 const fmtPct = (v) => v == null || isNaN(v) ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 const diffStr = (curr, prev) => {
   if (prev == null || curr == null) return "—";
   const d = curr - prev;
   const pct = ((d / Math.abs(prev)) * 100).toFixed(1);
   const sign = d >= 0 ? "+" : "";
-  return `${sign}${fmt(d)} (${sign}${pct}%)`;
+  const color = d >= 0 ? "#16a34a" : "#dc2626";
+  return `<span style="color:${color}">${sign}${fmt(d)} (${sign}${pct}%)</span>`;
 };
+
+function svgPie(slices, size = 130) {
+  const total = slices.reduce((s, sl) => s + sl.val, 0);
+  if (!total) return `<svg width="${size}" height="${size}"></svg>`;
+  const cx = size / 2, cy = size / 2, r = size / 2 - 4;
+  let paths = "", angle = -Math.PI / 2;
+  for (const sl of slices) {
+    if (!sl.val) continue;
+    const sweep = (sl.val / total) * 2 * Math.PI;
+    const end = angle + sweep;
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    const x2 = cx + r * Math.cos(end), y2 = cy + r * Math.sin(end);
+    paths += `<path d="M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${sweep > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="${sl.color}" stroke="white" stroke-width="1.5"/>`;
+    angle = end;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">${paths}</svg>`;
+}
+
+function svgBars(items, w = 290, barH = 13, gap = 5) {
+  const maxAbs = Math.max(...items.map(i => Math.abs(i.val)), 1);
+  const labelW = 115, barMaxW = w - labelW - 75;
+  const h = items.length * (barH + gap) + 8;
+  let els = "";
+  items.forEach((it, i) => {
+    const y = i * (barH + gap) + 4;
+    const bw = (Math.abs(it.val) / maxAbs) * barMaxW;
+    const color = it.val >= 0 ? "#16a34a" : "#dc2626";
+    const sign = it.val >= 0 ? "+" : "";
+    const valStr = `${sign}$${Math.abs(it.val).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+    els += `<text x="${labelW - 4}" y="${y + barH - 2}" font-size="9" fill="#374151" text-anchor="end" font-family="Arial">${it.label}</text>`;
+    if (bw > 0) els += `<rect x="${labelW}" y="${y}" width="${bw.toFixed(1)}" height="${barH}" fill="${color}" rx="2" opacity="0.85"/>`;
+    els += `<text x="${labelW + bw + 4}" y="${y + barH - 2}" font-size="9" fill="${color}" font-family="Arial">${valStr}</text>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${els}</svg>`;
+}
+
+function getUpcomingEvents(options, ibOptions, investors, openLev, today) {
+  const events = [];
+
+  // Rysk options expiring within 14 days
+  options.filter(o => o.status === "Open" && o.maturity_date).forEach(o => {
+    const d = new Date(o.maturity_date);
+    const daysLeft = differenceInDays(d, today);
+    if (daysLeft >= 0 && daysLeft <= 14) {
+      events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `${o.asset} ${o.option_type} ×${o.size || 1} (Rysk) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
+    }
+  });
+
+  // IB options expiring within 14 days
+  ibOptions.filter(o => o.status === "Open" && o.expiration_date).forEach(o => {
+    const d = new Date(o.expiration_date);
+    const daysLeft = differenceInDays(d, today);
+    if (daysLeft >= 0 && daysLeft <= 14) {
+      events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `${o.ticker} ${o.category} ×${o.quantity} (IB) — פוקעת ${format(d, "d.M.yy")} (${daysLeft} ימ')` });
+    }
+  });
+
+  // Investor payments within 30 days
+  investors.filter(inv => inv.interest_schedule === "Monthly" && inv.status === "Active").forEach(inv => {
+    const payDay = inv.payment_day_of_month || 1;
+    let nextPay = new Date(today.getFullYear(), today.getMonth(), payDay);
+    if (nextPay <= today) nextPay = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
+    const daysLeft = differenceInDays(nextPay, today);
+    if (daysLeft >= 0 && daysLeft <= 30) {
+      const isILS = inv.interest_currency === "ILS";
+      const payStr = isILS ? fmtILS(inv.monthly_payment) : fmt(inv.monthly_payment);
+      events.push({ urgency: daysLeft <= 5 ? "red" : "yellow", daysLeft, text: `ריבית ${inv.name}: ${payStr} נטו — ${format(nextPay, "d.M.yy")} (${daysLeft} ימ')` });
+    }
+  });
+
+  // HL near liquidation
+  openLev.forEach(l => {
+    if (l.distLiq != null && l.distLiq < 30) {
+      events.push({ urgency: l.distLiq < 25 ? "red" : "yellow", daysLeft: 0, text: `HL ${l.asset} ${l.direction} ${l.leverage || ""}x — מרחק חיסול ${l.distLiq.toFixed(1)}%${l.distLiq < 25 ? " ⚠ פעולה דחופה!" : ""}` });
+    }
+  });
+
+  return events.sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 6);
+}
 
 function tableRow(cells, isHeader = false, highlight = null) {
   const tag = isHeader ? "th" : "td";
   const bg = highlight === "red" ? "#fee2e2" : highlight === "yellow" ? "#fef9c3" : "";
-  const rowStyle = bg ? `style="background:${bg}"` : "";
-  return `<tr ${rowStyle}>${cells.map(c => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
+  const rowStyle = bg ? ` style="background:${bg}"` : "";
+  return `<tr${rowStyle}>${cells.map(c => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
 }
 
-function table(headers, rows, caption = null) {
-  return `
-    ${caption ? `<h4 style="margin:12px 0 4px;font-size:11px;color:#6b7280;">${caption}</h4>` : ""}
-    <table>
-      <thead>${tableRow(headers, true)}</thead>
-      <tbody>${rows.map(r => tableRow(r.cells, false, r.highlight)).join("")}</tbody>
-    </table>`;
-}
-
-function riskRow(color, text) {
-  const dot = color === "red" ? "🔴" : color === "yellow" ? "🟡" : "🟢";
-  const bg = color === "red" ? "#fee2e2" : color === "yellow" ? "#fef9c3" : "#dcfce7";
-  return `<div style="background:${bg};border-radius:6px;padding:6px 10px;margin:4px 0;font-size:11px;">${dot} ${text}</div>`;
+function table(headers, rows) {
+  return `<table><thead>${tableRow(headers, true)}</thead><tbody>${rows.map(r => tableRow(r.cells, false, r.highlight)).join("")}</tbody></table>`;
 }
 
 export function generateReportHTML({ wizardAnswers, prevReport, investors, investorPayments, options, leveraged, aaveCollateral, periodStart, periodEnd, ibOptions = [] }) {
   const today = new Date();
   const todayStr = format(today, "dd.MM.yyyy");
+  const periodStr = `${format(new Date(periodStart), "d.M.yy")} — ${format(new Date(periodEnd), "d.M.yy")}`;
 
-  const {
-    ib_nav, ib_options_pnl, ib_stocks_pnl, ib_premium_total, ib_win_rate,
-    btc_price, eth_price, aave_price, mstr_price,
-    aave_borrowed, aave_hf, manager_notes
-  } = wizardAnswers;
-
+  const { ib_nav, ib_options_pnl, ib_stocks_pnl, ib_win_rate, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf, manager_notes } = wizardAnswers;
   const IB_DEPOSITED = 413000;
 
-  // Aave collateral calculation from units × prices
-  const ethUnits = aaveCollateral.find(a => a.token?.includes("ETH"))?.units || 0;
-  const wbtcUnits = aaveCollateral.find(a => a.token?.includes("BTC") || a.token?.includes("WBTC"))?.units || 0;
-  const aaveTokenUnits = aaveCollateral.find(a => a.token === "AAVE")?.units || 0;
-  const collateralUSD = (ethUnits * eth_price) + (wbtcUnits * btc_price) + (aaveTokenUnits * aave_price);
-  const onChainNav = collateralUSD - (aave_borrowed || 0);
+  // Aave collateral
+  const ethUnits = aaveCollateral.find(a => a.token?.toUpperCase().includes("ETH") && !a.token?.toUpperCase().includes("WETH"))?.units ||
+                   aaveCollateral.find(a => a.token?.toUpperCase() === "ETH" || a.token?.toUpperCase() === "WETH")?.units || 0;
+  const wbtcUnits = aaveCollateral.find(a => a.token?.toUpperCase().includes("BTC") || a.token?.toUpperCase().includes("WBTC"))?.units || 0;
+  const aaveTokenUnits = aaveCollateral.find(a => a.token?.toUpperCase() === "AAVE")?.units || 0;
 
+  // Also try alternate ETH token names
+  const ethUnitsAlt = ethUnits || aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
+
+  const btcVal = wbtcUnits * (btc_price || 0);
+  const ethVal = (ethUnitsAlt || ethUnits) * (eth_price || 0);
+  const aaveTokenVal = aaveTokenUnits * (aave_price || 0);
+  const collateralUSD = btcVal + ethVal + aaveTokenVal;
+  const onChainNav = collateralUSD - (aave_borrowed || 0);
   const totalNav = (ib_nav || 0) + onChainNav;
 
   const prev = prevReport;
@@ -65,25 +138,10 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
   const prevEth = prev?.eth_price;
   const prevOnChain = prev?.on_chain_nav;
 
-  // Allocation for bar
-  const btcVal = wbtcUnits * btc_price;
-  const ethVal = ethUnits * eth_price;
-  const aaveVal = aaveTokenUnits * aave_price;
-  const totalAssets = collateralUSD || 1;
-  const alloc = [
-    { name: "BTC/WBTC", val: btcVal, color: "#f7931a" },
-    { name: "ETH", val: ethVal, color: "#627eea" },
-    { name: "AAVE", val: aaveVal, color: "#b878e8" },
-  ];
-
-  // Open options
-  const openOpts = options.filter(o => o.status === "Open");
-  const expiringSoon = openOpts.filter(o => o.maturity_date && differenceInDays(new Date(o.maturity_date), today) <= 7);
-
-  // Leveraged positions with recalculated values
+  // Leveraged positions with calcs
   const openLev = leveraged.filter(l => l.status === "Open").map(l => {
     const priceMap = { BTC: btc_price, ETH: eth_price, AAVE: aave_price, MSTR: mstr_price };
-    const currentPrice = priceMap[l.asset] || l.mark_price;
+    const currentPrice = priceMap[l.asset?.toUpperCase()] || l.mark_price;
     const size = l.size || 0;
     const posValue = currentPrice && size ? currentPrice * size : l.position_value_usd;
     const pnl = l.entry_price && size && currentPrice ? (currentPrice - l.entry_price) * size * (l.direction === "Short" ? -1 : 1) : l.pnl_usd;
@@ -92,289 +150,268 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     return { ...l, calcValue: posValue, calcPnl: pnl, calcRoe: roe, distLiq, currentPrice };
   });
 
-  // Investor interest calcs
-  const investorRows = investors.map(inv => {
-    const paid = investorPayments.filter(p => p.investor_id === inv.id).reduce((s, p) => s + (p.amount || 0), 0);
-    const termYears = inv.start_date && inv.maturity_date
-      ? differenceInDays(new Date(inv.maturity_date), new Date(inv.start_date)) / 365
-      : 3;
-    const totalInterest = inv.principal_usd * (inv.interest_rate / 100) * termYears;
-    const totalDue = inv.principal_usd + totalInterest;
-    const nextPayDisplay = inv.interest_schedule === "Monthly"
-      ? format(addMonths(new Date(inv.start_date), investorPayments.filter(p => p.investor_id === inv.id).length + 1), "d.M.yy")
-      : format(new Date(inv.maturity_date), "MMM yyyy");
-    return {
-      name: inv.name,
-      principal: fmt(inv.principal_usd),
-      rate: `${inv.interest_rate}%`,
-      schedule: inv.interest_schedule === "Monthly" ? `חודשי $${(inv.monthly_payment || 0).toFixed(0)}` : "בפירעון",
-      paid: fmt(paid),
-      next: nextPayDisplay,
-    };
-  });
+  // Auto-detect upcoming events
+  const events = getUpcomingEvents(options, ibOptions, investors, openLev, today);
 
-  // Risks
+  // Asset allocation (PIE CHART) — from ALL sources
+  const mstrLevVal = openLev.filter(l => l.asset?.toUpperCase() === "MSTR").reduce((s, l) => s + Math.abs(l.calcValue || 0), 0);
+  const ibOther = Math.max(0, (ib_nav || 0) - mstrLevVal);
+  const pieSlices = [
+    { name: "WBTC", val: btcVal, color: "#f7931a" },
+    { name: "ETH", val: ethVal, color: "#627eea" },
+    { name: "AAVE", val: aaveTokenVal, color: "#b878e8" },
+    { name: "MSTR", val: mstrLevVal, color: "#3b82f6" },
+    { name: "IB", val: ibOther, color: "#10b981" },
+  ].filter(s => s.val > 0);
+  const pieTotal = pieSlices.reduce((s, sl) => s + sl.val, 0) || 1;
+
+  // P&L by strategy (BAR CHART)
+  const ryskPremium = options.reduce((s, o) => s + (o.income_usd || 0), 0);
+  const levPnl = openLev.reduce((s, l) => s + (l.calcPnl || 0), 0);
+  const aaveYield = aaveCollateral.reduce((s, a) => s + ((a.supply_apy || 0) / 100) * (a.units || 0) * ((a.token?.toUpperCase().includes("ETH") ? eth_price : a.token?.toUpperCase().includes("BTC") ? btc_price : a.token?.toUpperCase() === "AAVE" ? aave_price : 0) || 0) / 52, 0);
+  const barItems = [
+    { label: "IB Options", val: ib_options_pnl || 0 },
+    { label: "Rysk Finance", val: ryskPremium },
+    { label: "Aave Yield", val: Math.round(aaveYield) },
+    { label: "IB Stocks", val: ib_stocks_pnl || 0 },
+    { label: "HyperLiquid", val: Math.round(levPnl) },
+  ].filter(i => i.val !== 0);
+
+  // Risk assessment
   const risks = [];
   openLev.forEach(l => {
-    if (l.calcRoe != null && l.calcRoe < -100) risks.push({ color: "red", text: `${l.asset} בהפסד של ${l.calcRoe.toFixed(1)}%. שקלו סגירה.` });
-    if (l.distLiq != null && l.distLiq < 25) risks.push({ color: "red", text: `${l.asset} קרוב לחיסול — ${l.distLiq.toFixed(1)}% מרחק. פעולה דחופה!` });
-    else if (l.distLiq != null && l.distLiq < 35) risks.push({ color: "yellow", text: `${l.asset} — מעקב. ${l.distLiq.toFixed(1)}% מרחק מחיסול.` });
+    if (l.calcRoe != null && l.calcRoe < -100) risks.push({ color: "red", text: `${l.asset} ${l.leverage || ""}x — הפסד ${l.calcRoe.toFixed(0)}%, מרחק חיסול ${l.distLiq?.toFixed(1) || "?"}%. לשקול סגירה.` });
+    else if (l.distLiq != null && l.distLiq < 25) risks.push({ color: "red", text: `${l.asset} ${l.leverage || ""}x — מרחק חיסול ${l.distLiq.toFixed(1)}% ⚠ פעולה דחופה!` });
+    else if (l.distLiq != null && l.distLiq < 35) risks.push({ color: "yellow", text: `${l.asset} ${l.leverage || ""}x — מרחק חיסול ${l.distLiq.toFixed(1)}%. מעקב.` });
   });
   if (aave_hf) {
-    if (aave_hf < 1.5) risks.push({ color: "red", text: `Health Factor ${aave_hf} — סכנת חיסול!` });
-    else if (aave_hf < 2.0) risks.push({ color: "yellow", text: `Health Factor ${aave_hf} — זהירות.` });
-    else risks.push({ color: "green", text: `Health Factor ${aave_hf} — בטווח בטוח.` });
+    if (aave_hf < 1.5) risks.push({ color: "red", text: `Aave HF ${aave_hf} — סכנת חיסול!` });
+    else if (aave_hf < 2.0) risks.push({ color: "yellow", text: `Aave HF ${aave_hf} — זהירות.` });
+    else risks.push({ color: "green", text: `Aave HF ${aave_hf} — בטוח.` });
   }
-  const ibDownPct = ib_nav ? ((ib_nav - IB_DEPOSITED) / IB_DEPOSITED * 100) : null;
-  if (ibDownPct != null && ibDownPct < -40) risks.push({ color: "red", text: `תיק IB ירד ${Math.abs(ibDownPct).toFixed(1)}% מההשקעה המקורית — חמור.` });
-  else if (ibDownPct != null && ibDownPct < -20) risks.push({ color: "yellow", text: `תיק IB ירד ${Math.abs(ibDownPct).toFixed(1)}% מההשקעה המקורית.` });
-  if (expiringSoon.length > 0) risks.push({ color: "yellow", text: `${expiringSoon.length} אופציות פוקעות תוך 7 ימים. נדרש מעקב.` });
+  const ibPct = ib_nav ? ((ib_nav - IB_DEPOSITED) / IB_DEPOSITED * 100) : null;
+  if (ibPct != null && ibPct < -20) risks.push({ color: ibPct < -40 ? "red" : "yellow", text: `תיק IB ירד ${Math.abs(ibPct).toFixed(1)}% מההשקעה המקורית.` });
   if (risks.length === 0) risks.push({ color: "green", text: "לא זוהו סיכונים מהותיים." });
 
-  const periodStr = `${format(new Date(periodStart), "d.M.yy")} — ${format(new Date(periodEnd), "d.M.yy")}`;
+  // Investor rows
+  const investorRows = investors.map(inv => {
+    const paid = investorPayments.filter(p => p.investor_id === inv.id).reduce((s, p) => s + (p.amount || 0), 0);
+    const isILS = inv.interest_currency === "ILS";
+    const payDay = inv.payment_day_of_month || 1;
+    let nextPay = new Date(today.getFullYear(), today.getMonth(), payDay);
+    if (nextPay <= today) nextPay = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
+
+    const scheduleStr = inv.interest_schedule === "Monthly"
+      ? (isILS ? `${fmtILS(inv.monthly_payment)}/חודש נטו` : `${fmt(inv.monthly_payment)}/חודש`)
+      : "בפירעון";
+
+    const nextPayStr = inv.interest_schedule === "Monthly"
+      ? format(nextPay, "d.M.yy")
+      : format(new Date(inv.maturity_date), "M/yyyy");
+
+    return { name: inv.name, principal: fmt(inv.principal_usd), rate: `${inv.interest_rate}%`, schedule: scheduleStr, paid: fmt(paid), next: nextPayStr };
+  });
+  const totalPrincipal = investors.reduce((s, i) => s + (i.principal_usd || 0), 0);
+  const totalPaid = investorPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+  const openOpts = options.filter(o => o.status === "Open");
+  const openIbOpts = ibOptions.filter(o => o.status === "Open");
 
   const css = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, 'David', sans-serif; direction: rtl; font-size: 11px; color: #1e293b; background: white; }
-    .page { width: 210mm; min-height: 297mm; padding: 10mm 12mm; page-break-after: always; position: relative; }
+    body { font-family: Arial, sans-serif; direction: rtl; font-size: 10px; color: #1e293b; background: white; }
+    .page { width: 210mm; min-height: 297mm; padding: 8mm 10mm; position: relative; page-break-after: always; }
     .page:last-child { page-break-after: auto; }
-    .header { background: #0f1e3c; color: white; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; }
-    .header-left h1 { font-size: 14px; font-weight: bold; }
-    .header-left p { font-size: 10px; color: #94a3b8; margin-top: 2px; }
-    .header-right { text-align: left; font-size: 10px; color: #94a3b8; }
-    .section-title { background: #1e40af; color: white; padding: 5px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; margin: 12px 0 6px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
-    th { background: #1e293b; color: white; padding: 5px 8px; text-align: right; font-weight: bold; }
-    td { padding: 4px 8px; border-bottom: 1px solid #e2e8f0; }
+    .hdr { background: #0f1e3c; color: white; padding: 5px 10px; border-radius: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; }
+    .hdr strong { font-size: 12px; }
+    .sec { font-size: 9px; font-weight: bold; background: #1e40af; color: white; padding: 3px 8px; border-radius: 3px; margin: 7px 0 4px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 9px; }
+    th { background: #1e293b; color: white; padding: 3px 6px; text-align: right; }
+    td { padding: 3px 6px; border-bottom: 1px solid #e2e8f0; }
     tr:nth-child(even) td { background: #f8fafc; }
-    .green { color: #16a34a; font-weight: bold; }
-    .red { color: #dc2626; font-weight: bold; }
-    .yellow { color: #b45309; }
-    .badge-green { background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 10px; font-size: 9px; }
-    .badge-yellow { background: #fef9c3; color: #854d0e; padding: 2px 6px; border-radius: 10px; font-size: 9px; }
-    .badge-red { background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 10px; font-size: 9px; }
-    .footer { position: absolute; bottom: 8mm; left: 12mm; right: 12mm; border-top: 1px solid #e2e8f0; padding-top: 5px; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
-    .alloc-bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin: 6px 0; }
-    .alloc-legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 9px; margin-bottom: 6px; }
-    .notes-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 8px 12px; margin: 6px 0; font-size: 10px; line-height: 1.5; }
+    .g { color: #16a34a; font-weight: bold; }
+    .r { color: #dc2626; font-weight: bold; }
+    .y { color: #b45309; }
+    .event-red { background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
+    .event-yellow { background: #fef9c3; border: 1px solid #fde047; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
+    .event-green { background: #dcfce7; border: 1px solid #86efac; border-radius: 4px; padding: 3px 8px; margin: 2px 0; font-size: 9px; }
+    .row2col { display: flex; gap: 10px; align-items: flex-start; }
+    .col-table { flex: 1.4; }
+    .col-chart { flex: 1; }
+    .legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; }
+    .legend-item { font-size: 8px; display: flex; align-items: center; gap: 3px; }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+    .footer { position: absolute; bottom: 6mm; left: 10mm; right: 10mm; border-top: 1px solid #e2e8f0; padding-top: 3px; display: flex; justify-content: space-between; font-size: 8px; color: #94a3b8; }
+    .risk-line { padding: 3px 8px; margin: 2px 0; font-size: 9px; border-radius: 3px; }
+    .notes-box { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 4px; padding: 5px 8px; font-size: 9px; line-height: 1.5; }
     @media print { .page { page-break-after: always; } }
   `;
 
-  const pageHeader = (pageNum) => `
-    <div class="header">
-      <div class="header-left">
-        <h1>Oasis Project G Ltd. · דוח ניהול השקעות שבועי</h1>
-        <p>לתקופה: ${periodStr}</p>
-      </div>
-      <div class="header-right">
-        הוכן ע״י: נדב<br>${todayStr}
-      </div>
-    </div>`;
+  const header = `<div class="hdr"><div><strong>Oasis Project G Ltd. · דוח שבועי</strong> | ${periodStr}</div><div>הוכן: נדב | ${todayStr}</div></div>`;
 
-  const pageFooter = (pageNum) => `
-    <div class="footer">
-      <span>Oasis Project G Ltd. · דוח פנימי · סודי</span>
-      <span>עמוד ${pageNum} מתוך 3</span>
-    </div>`;
+  // Events box HTML
+  const eventsHTML = events.length > 0
+    ? `<div class="sec">📅 אירועים קרובים</div><div>${events.map(e => `<div class="event-${e.urgency}">${e.urgency === "red" ? "🔴" : "🟡"} ${e.text}</div>`).join("")}</div>`
+    : `<div class="event-green">🟢 אין אירועים דחופים בשבועיים הקרובים.</div>`;
 
-  // Alloc bar HTML
-  const allocTotal = alloc.reduce((s, a) => s + a.val, 0) || 1;
-  const allocBarHTML = `
-    <div class="alloc-bar">
-      ${alloc.map(a => `<div style="width:${((a.val/allocTotal)*100).toFixed(1)}%;background:${a.color}"></div>`).join("")}
-    </div>
-    <div class="alloc-legend">
-      ${alloc.map(a => `<span><span style="display:inline-block;width:8px;height:8px;background:${a.color};border-radius:2px;margin-left:3px"></span>${a.name} ${((a.val/allocTotal)*100).toFixed(1)}%</span>`).join("")}
-    </div>`;
+  // Risks HTML
+  const riskColors = { red: "#fee2e2", yellow: "#fef9c3", green: "#dcfce7" };
+  const riskDots = { red: "🔴", yellow: "🟡", green: "🟢" };
+  const risksHTML = risks.map(r => `<div class="risk-line" style="background:${riskColors[r.color]}">${riskDots[r.color]} ${r.text}</div>`).join("");
 
-  const html = `<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width">
-<title>דוח שבועי - Oasis ${todayStr}</title>
-<style>${css}</style>
-</head>
-<body>
-
-<!-- PAGE 1 -->
-<div class="page">
-  ${pageHeader(1)}
-
-  <div class="section-title">1.1 · תמונה כוללת — Portfolio Overview</div>
-  ${table(
-    ["מדד", "ערך נוכחי", "שינוי משבוע שעבר"],
+  // Summary table
+  const summaryTable = table(
+    ["מדד", "ערך", "שינוי"],
     [
-      { cells: ["שווי תיק כולל", fmt(totalNav), diffStr(totalNav, prevTotal)] },
+      { cells: ["שווי תיק כולל", `<strong>${fmt(totalNav)}</strong>`, diffStr(totalNav, prevTotal)] },
       { cells: ["Off-Chain (IB)", fmt(ib_nav), diffStr(ib_nav, prevIbNav)] },
       { cells: ["On-Chain (קריפטו)", fmt(onChainNav), diffStr(onChainNav, prevOnChain)] },
-      { cells: ["מחיר BTC", fmt(btc_price), diffStr(btc_price, prevBtc)] },
-      { cells: ["מחיר ETH", fmt(eth_price), diffStr(eth_price, prevEth)] },
+      { cells: ["BTC", fmt(btc_price), diffStr(btc_price, prevBtc)] },
+      { cells: ["ETH", fmt(eth_price), diffStr(eth_price, prevEth)] },
     ]
-  )}
+  );
 
-  <div class="section-title">1.2 · הקצאת נכסים</div>
-  ${allocBarHTML}
+  // Pie chart + legend
+  const pieSvg = svgPie(pieSlices, 130);
+  const legend = `<div class="legend">${pieSlices.map(sl => `<span class="legend-item"><span class="dot" style="background:${sl.color}"></span>${sl.name} ${((sl.val / pieTotal) * 100).toFixed(1)}%</span>`).join("")}</div>`;
 
-  <div class="section-title">1.3 · פעולות עיקריות השבוע</div>
-  ${manager_notes
-    ? `<div class="notes-box">${manager_notes.replace(/\n/g, "<br>")}</div>`
-    : `<p style="color:#94a3b8;font-size:10px;padding:6px 0;">לא הוזנו הערות לדוח זה.</p>`}
+  // Bar chart
+  const barSvg = svgBars(barItems);
 
-  ${pageFooter(1)}
-</div>
-
-<!-- PAGE 2 -->
+  const page1 = `
 <div class="page">
-  ${pageHeader(2)}
+  ${header}
+  ${eventsHTML}
+  <div class="sec">1 · תמונה כוללת</div>
+  <div class="row2col">
+    <div class="col-table">${summaryTable}</div>
+    <div class="col-chart">
+      ${pieSvg}
+      ${legend}
+    </div>
+  </div>
+  <div class="sec">2 · ביצועים לפי אסטרטגיה</div>
+  ${barSvg}
+  <div class="sec">3 · הערכת סיכונים</div>
+  ${risksHTML}
+  ${manager_notes ? `<div class="sec">4 · הערות מנהל</div><div class="notes-box">${manager_notes.replace(/\n/g, "<br>")}</div>` : ""}
+  <div class="footer"><span>Oasis Project G Ltd. · סודי</span><span>עמוד 1 מתוך 2</span></div>
+</div>`;
 
-  <div class="section-title">2.1 · Off-Chain · Interactive Brokers</div>
-  ${table(
+  // === PAGE 2 ===
+
+  // IB table
+  const ibTable = table(
     ["מדד", "סכום"],
     [
       { cells: ["NAV תיק IB", fmt(ib_nav)], highlight: ib_nav < IB_DEPOSITED * 0.75 ? "yellow" : null },
       { cells: ["הון שהופקד", fmt(IB_DEPOSITED)] },
-      { cells: ["רווח/הפסד כולל", `<span class="${(ib_nav - IB_DEPOSITED) >= 0 ? "green" : "red"}">${fmt(ib_nav - IB_DEPOSITED)} (${fmtPct((ib_nav - IB_DEPOSITED) / IB_DEPOSITED * 100)})</span>`] },
-      { cells: ["P&L אופציות (ממומש)", `<span class="${(ib_options_pnl||0) >= 0 ? "green" : "red"}">${fmt(ib_options_pnl)}</span>`] },
-      { cells: ["P&L מניות (לא ממומש)", `<span class="${(ib_stocks_pnl||0) >= 0 ? "green" : "red"}">${fmt(ib_stocks_pnl)}</span>`] },
-      { cells: ["פרמיה שנגבתה (מצטבר)", `<span class="green">${fmt(ib_premium_total)}</span>`] },
+      { cells: ["P&L כולל", `<span class="${(ib_nav - IB_DEPOSITED) >= 0 ? "g" : "r"}">${fmt(ib_nav - IB_DEPOSITED)} (${fmtPct((ib_nav - IB_DEPOSITED) / IB_DEPOSITED * 100)})</span>`] },
+      { cells: ["P&L אופציות (ממומש)", `<span class="${(ib_options_pnl || 0) >= 0 ? "g" : "r"}">${fmt(ib_options_pnl)}</span>`] },
       { cells: ["Win Rate אופציות", ib_win_rate != null ? `${ib_win_rate}%` : "—"] },
     ]
-  )}
+  );
 
-  <div class="section-title">2.2 · חוב למשקיעים Off-Chain</div>
-  ${table(
-    ["משקיע", "קרן", "ריבית", "לוח תשלומים", "ריבית ששולמה", "תשלום הבא"],
+  // Investors table
+  const investorsTable = table(
+    ["משקיע", "קרן", "ריבית", "תשלום", "ששולם", "הבא"],
     [
       ...investorRows.map(r => ({ cells: [r.name, r.principal, r.rate, r.schedule, r.paid, r.next] })),
-      { cells: [`<strong>סה״כ</strong>`, `<strong>${fmt(investors.reduce((s,i)=>s+(i.principal_usd||0),0))}</strong>`, "", "", `<strong>${fmt(investorPayments.reduce((s,p)=>s+(p.amount||0),0))}</strong>`, ""], highlight: null },
+      { cells: [`<strong>סה״כ</strong>`, `<strong>${fmt(totalPrincipal)}</strong>`, "", "", `<strong>${fmt(totalPaid)}</strong>`, ""] },
     ]
-  )}
+  );
 
-  <div class="section-title">2.3 · On-Chain · Aave V3</div>
-  ${table(
-    ["מדד", "סכום"],
+  // Aave table
+  const aaveRows = aaveCollateral.map(a => {
+    const priceMap = { "ETH": eth_price, "WETH": eth_price, "WBTC": btc_price, "BTC": btc_price, "AAVE": aave_price };
+    const p = Object.entries(priceMap).find(([k]) => a.token?.toUpperCase().includes(k))?.[1] || 0;
+    const val = (a.units || 0) * p;
+    return { cells: [a.token, (a.units || 0).toFixed(4), fmt(val)] };
+  });
+  const aaveTable = table(
+    ["בטוחה", "יחידות", "שווי"],
     [
-      { cells: [`ETH בבטוחה (${ethUnits.toFixed(2)} יח')`, fmt(ethUnits * eth_price)] },
-      { cells: [`WBTC/BTC בבטוחה (${wbtcUnits.toFixed(4)} יח')`, fmt(wbtcUnits * btc_price)] },
-      { cells: [`AAVE בבטוחה (${aaveTokenUnits.toFixed(2)} יח')`, fmt(aaveTokenUnits * aave_price)] },
-      { cells: ["<strong>סה״כ בטוחות</strong>", `<strong>${fmt(collateralUSD)}</strong>`] },
-      { cells: ["חוב USDC", `<span class="red">${fmt(aave_borrowed)}</span>`] },
-      { cells: ["שווי נקי Aave", `<span class="${onChainNav >= 0 ? "green" : "red"}">${fmt(onChainNav)}</span>`] },
-      { cells: ["Health Factor", `<span class="${aave_hf >= 2 ? "green" : aave_hf >= 1.5 ? "yellow" : "red"}">${aave_hf || "—"}</span>`] },
+      ...aaveRows,
+      { cells: [`<strong>סה״כ בטוחות</strong>`, "", `<strong>${fmt(collateralUSD)}</strong>`] },
+      { cells: ["חוב USDC", "", `<span class="r">${fmt(aave_borrowed)}</span>`] },
+      { cells: ["<strong>נקי</strong>", `HF: ${aave_hf || "—"}`, `<strong class="${onChainNav >= 0 ? "g" : "r"}">${fmt(onChainNav)}</strong>`] },
     ]
-  )}
+  );
 
-  <div class="section-title">2.4 · HyperLiquid — פוזיציות ממונפות</div>
-  ${openLev.length > 0 ? table(
-    ["נכס", "כיוון", "מינוף", "שווי פוזיציה", "P&L", "ROE%", "מרחק חיסול"],
+  // HL table
+  const hlTable = openLev.length > 0 ? table(
+    ["נכס", "כיוון", "מינוף", "שווי", "P&L", "ROE%", "מרחק חיסול"],
     openLev.map(l => ({
       cells: [
-        l.asset,
-        l.direction === "Long" ? "Long ▲" : "Short ▼",
-        `${l.leverage || "—"}x`,
+        `<strong>${l.asset}</strong>`, l.direction === "Long" ? "Long ▲" : "Short ▼", `${l.leverage || "—"}x`,
         fmt(l.calcValue),
-        `<span class="${(l.calcPnl||0) >= 0 ? "green" : "red"}">${fmt(l.calcPnl)}</span>`,
-        l.calcRoe != null ? `<span class="${l.calcRoe >= 0 ? "green" : l.calcRoe < -100 ? "red" : "yellow"}">${l.calcRoe.toFixed(1)}%</span>` : "—",
-        l.distLiq != null ? `<span class="${l.distLiq < 25 ? "red" : l.distLiq < 35 ? "yellow" : "green"}">${l.distLiq.toFixed(1)}%</span>` : "—",
+        `<span class="${(l.calcPnl || 0) >= 0 ? "g" : "r"}">${fmt(l.calcPnl)}</span>`,
+        l.calcRoe != null ? `<span class="${l.calcRoe >= 0 ? "g" : l.calcRoe < -100 ? "r" : "y"}">${l.calcRoe.toFixed(1)}%</span>` : "—",
+        l.distLiq != null ? `<span class="${l.distLiq < 25 ? "r" : l.distLiq < 35 ? "y" : "g"}">${l.distLiq.toFixed(1)}%</span>` : "—",
       ],
       highlight: l.distLiq < 25 ? "red" : (l.calcRoe != null && l.calcRoe < -100) ? "red" : null
     }))
-  ) : "<p style='color:#94a3b8;padding:6px 0;font-size:10px;'>אין פוזיציות פתוחות</p>"}
+  ) : "<p style='color:#94a3b8;padding:4px 0;'>אין פוזיציות פתוחות</p>";
 
-  <div class="section-title">2.5 · אופציות · Rysk Finance</div>
-  ${openOpts.length > 0 ? table(
-    ["נכס", "סוג", "Strike", "פרמיה", "APR", "פקיעה", "סטטוס"],
-    openOpts.map(o => {
-      const isOTM = o.strike_price && o.current_price ? (o.option_type === "Put" ? o.current_price > o.strike_price : o.current_price < o.strike_price) : null;
-      const daysLeft = o.maturity_date ? differenceInDays(new Date(o.maturity_date), today) : null;
+  // Rysk options
+  const ryskTable = openOpts.length > 0 ? table(
+    ["נכס", "סוג", "Strike", "פרמיה", "פקיעה"],
+    openOpts.map(o => ({ cells: [o.asset, `${o.direction} ${o.option_type}`, o.strike_price ? fmt(o.strike_price) : "—", `<span class="g">${fmt(o.income_usd, 2)}</span>`, o.maturity_date ? format(new Date(o.maturity_date), "d.M.yy") : "—"] }))
+  ) : "<p style='color:#94a3b8;padding:3px 0;'>אין</p>";
+
+  // IB options
+  const ibOptsTable = openIbOpts.length > 0 ? table(
+    ["Ticker", "סוג", "Strike", "Fill", "Qty", "Collateral", "פקיעה"],
+    openIbOpts.map(o => {
+      const daysLeft = o.expiration_date ? differenceInDays(new Date(o.expiration_date), today) : null;
       return {
-        cells: [
-          o.asset,
-          `${o.direction} ${o.option_type}`,
-          o.strike_price ? fmt(o.strike_price) : "—",
-          `<span class="green">${fmt(o.income_usd, 2)}</span>`,
-          o.apr_percent ? `${o.apr_percent.toFixed(1)}%` : "—",
-          o.maturity_date ? format(new Date(o.maturity_date), "d.M.yy") : "—",
-          isOTM == null ? "—" : isOTM ? `<span class="badge-green">OTM ✓</span>` : `<span class="badge-red">ITM</span>`,
-        ],
+        cells: [`<strong>${o.ticker}</strong>`, `${o.type} ${o.category}`, o.strike ? fmt(o.strike) : "—", `$${o.fill_price || 0}`, o.quantity || "—", fmt(o.collateral), o.expiration_date ? format(new Date(o.expiration_date), "d.M.yy") : "—"],
         highlight: daysLeft != null && daysLeft <= 7 ? "yellow" : null
       };
     })
-  ) : "<p style='color:#94a3b8;padding:6px 0;font-size:10px;'>אין אופציות פתוחות</p>"}
+  ) : "<p style='color:#94a3b8;padding:3px 0;'>אין</p>";
 
-  <div class="section-title">2.6 · Off-Chain · IB Options Trades</div>
-  ${(() => {
-    const openIb = ibOptions.filter(o => o.status === "Open");
-    if (openIb.length === 0) return "<p style='color:#94a3b8;padding:6px 0;font-size:10px;'>אין עסקאות פתוחות</p>";
-    return table(
-      ["Ticker", "סוג", "Strike", "Strike 2", "כמות", "Fill Price", "Collateral", "P&L", "פקיעה"],
-      openIb.map(o => {
-        const daysLeft = o.expiration_date ? differenceInDays(new Date(o.expiration_date), today) : null;
-        return {
-          cells: [
-            `<strong>${o.ticker || "—"}</strong>`,
-            `${o.type} ${o.category}`,
-            o.strike ? fmt(o.strike) : "—",
-            o.strike_2 ? fmt(o.strike_2) : "—",
-            o.quantity || "—",
-            o.fill_price ? `$${o.fill_price.toFixed(2)}` : "—",
-            o.collateral ? fmt(o.collateral) : "—",
-            o.pnl != null ? `<span class="${o.pnl >= 0 ? "green" : "red"}">${fmt(o.pnl, 2)}</span>` : "—",
-            o.expiration_date ? format(new Date(o.expiration_date), "d.M.yy") : "—",
-          ],
-          highlight: daysLeft != null && daysLeft <= 7 ? "yellow" : null
-        };
-      })
-    );
-  })()}
-
-  ${pageFooter(2)}
-</div>
-
-<!-- PAGE 3 -->
+  const page2 = `
 <div class="page">
-  ${pageHeader(3)}
-
-  <div class="section-title">3.1 · הערכת סיכונים</div>
-  <div style="margin-bottom:10px;">
-    ${risks.map(r => riskRow(r.color, r.text)).join("")}
+  ${header}
+  <div class="row2col" style="align-items:flex-start;gap:12px;">
+    <div style="flex:1">
+      <div class="sec">5 · IB — Off-Chain</div>
+      ${ibTable}
+      <div class="sec">6 · חוב למשקיעים</div>
+      ${investorsTable}
+    </div>
+    <div style="flex:1">
+      <div class="sec">7 · Aave V3 — On-Chain</div>
+      ${aaveTable}
+    </div>
   </div>
+  <div class="sec">8 · HyperLiquid — ממונף</div>
+  ${hlTable}
+  <div class="row2col" style="gap:12px;">
+    <div style="flex:1">
+      <div class="sec">9a · אופציות Rysk</div>
+      ${ryskTable}
+    </div>
+    <div style="flex:1">
+      <div class="sec">9b · אופציות IB</div>
+      ${ibOptsTable}
+    </div>
+  </div>
+  <div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 2 מתוך 2</span></div>
+</div>`;
 
-  ${manager_notes ? `
-  <div class="section-title">3.2 · הערות המנהל</div>
-  <div class="notes-box">${manager_notes.replace(/\n/g, "<br>")}</div>
-  ` : ""}
-
-  <div class="section-title">3.3 · סיכום אופציות</div>
-  ${table(
-    ["מדד", "Rysk Finance", "IB Options"],
-    [
-      { cells: ["פוזיציות פתוחות", openOpts.length.toString(), ibOptions.filter(o=>o.status==="Open").length.toString()] },
-      { cells: ["Win Rate",
-        options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length > 0
-          ? `${(options.filter(o=>o.status==="Expired OTM").length / options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length * 100).toFixed(0)}%`
-          : "—",
-        (() => { const closed = ibOptions.filter(o=>["Closed","Expired","Assigned"].includes(o.status)); return closed.length > 0 ? `${(closed.filter(o=>(o.pnl||0)>0).length/closed.length*100).toFixed(0)}%` : "—"; })()
-      ]},
-      { cells: ["סה״כ פרמיה", fmt(options.reduce((s,o)=>s+(o.income_usd||0),0),2),
-        fmt(ibOptions.filter(o=>o.type==="Sell").reduce((s,o)=>s+(o.fill_price||0)*(o.quantity||0)*100,0),2)] },
-    ]
-  )}
-
-  ${pageFooter(3)}
-</div>
-
-<div style="text-align:center;padding:20px;font-size:12px;color:#94a3b8;display:none;" id="print-hint">
-  השתמש ב-Ctrl+P / Cmd+P כדי לשמור כ-PDF
-</div>
-
-<script>
-  document.getElementById('print-hint').style.display='block';
-  setTimeout(() => window.print(), 800);
-</script>
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>דוח שבועי — Oasis ${todayStr}</title>
+<style>${css}</style>
+</head>
+<body>
+${page1}
+${page2}
+<script>setTimeout(() => window.print(), 600);</script>
 </body>
 </html>`;
-
-  return html;
 }

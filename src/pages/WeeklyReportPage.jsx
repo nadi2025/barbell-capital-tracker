@@ -55,33 +55,20 @@ export default function WeeklyReportPage() {
 
     const lastReport = reportsList[0];
 
+    const latestLev = [...leveraged].sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date))[0];
+    const latestOpt = [...optionsList].sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date))[0];
+    const latestInv = [...investors].sort((a, b) => new Date(b.updated_date) - new Date(a.updated_date))[0];
+
     setAppData({
       assets,
       leveraged: leveraged.filter(l => l.status === "Open"),
       aaveAccount: aaveAccounts[0] || null,
-      aaveCollateral,
-      options: optionsList,
-      ibOptions,
-      investors,
-      payments,
-      // Defaults for wizard
-      defaults: {
-        ib_nav: lastReport?.ib_nav || snapshots[0]?.nav || null,
-        ib_options_pnl: lastReport?.wizard_ib_options_pnl || 0,
-        ib_stocks_pnl: lastReport?.wizard_ib_stocks_pnl || 0,
-        ib_premium_total: lastReport?.wizard_ib_premium_total || null,
-        ib_win_rate: (() => {
-          const closed = ibOptions.filter(o => o.status === "Closed" || o.status === "Expired" || o.status === "Assigned");
-          if (closed.length === 0) return null;
-          const wins = closed.filter(o => (o.pnl || 0) > 0).length;
-          return Math.round((wins / closed.length) * 100);
-        })(),
-
-        aave_borrowed: aaveAccounts[0]?.borrow_usd || lastReport?.wizard_aave_borrowed || null,
-        aave_hf: aaveAccounts[0]?.health_factor || lastReport?.wizard_aave_hf || null,
-        manager_notes: "",
-        on_chain_nav: null,
-      },
+      dataSources: [
+        { label: "Aave Account", path: "/crypto/aave", lastUpdated: aaveAccounts[0]?.updated_date },
+        { label: "HyperLiquid Positions", path: "/crypto/leveraged", lastUpdated: latestLev?.updated_date },
+        { label: "Options (Rysk)", path: "/crypto/options", lastUpdated: latestOpt?.updated_date },
+        { label: "Off-Chain Investors", path: "/offchain-investors", lastUpdated: latestInv?.updated_date },
+      ],
       prevReport: lastReport ? {
         ib_nav: lastReport.ib_nav,
         btc_price: lastReport.wizard_btc_price,
@@ -108,15 +95,19 @@ export default function WeeklyReportPage() {
       const aave_price = getPrice("AAVE");
       const mstr_price = getPrice("MSTR");
 
-      // Merge prices into answers
-      const fullAnswers = { ...answers, btc_price, eth_price, aave_price, mstr_price };
+      // Aave data comes from entity, not wizard
+      const aave_borrowed = appData.aaveAccount?.borrow_usd || 0;
+      const aave_hf = appData.aaveAccount?.health_factor || null;
+
+      // Merge all into fullAnswers
+      const fullAnswers = { ...answers, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf };
 
       // Recalculate on-chain NAV for saving
-      const ethUnits = appData.aaveCollateral.find(a => a.token?.includes("ETH"))?.units || 0;
+      const ethUnits = appData.aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
       const wbtcUnits = appData.aaveCollateral.find(a => a.token?.includes("BTC") || a.token?.includes("WBTC"))?.units || 0;
       const aaveTokenUnits = appData.aaveCollateral.find(a => a.token === "AAVE")?.units || 0;
       const collateral = (ethUnits * eth_price) + (wbtcUnits * btc_price) + (aaveTokenUnits * aave_price);
-      const onChainNav = collateral - (answers.aave_borrowed || 0);
+      const onChainNav = collateral - aave_borrowed;
 
       // Generate HTML report
       const html = generateReportHTML({
@@ -151,18 +142,12 @@ export default function WeeklyReportPage() {
         wizard_eth_price: eth_price,
         wizard_aave_price: aave_price,
         wizard_mstr_price: mstr_price,
-        wizard_aave_borrowed: answers.aave_borrowed,
-        wizard_aave_hf: answers.aave_hf,
+        wizard_aave_borrowed: aave_borrowed,
+        wizard_aave_hf: aave_hf,
         wizard_on_chain_nav: onChainNav,
       });
 
-      // Update Aave account with fresh data
-      if (appData.aaveAccount) {
-        await base44.entities.AaveAccount.update(appData.aaveAccount.id, {
-          borrow_usd: answers.aave_borrowed,
-          health_factor: answers.aave_hf,
-        });
-      }
+      // Aave data is managed on the Aave page, not updated from wizard
 
       // Prices are updated via fetchLivePrices — no manual update needed here
 
@@ -306,6 +291,7 @@ export default function WeeklyReportPage() {
       {step === "wizard" && appData && (
         <ReportWizard
           defaults={appData.defaults}
+          dataSources={appData.dataSources}
           onComplete={handleWizardComplete}
           onCancel={() => setStep(null)}
         />
