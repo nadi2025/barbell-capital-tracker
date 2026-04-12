@@ -1,0 +1,38 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+
+    // Fetch live prices
+    const res = await base44.integrations.Core.InvokeLLM({
+      prompt: 'Get current market prices for BTC, ETH, AAVE in USD. Return ONLY a JSON object with keys "BTC", "ETH", "AAVE" and their USD prices as numbers.',
+      add_context_from_internet: true,
+      response_json_schema: {
+        type: 'object',
+        properties: {
+          BTC: { type: 'number' },
+          ETH: { type: 'number' },
+          AAVE: { type: 'number' }
+        }
+      }
+    });
+
+    // Update Prices entity
+    const prices = res.data;
+    for (const [asset, price] of Object.entries(prices)) {
+      if (price && price > 0) {
+        const existing = await base44.entities.Prices.filter({ asset });
+        if (existing.length > 0) {
+          await base44.entities.Prices.update(existing[0].id, { price_usd: price, last_updated: new Date().toISOString() });
+        } else {
+          await base44.entities.Prices.create({ asset, price_usd: price, last_updated: new Date().toISOString() });
+        }
+      }
+    }
+
+    return Response.json({ success: true, prices });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
