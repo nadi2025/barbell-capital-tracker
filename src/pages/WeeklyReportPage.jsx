@@ -28,7 +28,7 @@ export default function WeeklyReportPage() {
   const load = async () => {
     const [
       reportsList, assets, leveraged, aaveAccounts, aaveCollateral,
-      cryptoOptions, investors, payments, ibOptions
+      cryptoOptions, investors, payments, ibOptions, stocks
     ] = await Promise.all([
       base44.entities.WeeklyReport.list("-report_date", 50),
       base44.entities.CryptoAsset.list("-last_updated", 100),
@@ -39,9 +39,10 @@ export default function WeeklyReportPage() {
       base44.entities.OffChainInvestor.list(),
       base44.entities.InvestorPayment.list("-payment_date", 200),
       base44.entities.OptionsTrade.list("-open_date", 200),
+      base44.entities.StockPosition.filter({ status: "Holding" }),
     ]);
     setReports(reportsList);
-    setAppData({ assets, leveraged, aaveAccount: aaveAccounts[0] || null, aaveCollateral, cryptoOptions, investors, investorPayments: payments, ibOptions });
+    setAppData({ assets, leveraged, aaveAccount: aaveAccounts[0] || null, aaveCollateral, cryptoOptions, investors, investorPayments: payments, ibOptions, stocks });
     setLoading(false);
   };
 

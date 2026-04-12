@@ -32,7 +32,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const periodStart = format(new Date(new Date().setDate(today.getDate() - 7)), "d.M.yy");
   const periodEnd = format(today, "d.M.yy");
 
-  const { assets, aaveCollateral, aaveAccount, leveraged, investors, investorPayments, cryptoOptions, ibOptions } = appData;
+  const { assets, aaveCollateral, aaveAccount, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [] } = appData;
+  // Auto-calculate IB stocks P&L from StockPosition entity
+  const ibStocksPnl = stocks.reduce((s, st) => s + (st.gain_loss || 0), 0);
 
   // Prices
   const getPrice = (tokens, override) => {
@@ -128,7 +130,7 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     { label: "IB Options P&L", val: answers.ib_options_pnl },
     { label: "Rysk Premium", val: ryskPremium },
     { label: "Aave Yield", val: Math.round(aaveYield) },
-    { label: "IB Stocks", val: answers.ib_stocks_pnl },
+    { label: "IB Stocks", val: ibStocksPnl },
     { label: "HyperLiquid", val: Math.round(hlPnl) },
   ].filter(b => b.val !== 0);
 
@@ -381,7 +383,7 @@ ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<
       <tr><td>P&L</td><td class="${clr(ibNav - 413000)}">${$(ibNav - 413000)} (${pct(((ibNav - 413000) / 413000) * 100)})</td></tr>
       <tr><td>P&L אופציות</td><td class="${clr(answers.ib_options_pnl)}">${$(answers.ib_options_pnl)}</td></tr>
       <tr><td>Win Rate IB</td><td>${answers.ib_win_rate || "—"}%</td></tr>
-      <tr><td>P&L מניות</td><td class="${clr(answers.ib_stocks_pnl)}">${$(answers.ib_stocks_pnl)}</td></tr>
+      <tr><td>P&L מניות (unrealized)</td><td class="${clr(ibStocksPnl)}">${$(ibStocksPnl)}</td></tr>
     </table>
 
     <div class="sec">B · חוב למשקיעים</div>
