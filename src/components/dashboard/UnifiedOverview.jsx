@@ -99,16 +99,14 @@ export default function UnifiedOverview({
       : (l.entry_price - l.mark_price) * l.size;
     return s + pnlCalc;
   }, 0);
-  const hlRealizedPnl = hlTrades
-    .filter(t => t.direction?.toLowerCase().includes("close"))
-    .reduce((s, t) => s + (t.closed_pnl || 0), 0);
-  const hlPnl = hlUnrealizedPnl + hlRealizedPnl;
+  // Dashboard shows Live PnL (unrealized only) to match HL page Live PnL card
+  const hlPnl = hlUnrealizedPnl;
 
   const barItems = [
     { label: "IB Options", val: realizedPnl, color: realizedPnl >= 0 ? "#22c55e" : "#ef4444" },
     { label: "Rysk Finance", val: ryskPremium, color: ryskPremium >= 0 ? "#22c55e" : "#ef4444" },
     { label: "Aave Yield", val: Math.round(aaveYield), color: "#22c55e" },
-    { label: "HyperLiquid", val: Math.round(hlPnl), color: hlPnl >= 0 ? "#22c55e" : "#ef4444", sub: `(${hlUnrealizedPnl >= 0 ? "+" : ""}${Math.round(hlUnrealizedPnl).toLocaleString()} unrealized)` },
+    { label: "HyperLiquid", val: Math.round(hlPnl), color: hlPnl >= 0 ? "#22c55e" : "#ef4444" },
     { label: "IB P&L", val: ibPnl, color: ibPnl >= 0 ? "#22c55e" : "#ef4444" },
   ].filter(b => Math.abs(b.val) > 0);
   const maxBarVal = Math.max(...barItems.map(b => Math.abs(b.val)), 1);
