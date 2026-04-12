@@ -27,12 +27,12 @@ export default function DebtPage() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const [d, deps] = await Promise.all([
+    const [dRes, depsRes] = await Promise.allSettled([
       base44.entities.DebtFacility.list("-start_date"),
       base44.entities.Deposit.list("-date"),
     ]);
-    setDebts(d);
-    setDebtDeposits(deps.filter(dep => dep.capital_source === "Debt Investment"));
+    if (dRes.status === "fulfilled") setDebts(dRes.value);
+    if (depsRes.status === "fulfilled") setDebtDeposits(depsRes.value.filter(dep => dep.capital_source === "Debt Investment"));
     setLoading(false);
   };
 
