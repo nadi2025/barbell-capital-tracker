@@ -190,7 +190,7 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
   const ibRemaining = Math.max(0, (ib_nav || 0) - pieMSTR);
 
   const pieSlices = [
-    { name: "WBTC/BTC", val: pieBTC, color: "#f7931a" },
+    { name: "BTC", val: pieBTC, color: "#f7931a" },
     { name: "ETH", val: pieETH, color: "#627eea" },
     { name: "AAVE", val: pieAAVE, color: "#b878e8" },
     { name: "MSTR", val: pieMSTR, color: "#3b82f6" },

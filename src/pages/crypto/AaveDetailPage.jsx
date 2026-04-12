@@ -15,10 +15,10 @@ const fmtK = (v) => {
   return fmt(v, 2);
 };
 
-const TOKEN_ICONS = { ETH: "Ξ", WBTC: "₿", AAVE: "👻", USDC: "$" };
-const TOKEN_COLORS = { ETH: "bg-[#627eea]/20 text-[#627eea]", WBTC: "bg-[#f7931a]/20 text-[#f7931a]", AAVE: "bg-[#b6509e]/20 text-[#b6509e]", USDC: "bg-[#2775ca]/20 text-[#2775ca]" };
+const TOKEN_ICONS = { ETH: "Ξ", WBTC: "₿", BTC: "₿", AAVE: "👻", USDC: "$" };
+const TOKEN_COLORS = { ETH: "bg-[#627eea]/20 text-[#627eea]", WBTC: "bg-[#f7931a]/20 text-[#f7931a]", BTC: "bg-[#f7931a]/20 text-[#f7931a]", AAVE: "bg-[#b6509e]/20 text-[#b6509e]", USDC: "bg-[#2775ca]/20 text-[#2775ca]" };
 
-const DEFAULT_PRICES = { ETH: 2185, WBTC: 71771, AAVE: 90.5 };
+const DEFAULT_PRICES = { ETH: 2185, WBTC: 71771, BTC: 71771, AAVE: 90.5 };
 
 export default function AaveDetailPage() {
   const [collaterals, setCollaterals] = useState([]);
@@ -54,11 +54,12 @@ export default function AaveDetailPage() {
       return null;
     };
     const ethPrice = getAssetPrice(["ETH", "WETH"]);
-    const wbtcPrice = getAssetPrice(["WBTC", "BTC"]);
+    const btcPrice = getAssetPrice(["BTC", "WBTC"]);
     const aavePrice = getAssetPrice(["AAVE"]);
     const newPrices = {
       ETH: ethPrice || DEFAULT_PRICES.ETH,
-      WBTC: wbtcPrice || DEFAULT_PRICES.WBTC,
+      WBTC: btcPrice || DEFAULT_PRICES.WBTC,
+      BTC: btcPrice || DEFAULT_PRICES.BTC,
       AAVE: aavePrice || DEFAULT_PRICES.AAVE,
     };
     setPrices(newPrices);
