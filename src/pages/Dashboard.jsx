@@ -326,14 +326,14 @@ export default function Dashboard() {
           <Row label="סה״כ חוב" value={fmt(cryptoTotalDebt)} valueClass="text-loss" />
 
           <SectionLabel label="פירוט נכסים" />
-          <Row label="Aave collateral" value={fmt(aaveCollateralValue)} />
+          <Row label="Aave - נטו" value={fmt(aaveNetWorth)} valueClass={aaveNetWorth >= 0 ? "text-profit" : "text-loss"} />
           <Row label="HyperLiquid equity" value={fmt(Math.max(0, hlEquity))} />
           <Row label="הלוואות שנתנו" value={fmt(loansGivenValue)} sub={`${cryptoLending.length} הלוואות`} />
           <Row label="מזומן / יציב" value={fmt(stablecoinsValue)} />
 
           <SectionLabel label="פירוט חוב" />
           <Row label="S&T Investor Debt" value={fmt(investorDebt)} valueClass="text-loss" />
-          <Row label="Aave Borrow" value={fmt(aaveBorrowUsd)} valueClass="text-loss" />
+
 
           <SectionLabel label="סיכון מהיר" />
           <div className="flex items-center justify-between py-1.5 border-b border-border/40">
