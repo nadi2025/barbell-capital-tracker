@@ -124,10 +124,7 @@ export default function Dashboard() {
   const vaultValue = 0;
   const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
   const stablecoinsValue = cryptoAssets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const ryskOptions = cryptoOptions.filter(o => o.status === "Open").reduce((s, o) => s + (o.income_usd || 0), 0);
-  const aaveNetWorth = aaveCollateralUsd - aaveBorrowUsd;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const cryptoNAV = aaveNetWorth + stablecoinsValue + ryskOptions + loansGivenValue;
 
   // ── Aave health ──
   const healthFactor = aaveAccount?.health_factor || (aaveCollateral.reduce((s, c) => {
@@ -187,7 +184,6 @@ export default function Dashboard() {
       {/* ══ UNIFIED OVERVIEW ══ */}
       <UnifiedOverview
         ibNav={ibNav}
-        cryptoNAV={cryptoNAV}
         onChainNAV={onChainNAV}
         totalDeposited={totalDeposited}
         investorDebt={investorDebt}
@@ -256,7 +252,7 @@ export default function Dashboard() {
             {ibNav > 0 && (
               <div className="h-full bg-profit" style={{ width: `${(ibNav / Math.max(ibNav, 1)) * 100}%` }} />
             )}
-            {cryptoNAV < 0 && (
+            {onChainNAV < 0 && (
               <div className="h-full bg-loss opacity-60" style={{ width: `100%` }} />
             )}
           </div>
