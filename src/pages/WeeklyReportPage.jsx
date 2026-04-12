@@ -63,6 +63,11 @@ export default function WeeklyReportPage() {
       assets,
       leveraged: leveraged.filter(l => l.status === "Open"),
       aaveAccount: aaveAccounts[0] || null,
+      aaveCollateral,
+      investors,
+      payments,
+      options: optionsList,
+      ibOptions,
       dataSources: [
         { label: "Aave Account", path: "/crypto/aave", lastUpdated: aaveAccounts[0]?.updated_date },
         { label: "HyperLiquid Positions", path: "/crypto/leveraged", lastUpdated: latestLev?.updated_date },
