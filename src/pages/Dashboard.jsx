@@ -125,7 +125,7 @@ export default function Dashboard() {
     return s + (l.margin_usd || 0) + pnl;
   }, 0);
   const vaultValue = 0;
-  const cryptoNAV = cryptoTotalAssets + loansGivenValue - cryptoTotalDebt;
+  const cryptoNAV = cryptoTotalAssets + loansGivenValue;
 
   // ── Aave health ──
   const healthFactor = aaveAccount?.health_factor || (aaveCollateral.reduce((s, c) => {
@@ -140,7 +140,7 @@ export default function Dashboard() {
   // ── Combined ──
   const totalNAV = ibNav + cryptoNAV;
   const totalInvested = totalDeposited + investorDebt; // IB deposits + crypto investor debt
-  const totalPnl = totalNAV - totalDeposited; // vs IB deposits only
+  const totalPnl = (ibNav - totalDeposited) + (cryptoNAV - cryptoTotalDebt); // Net P&L: (IB P&L) + (Crypto assets - all debts)
 
   // ── Alerts ──
   const alerts = [];
