@@ -43,10 +43,6 @@ export default function UnifiedOverview({
       const p = prices.find(x => x.asset?.toUpperCase() === t.toUpperCase());
       if (p?.price_usd) return p.price_usd;
     }
-    for (const t of tokens) {
-      const a = cryptoAssets.find(x => x.token?.toUpperCase() === t.toUpperCase());
-      if (a?.current_price_usd) return a.current_price_usd;
-    }
     return 0;
   };
 
@@ -64,13 +60,13 @@ export default function UnifiedOverview({
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
   // Pie data
-  const getCollateral = (tokens) => {
-    const unit = aaveCollateral.find(c => tokens.some(t => c.token?.toUpperCase() === t.toUpperCase()));
-    return unit?.units || 0;
-  };
-  const btcCollVal = getCollateral(["BTC", "WBTC"]) * btcPrice;
-  const ethCollVal = getCollateral(["ETH", "WETH"]) * ethPrice;
-  const aaveCollVal = getCollateral(["AAVE"]) * aavePrice;
+  // Aave collateral already has value_usd calculated in the collateralDetails array
+  const btcCollateral = aaveCollateral.find(c => c.asset_name === "BTC");
+  const ethCollateral = aaveCollateral.find(c => c.asset_name === "ETH");
+  const aaveCollateral_obj = aaveCollateral.find(c => c.asset_name === "AAVE");
+  const btcCollVal = btcCollateral?.value_usd || 0;
+  const ethCollVal = ethCollateral?.value_usd || 0;
+  const aaveCollVal = aaveCollateral_obj?.value_usd || 0;
 
   const hlByAsset = {};
   leveraged.forEach(l => {

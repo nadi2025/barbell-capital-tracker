@@ -40,9 +40,8 @@ export default function Dashboard() {
   const [cryptoLending, setCryptoLending] = useState([]);
   const [leveraged, setLeveraged] = useState([]);
   const [hlTrades, setHlTrades] = useState([]);
-  const [aaveAccount, setAaveAccount] = useState(null);
   const [aaveCollateral, setAaveCollateral] = useState([]);
-  const [aaveBorrow, setAaveBorrow] = useState(null);
+  const [aaveBorrow, setAaveBorrow] = useState({});
   const [cryptoOptions, setCryptoOptions] = useState([]);
   const [offChainInvestors, setOffChainInvestors] = useState([]);
   const [prices, setPrices] = useState([]);
@@ -51,7 +50,7 @@ export default function Dashboard() {
   const [fetchingLivePrices, setFetchingLivePrices] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci, hlt, pr] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, co, oci, hlt, pr, aavePos] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -61,9 +60,6 @@ export default function Dashboard() {
       base44.entities.CryptoLoan.filter({ status: "Active" }),
       base44.entities.CryptoLending.filter({ status: "Active" }),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
-      base44.entities.AaveAccount.list(),
-      base44.entities.AaveCollateral.list(),
-      base44.entities.AaveBorrow.list(),
       base44.entities.CryptoOptionsPosition.list(),
       base44.entities.OffChainInvestor.filter({ status: "Active" }),
       base44.entities.HLTrade.list("-trade_date", 500),
@@ -74,9 +70,8 @@ export default function Dashboard() {
     setCryptoAssets(ca); setCryptoLoans(cl); setCryptoLending(cle);
     setLeveraged(lev);
     setHlTrades(hlt || []);
-    setAaveAccount(aa[0] || null);
-    setAaveCollateral(ac);
-    setAaveBorrow(ab[0] || null);
+    setAaveCollateral(aavePos?.data?.collateralDetails || []);
+    setAaveBorrow({ borrow_usd: aavePos?.data?.borrowedAmount || 0, health_factor: aavePos?.data?.healthFactor || 0, borrow_power_used: aavePos?.data?.borrowPowerUsed || 0 });
     setCryptoOptions(co || []);
     setOffChainInvestors(oci || []);
     setPrices(pr || []);
@@ -117,10 +112,9 @@ export default function Dashboard() {
   const ibPnl = ibNav - totalDeposited;
   const ibPnlPct = totalDeposited > 0 ? ibPnl / totalDeposited : 0;
 
-  // ── On-Chain calcs ── USE CRYPTOASSET VALUES FOR CONSISTENCY WITH CRYPTODASHBOARD
-  // Aave collateral value from CryptoAsset (already has current_value_usd calculated)
-  const aaveCollateralValue = cryptoAssets.filter(a => a.asset_category === "Collateral on Aave").reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const aaveBorrowUsd = aaveAccount?.borrow_usd || 0;
+  // ── On-Chain calcs ── AAVE DATA FROM BACKEND FUNCTION
+  const aaveCollateralValue = aaveCollateral.reduce((s, c) => s + (c.value_usd || 0), 0);
+  const aaveBorrowUsd = aaveBorrow?.borrow_usd || 0;
   const loansGivenValue = cryptoLending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = cryptoLoans.reduce((s, l) => s + (l.principal_usd || 0), 0);
   const hlEquity = leveraged.reduce((s, l) => {
@@ -141,15 +135,9 @@ export default function Dashboard() {
   const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
 
-  // ── Aave health ──
-  const healthFactor = aaveAccount?.health_factor || (aaveCollateral.reduce((s, c) => {
-    const price = cryptoAssets.find(a => a.token?.toUpperCase() === c.token?.toUpperCase())?.current_price_usd || 0;
-    return s + (c.units * price * (c.liquidation_threshold / 100));
-  }, 0) / Math.max(aaveBorrowUsd, 1));
-  const borrowPowerUsed = aaveAccount?.borrow_power_used || (aaveBorrowUsd / Math.max(aaveCollateral.reduce((s, c) => {
-    const price = cryptoAssets.find(a => a.token?.toUpperCase() === c.token?.toUpperCase())?.current_price_usd || 0;
-    return s + (c.units * price * (c.liquidation_threshold / 100));
-  }, 0), 1));
+  // ── Aave health ── FROM BACKEND FUNCTION
+  const healthFactor = aaveBorrow?.health_factor || 0;
+  const borrowPowerUsed = aaveBorrow?.borrow_power_used || 0;
 
   // ── Combined ──
   const totalAssets = ibNav + cryptoTotalAssets_WithHL;
@@ -206,7 +194,6 @@ export default function Dashboard() {
         openOptions={openOptions}
         cryptoOptions={cryptoOptions}
         offChainInvestors={offChainInvestors}
-        aaveAccount={aaveAccount}
         realizedPnl={realizedPnl}
         ibPnl={ibPnl}
         cryptoTotalAssets_WithHL={cryptoTotalAssets_WithHL}
