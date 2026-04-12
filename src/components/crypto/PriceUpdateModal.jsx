@@ -73,7 +73,9 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
       net_value_usd: totalAssets - totalDebt, btc_price: btc || null, eth_price: eth || null, aave_price: aave || null,
     });
 
-    setSummary({ cryptoPrices: { BTC: btc, ETH: eth, AAVE: aave }, updatedAssets, updatedStocks, totalAssets, totalDebt });
+    const displayStockPrices = {};
+    updatedStocks.forEach(s => { displayStockPrices[s.ticker] = s.newPrice; });
+    setSummary({ cryptoPrices: { BTC: btc, ETH: eth, AAVE: aave }, stockPrices: displayStockPrices, updatedAssets, updatedStocks, totalAssets, totalDebt });
     setLoading(false);
     onUpdated && onUpdated();
   };
@@ -120,6 +122,21 @@ export default function PriceUpdateModal({ open, onClose, onUpdated }) {
                 ))}
               </div>
             </div>
+
+            {/* Stock prices grid */}
+            {Object.keys(summary.stockPrices || {}).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">מחירי מניות</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(summary.stockPrices).map(([ticker, price]) => (
+                    <div key={ticker} className="bg-muted/40 rounded-lg p-2 text-center">
+                      <p className="text-xs text-muted-foreground">{ticker}</p>
+                      <p className="text-sm font-bold font-mono">{fmt(price, 2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Updated crypto assets */}
             {summary.updatedAssets.length > 0 && (
