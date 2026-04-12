@@ -12,6 +12,7 @@ const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "cur
 
 export default function WeeklyReportPage() {
   const [step, setStep] = useState(null); // null | "wizard" | "generating"
+  const [lastHtml, setLastHtml] = useState(null);
   const [reports, setReports] = useState([]);
   const [appData, setAppData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,7 @@ export default function WeeklyReportPage() {
       aaveAccount: aaveAccounts[0] || null,
       aaveCollateral,
       options: optionsList,
+      ibOptions,
       investors,
       payments,
       // Defaults for wizard
@@ -127,7 +129,9 @@ export default function WeeklyReportPage() {
         aaveCollateral: appData.aaveCollateral,
         periodStart,
         periodEnd: today,
+        ibOptions: appData.ibOptions,
       });
+      setLastHtml(html);
 
       // Save report record with all wizard answers
       await base44.entities.WeeklyReport.create({
@@ -215,6 +219,11 @@ export default function WeeklyReportPage() {
         </div>
         {!step && (
           <div className="flex gap-2">
+            {lastHtml && (
+              <Button variant="outline" onClick={() => { const w = window.open("","_blank"); w.document.write(lastHtml); w.document.close(); }} className="gap-2">
+                <FileText className="w-4 h-4" /> הורד PDF
+              </Button>
+            )}
             <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2">
               <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "מעדכן..." : "עדכן מחירים"}

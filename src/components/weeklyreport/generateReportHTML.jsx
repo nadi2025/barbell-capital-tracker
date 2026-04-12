@@ -37,7 +37,7 @@ function riskRow(color, text) {
   return `<div style="background:${bg};border-radius:6px;padding:6px 10px;margin:4px 0;font-size:11px;">${dot} ${text}</div>`;
 }
 
-export function generateReportHTML({ wizardAnswers, prevReport, investors, investorPayments, options, leveraged, aaveCollateral, periodStart, periodEnd }) {
+export function generateReportHTML({ wizardAnswers, prevReport, investors, investorPayments, options, leveraged, aaveCollateral, periodStart, periodEnd, ibOptions = [] }) {
   const today = new Date();
   const todayStr = format(today, "dd.MM.yyyy");
 
@@ -303,6 +303,32 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
     })
   ) : "<p style='color:#94a3b8;padding:6px 0;font-size:10px;'>אין אופציות פתוחות</p>"}
 
+  <div class="section-title">2.6 · Off-Chain · IB Options Trades</div>
+  ${(() => {
+    const openIb = ibOptions.filter(o => o.status === "Open");
+    if (openIb.length === 0) return "<p style='color:#94a3b8;padding:6px 0;font-size:10px;'>אין עסקאות פתוחות</p>";
+    return table(
+      ["Ticker", "סוג", "Strike", "Strike 2", "כמות", "Fill Price", "Collateral", "P&L", "פקיעה"],
+      openIb.map(o => {
+        const daysLeft = o.expiration_date ? differenceInDays(new Date(o.expiration_date), today) : null;
+        return {
+          cells: [
+            `<strong>${o.ticker || "—"}</strong>`,
+            `${o.type} ${o.category}`,
+            o.strike ? fmt(o.strike) : "—",
+            o.strike_2 ? fmt(o.strike_2) : "—",
+            o.quantity || "—",
+            o.fill_price ? `$${o.fill_price.toFixed(2)}` : "—",
+            o.collateral ? fmt(o.collateral) : "—",
+            o.pnl != null ? `<span class="${o.pnl >= 0 ? "green" : "red"}">${fmt(o.pnl, 2)}</span>` : "—",
+            o.expiration_date ? format(new Date(o.expiration_date), "d.M.yy") : "—",
+          ],
+          highlight: daysLeft != null && daysLeft <= 7 ? "yellow" : null
+        };
+      })
+    );
+  })()}
+
   ${pageFooter(2)}
 </div>
 
@@ -320,16 +346,19 @@ export function generateReportHTML({ wizardAnswers, prevReport, investors, inves
   <div class="notes-box">${manager_notes.replace(/\n/g, "<br>")}</div>
   ` : ""}
 
-  <div class="section-title">3.3 · ריבית על אופציות Rysk — סיכום</div>
+  <div class="section-title">3.3 · סיכום אופציות</div>
   ${table(
-    ["מדד", "סכום"],
+    ["מדד", "Rysk Finance", "IB Options"],
     [
-      { cells: ["סה״כ פרמיה (Rysk)", fmt(options.reduce((s,o)=>s+(o.income_usd||0),0), 2)] },
-      { cells: ["אופציות פתוחות", openOpts.length.toString()] },
-      { cells: ["אופציות שפקעו OTM (win)", options.filter(o=>o.status==="Expired OTM").length.toString()] },
-      { cells: ["Win Rate Rysk", options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length > 0
-        ? `${(options.filter(o=>o.status==="Expired OTM").length / options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length * 100).toFixed(0)}%`
-        : "—"] },
+      { cells: ["פוזיציות פתוחות", openOpts.length.toString(), ibOptions.filter(o=>o.status==="Open").length.toString()] },
+      { cells: ["Win Rate",
+        options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length > 0
+          ? `${(options.filter(o=>o.status==="Expired OTM").length / options.filter(o=>["Expired OTM","Expired ITM","Exercised"].includes(o.status)).length * 100).toFixed(0)}%`
+          : "—",
+        (() => { const closed = ibOptions.filter(o=>["Closed","Expired","Assigned"].includes(o.status)); return closed.length > 0 ? `${(closed.filter(o=>(o.pnl||0)>0).length/closed.length*100).toFixed(0)}%` : "—"; })()
+      ]},
+      { cells: ["סה״כ פרמיה", fmt(options.reduce((s,o)=>s+(o.income_usd||0),0),2),
+        fmt(ibOptions.filter(o=>o.type==="Sell").reduce((s,o)=>s+(o.fill_price||0)*(o.quantity||0)*100,0),2)] },
     ]
   )}
 
