@@ -4,16 +4,21 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Fetch live prices
+    // Fetch live prices for crypto and stocks
     const res = await base44.integrations.Core.InvokeLLM({
-      prompt: 'Get current market prices for BTC, ETH, AAVE in USD. Return ONLY a JSON object with keys "BTC", "ETH", "AAVE" and their USD prices as numbers.',
+      prompt: 'Get current market prices in USD for: BTC, ETH, AAVE (crypto), MSTR, MARA, BMNR, SBET, STRC (stocks). Return ONLY a JSON object with keys as ticker symbols and their USD prices as numbers.',
       add_context_from_internet: true,
       response_json_schema: {
         type: 'object',
         properties: {
           BTC: { type: 'number' },
           ETH: { type: 'number' },
-          AAVE: { type: 'number' }
+          AAVE: { type: 'number' },
+          MSTR: { type: 'number' },
+          MARA: { type: 'number' },
+          BMNR: { type: 'number' },
+          SBET: { type: 'number' },
+          STRC: { type: 'number' }
         }
       }
     });
