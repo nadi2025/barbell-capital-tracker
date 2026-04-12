@@ -2,9 +2,14 @@
   "name": "AaveBorrow",
   "type": "object",
   "properties": {
-    "borrowed_token": {
+    "asset_name": {
       "type": "string",
-      "title": "Borrowed Token"
+      "title": "Borrowed Asset",
+      "enum": [
+        "USDC",
+        "USDT",
+        "DAI"
+      ]
     },
     "borrowed_amount": {
       "type": "number",
@@ -16,20 +21,16 @@
     },
     "e_mode": {
       "type": "string",
+      "title": "E-Mode Status",
       "enum": [
         "Enabled",
         "Disabled"
       ],
-      "title": "E-Mode"
-    },
-    "last_updated": {
-      "type": "string",
-      "format": "date",
-      "title": "Last Updated"
+      "default": "Disabled"
     }
   },
   "required": [
-    "borrowed_token",
+    "asset_name",
     "borrowed_amount"
   ]
 }

@@ -20,7 +20,7 @@ import CryptoDebtPage from './pages/crypto/CryptoDebtPage';
 import InvestorsPage from './pages/crypto/InvestorsPage';
 import ActivityPage from './pages/crypto/ActivityPage';
 import AavePage from './pages/crypto/AavePage';
-import AaveDetailPage from './pages/crypto/AaveDetailPage';
+import AaveAccountPage from './pages/crypto/AaveAccountPage';
 import CryptoOptionsPage from './pages/crypto/OptionsPage';
 import OffChainInvestorsPage from './pages/OffChainInvestorsPage';
 import WeeklyReportPage from './pages/WeeklyReportPage';
@@ -66,7 +66,7 @@ const AuthenticatedApp = () => {
         <Route path="/crypto/debt" element={<CryptoDebtPage />} />
         <Route path="/crypto/investors" element={<InvestorsPage />} />
         <Route path="/crypto/activity" element={<ActivityPage />} />
-        <Route path="/crypto/aave" element={<AaveDetailPage />} />
+        <Route path="/crypto/aave" element={<AaveAccountPage />} />
         <Route path="/crypto/options" element={<CryptoOptionsPage />} />
         <Route path="/offchain-investors" element={<OffChainInvestorsPage />} />
         <Route path="/weekly-report" element={<WeeklyReportPage />} />

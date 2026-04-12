@@ -2,18 +2,18 @@
   "name": "AaveCollateral",
   "type": "object",
   "properties": {
-    "token": {
+    "asset_name": {
       "type": "string",
-      "title": "Token"
+      "title": "Asset Name",
+      "enum": [
+        "BTC",
+        "ETH",
+        "AAVE"
+      ]
     },
     "units": {
       "type": "number",
-      "title": "Units"
-    },
-    "is_collateral_enabled": {
-      "type": "boolean",
-      "title": "Is Collateral Enabled",
-      "default": true
+      "title": "Units Supplied"
     },
     "supply_apy": {
       "type": "number",
@@ -21,16 +21,26 @@
     },
     "liquidation_threshold": {
       "type": "number",
-      "title": "Liquidation Threshold (%)"
+      "title": "Liquidation Threshold"
     },
-    "last_updated": {
+    "price_key": {
       "type": "string",
-      "format": "date",
-      "title": "Last Updated"
+      "title": "Price Key",
+      "enum": [
+        "BTC",
+        "ETH",
+        "AAVE"
+      ]
+    },
+    "is_collateral_enabled": {
+      "type": "boolean",
+      "title": "Collateral Enabled",
+      "default": true
     }
   },
   "required": [
-    "token",
-    "units"
+    "asset_name",
+    "units",
+    "price_key"
   ]
 }
