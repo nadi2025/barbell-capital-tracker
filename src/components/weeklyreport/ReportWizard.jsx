@@ -7,7 +7,6 @@ import { format } from "date-fns";
 const QUESTIONS = [
   { key: "ib_nav", label: "מה ה-NAV הנוכחי בתיק IB?", type: "number", unit: "USD", hint: "היכנס ל-IB ובדוק את שווי התיק הנוכחי" },
   { key: "ib_options_pnl", label: "מה ה-P&L הממומש על אופציות ב-IB השבוע?", type: "number", unit: "USD", hint: "יכול להיות שלילי. בדוק ב-IB תחת Realized P&L" },
-  { key: "ib_win_rate", label: "מה ה-Win Rate על אופציות ב-IB?", type: "number", unit: "%", hint: "אחוז עסקאות שהסתיימו ברווח" },
   { key: "manager_notes", label: "הערות או דגשים לדוח? (אופציונלי)", type: "textarea", unit: "", hint: "כל הערה שתרצה שתופיע בדוח" },
 ];
 

@@ -104,8 +104,13 @@ export default function WeeklyReportPage() {
       const aave_borrowed = appData.aaveAccount?.borrow_usd || 0;
       const aave_hf = appData.aaveAccount?.health_factor || null;
 
+      // Calculate win rate from OptionsTrade entity
+      const closedIbOptions = (appData.ibOptions || []).filter(o => ["Closed", "Assigned", "Expired"].includes(o.status));
+      const winCount = closedIbOptions.filter(o => (o.pnl || 0) > 0).length;
+      const ib_win_rate = closedIbOptions.length > 0 ? Math.round((winCount / closedIbOptions.length) * 100) : null;
+
       // Merge all into fullAnswers
-      const fullAnswers = { ...answers, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf };
+      const fullAnswers = { ...answers, btc_price, eth_price, aave_price, mstr_price, aave_borrowed, aave_hf, ib_win_rate };
 
       // Recalculate on-chain NAV for saving
       const ethUnits = appData.aaveCollateral.find(a => /eth/i.test(a.token))?.units || 0;
