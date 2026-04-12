@@ -366,7 +366,7 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 
 ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<br>")}</div>` : ""}
 
-<div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 1 מתוך 2</span></div>
+<div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 1 מתוך 3</span></div>
 
 <!-- PAGE 2 -->
 <div class="page-break"></div>
@@ -437,8 +437,33 @@ ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<
 </div>
 </div>
 
-<!-- Full width: Closed Options -->
-<div class="sec" style="margin-top:10px">G · אופציות שנסגרו — 30 ימים אחרונים</div>
+<div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 2 מתוך 3</span></div>
+
+<!-- PAGE 3 -->
+<div class="page-break"></div>
+
+<div class="hdr">
+  <strong>Oasis Project G Ltd. · נתוני קריפטו ומניות · ${periodStart} — ${periodEnd}</strong>
+  <span>${todayStr}</span>
+</div>
+
+<div class="sec">G · מחירי קריפטו בעמוד הדוח</div>
+<table>
+  <tr><th>נכס</th><th>מחיר נוכחי</th><th>יחידות בחזקה</th><th>שווי כולל</th></tr>
+  <tr><td><strong>BTC</strong></td><td>${$(btcP)}</td><td>${btcUnits.toFixed(4)}</td><td class="positive"><strong>${$(btcCollVal)}</strong></td></tr>
+  <tr><td><strong>ETH</strong></td><td>${$(ethP)}</td><td>${ethUnits.toFixed(3)}</td><td class="positive"><strong>${$(ethCollVal)}</strong></td></tr>
+  <tr><td><strong>AAVE</strong></td><td>${$(aaveP)}</td><td>${aaveTokenUnits.toFixed(2)}</td><td class="positive"><strong>${$(aaveCollValUSD)}</strong></td></tr>
+  <tr><td><strong>MSTR</strong></td><td>${$(mstrP)}</td><td>—</td><td>—</td></tr>
+  <tr><td><strong>Stablecoins</strong></td><td>$1.00</td><td>—</td><td class="positive"><strong>${$(stablecoins)}</strong></td></tr>
+</table>
+
+<div class="sec" style="margin-top:10px">H · מניות IB פתוחות</div>
+${stocks.filter(s => s.status !== "Closed").length > 0 ? `<table>
+  <tr><th>Ticker</th><th>מניות</th><th>עלות ממוצעת</th><th>מחיר נוכחי</th><th>P&L</th><th>P&L%</th></tr>
+  ${stocks.filter(s => s.status !== "Closed").map(s => `<tr><td><strong>${s.ticker}</strong></td><td>${s.shares}</td><td>${$(s.average_cost)}</td><td>${$(s.current_price)}</td><td class="${clr(s.gain_loss)}">${$(s.gain_loss)}</td><td class="${clr(s.gain_loss_pct)}">${pct(s.gain_loss_pct, 1)}</td></tr>`).join("")}
+</table>` : "<p style='color:#94a3b8;font-size:11px;padding:3px 0'>אין מניות פתוחות</p>"}
+
+<div class="sec" style="margin-top:10px">I · אופציות שנסגרו — 30 ימים אחרונים</div>
 ${closedOpts.length > 0 ? `<table>
   <tr><th>נכס</th><th>סוג</th><th>Strike</th><th>תוצאה</th><th>P&L</th><th>מקור</th></tr>
   ${closedTableRows}
@@ -446,7 +471,7 @@ ${closedOpts.length > 0 ? `<table>
 <div class="closed-summary">סה"כ 30 יום: <strong>${closedOpts.length}</strong> עסקאות | <strong class="positive">${closedWins} OTM (win)</strong> | <strong class="negative">${closedItm} ITM (assignment)</strong> | P&L נטו: <strong class="${clr(closedPnl)}">${$(closedPnl, 0)}</strong></div>`
 : "<p style='color:#94a3b8;font-size:11px;padding:3px 0'>אין עסקאות שנסגרו ב-30 ימים האחרונים</p>"}
 
-<div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 2 מתוך 2</span></div>
+<div class="footer"><span>Oasis Project G Ltd. · דוח פנימי · סודי</span><span>עמוד 3 מתוך 3</span></div>
 
 <script>
 (function() {
