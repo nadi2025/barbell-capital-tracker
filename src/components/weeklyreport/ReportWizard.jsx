@@ -16,7 +16,8 @@ export default function ReportWizard({ defaults, dataSources, onComplete, onCanc
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState(() => {
     const init = {};
-    QUESTIONS.forEach(q => { init[q.key] = defaults[q.key] != null ? String(defaults[q.key]) : ""; });
+    const d = defaults || {};
+    QUESTIONS.forEach(q => { init[q.key] = d[q.key] != null ? String(d[q.key]) : ""; });
     return init;
   });
 
