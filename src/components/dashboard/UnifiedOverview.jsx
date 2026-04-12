@@ -50,10 +50,20 @@ export default function UnifiedOverview({
   const aavePrice = getPrice(["AAVE"]);
   const mstrPrice = getPrice(["MSTR"]);
 
-  // Row 1 calcs
+  // Row 1 calcs (need total assets, not NAV for display)
   const totalInvested = totalDeposited + investorDebt;
-  const currentValue = ibNav + cryptoNAV;
-  const totalPnl = (ibNav - totalDeposited) + cryptoNAV;
+  const ibAssets = ibNav; // IB gross assets = NAV (no debts to subtract)
+  const cryptoAssets_WithHL = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0) + 
+    leveraged.reduce((s, l) => {
+      const pnl = l.mark_price && l.entry_price && l.size
+        ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
+        : 0;
+      return s + (l.margin_usd || 0) + pnl;
+    }, 0);
+  const totalGrossAssets = ibAssets + cryptoAssets_WithHL; // Total assets (no debts)
+  const totalAllDebts = (investorDebt * 0) + (aaveAccount?.borrow_usd || 0); // Just Aave borrow for now
+  const currentValue = totalGrossAssets - totalAllDebts; // Net value
+  const totalPnl = currentValue - totalInvested;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
   // Pie data

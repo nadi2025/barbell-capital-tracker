@@ -137,9 +137,11 @@ export default function Dashboard() {
   }, 0), 1));
 
   // ── Combined ──
-  const totalNAV = ibNav + cryptoNAV;
-  const totalInvested = totalDeposited + investorDebt; // IB deposits + crypto investor debt
-  const totalPnl = (ibNav - totalDeposited) + (cryptoNAV - cryptoTotalDebt); // Net P&L: (IB P&L) + (Crypto assets - all debts)
+  const totalAssets = ibNav + cryptoTotalAssets_WithHL; // Gross assets (Off + On chain, no debts deducted)
+  const totalInvested = totalDeposited + investorDebt; // Total invested capital
+  const totalAllDebts = totalOffChainDebt + cryptoTotalDebt; // All debts (Off + On chain)
+  const totalNAV = totalAssets - totalAllDebts; // Net = Assets - All Debts
+  const totalPnl = totalNAV - totalInvested; // P&L = Net - Invested
 
   // ── Alerts ──
   const alerts = [];
@@ -202,8 +204,9 @@ export default function Dashboard() {
       <div className="bg-card border border-border rounded-2xl p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">שווי תיק כולל</p>
-            <p className={`text-4xl font-bold font-mono mt-1 ${totalNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(totalNAV)}</p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">סה״כ נכסים</p>
+            <p className={`text-4xl font-bold font-mono mt-1 text-foreground`}>{fmt(totalAssets)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Off: {fmt(ibNav)} · On: {fmt(cryptoTotalAssets_WithHL)}</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{new Date().toLocaleDateString("he-IL")}</span>
