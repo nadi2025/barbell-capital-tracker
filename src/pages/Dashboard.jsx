@@ -139,6 +139,9 @@ export default function Dashboard() {
     return s + (c.units * price * (c.liquidation_threshold / 100));
   }, 0), 1));
 
+  // ── On-Chain NAV calculation (same as Crypto Dashboard) ──
+  const onChainNAV = aaveCollateralUsd - aaveBorrowUsd + stablecoinsValue + loansGivenValue;
+
   // ── Combined ──
   const totalAssets = ibNav + cryptoTotalAssets_WithHL; // Gross assets (Off + On chain, no debts deducted)
   const totalInvested = totalDeposited + investorDebt; // Total invested capital
@@ -244,7 +247,7 @@ export default function Dashboard() {
         <div>
           <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
             <span>Off-Chain (IB): <span className={ibNav >= 0 ? "text-profit font-semibold" : "text-loss font-semibold"}>{fmt(ibNav)}</span></span>
-            <span>On-Chain: <span className={cryptoNAV >= 0 ? "text-profit font-semibold" : "text-loss font-semibold"}>{fmt(cryptoNAV)}</span></span>
+            <span>On-Chain: <span className={onChainNAV >= 0 ? "text-profit font-semibold" : "text-loss font-semibold"}>{fmt(onChainNAV)}</span></span>
           </div>
           <div className="w-full h-2 bg-muted rounded-full overflow-hidden flex">
             {ibNav > 0 && (
@@ -303,7 +306,7 @@ export default function Dashboard() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-orange-400/80">On-Chain · Crypto · DeFi</h2>
           </div>
 
-          <Row label="NAV קריפטו" value={fmt(cryptoNAV)} valueClass={cryptoNAV >= 0 ? "text-profit" : "text-loss"} />
+          <Row label="On-Chain NAV" value={fmt(onChainNAV)} valueClass={onChainNAV >= 0 ? "text-profit" : "text-loss"} />
           <Row label="סה״כ נכסים" value={fmt(cryptoTotalAssets)} />
           <Row label="סה״כ חוב" value={fmt(cryptoTotalDebt)} valueClass="text-loss" />
 
