@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings } from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const offChainNav = [
@@ -40,10 +40,22 @@ export default function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [updatingPrices, setUpdatingPrices] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
+
+  const handleUpdatePrices = async () => {
+    setUpdatingPrices(true);
+    try {
+      await base44.functions.invoke('updatePricesDaily', {});
+      window.location.reload();
+    } catch (error) {
+      console.error('Error updating prices:', error);
+      setUpdatingPrices(false);
+    }
+  };
 
   const isAdmin = user?.role === "admin";
   const isPartner = user?.role === "partner";
@@ -166,6 +178,15 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </Button>
           <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 mr-4"
+            onClick={handleUpdatePrices}
+            disabled={updatingPrices}>
+            <RefreshCw className={`w-3.5 h-3.5 ${updatingPrices ? 'animate-spin' : ''}`} />
+            {updatingPrices ? 'עדכון...' : 'עדכן מחירים'}
+          </Button>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="hidden sm:inline">Oasis Project G Ltd.</span>
           </div>
