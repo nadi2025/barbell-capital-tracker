@@ -122,7 +122,7 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     { label: "IB", val: pieIB, color: "#10b981" },
     { label: "Stablecoins", val: pieStable, color: "#94a3b8" },
     { label: "Other", val: pieOther, color: "#e2e8f0" },
-  ].filter(s => s.val > 500);
+  ].filter(s => s.val > 0);
 
   // Bar chart data
   const ryskPremium = cryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0);
@@ -348,11 +348,11 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 <div class="charts-row">
   <div class="chart-box">
     <div class="title">הקצאת נכסים</div>
-    <canvas id="pieChart" width="260" height="180"></canvas>
+    <canvas id="pieChart" width="340" height="240"></canvas>
   </div>
   <div class="chart-box">
     <div class="title">ביצועים לפי אסטרטגיה</div>
-    <canvas id="barChart" width="260" height="180"></canvas>
+    <canvas id="barChart" width="340" height="240"></canvas>
   </div>
 </div>
 
@@ -452,8 +452,8 @@ ${closedOpts.length > 0 ? `<table>
 (function() {
   const pieData = ${pieChartJson};
   const barData = ${barChartJson};
-  new Chart(document.getElementById('pieChart'), { type: 'pie', data: pieData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'left', labels: { font: { size: 10, family: 'Arial' }, boxWidth: 12, padding: 6 } } } } });
-  new Chart(document.getElementById('barChart'), { type: 'bar', data: barData, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 9 }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#f1f5f9' } }, y: { ticks: { font: { size: 9 } } } } } });
+  new Chart(document.getElementById('pieChart'), { type: 'pie', data: pieData, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', align: 'center', labels: { font: { size: 11, weight: '500', family: 'Assistant, Arial' }, boxWidth: 14, padding: 10, usePointStyle: true, pointStyle: 'circle' } }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } } } });
+  new Chart(document.getElementById('barChart'), { type: 'bar', data: barData, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { padding: 10, font: { size: 11 }, backgroundColor: 'rgba(0,0,0,0.8)' } }, scales: { x: { ticks: { font: { size: 10, family: 'Assistant, Arial' }, callback: v => '$' + v.toLocaleString() }, grid: { color: '#e5e7eb', drawBorder: false }, beginAtZero: true }, y: { ticks: { font: { size: 10, family: 'Assistant, Arial' } }, grid: { display: false } } } } });
 })();
 </script>
 </body>
