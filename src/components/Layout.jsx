@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown } from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const offChainNav = [
@@ -26,6 +26,10 @@ const onChainNav = [
   { path: "/crypto/activity", label: "Activity Log", icon: FileText },
   { path: "/crypto/aave", label: "Aave Account", icon: Zap },
   { path: "/crypto/options", label: "Options", icon: TrendingDown },
+];
+
+const settingsNav = [
+  { path: "/settings/assets", label: "ניהול נכסים", icon: Settings },
 ];
 
 const navItems = [
@@ -102,6 +106,22 @@ export default function Layout() {
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isActive ? "bg-orange-500/15 text-orange-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                </Link>
+              );
+            })}
+          </div>
+          <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-4">הגדרות</p>
+          <div className="space-y-0.5">
+            {settingsNav.map((item) => {
+              const isActive = location.pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                    ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
                   <Icon className="w-4 h-4" />
                   {item.label}
                   {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
