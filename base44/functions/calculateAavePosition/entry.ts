@@ -17,7 +17,16 @@ Deno.serve(async (req) => {
     const priceMap = {};
     prices.forEach(p => { priceMap[p.asset] = p.price_usd; });
 
-    const collateralDetails = collaterals.map(c => {
+    // Deduplicate collaterals by asset_name (keep latest)
+    const uniqueCollaterals = {};
+    collaterals.forEach(c => {
+      const key = c.asset_name;
+      if (!uniqueCollaterals[key] || new Date(c.updated_date || c.created_date) > new Date(uniqueCollaterals[key].updated_date || uniqueCollaterals[key].created_date)) {
+        uniqueCollaterals[key] = c;
+      }
+    });
+
+    const collateralDetails = Object.values(uniqueCollaterals).map(c => {
       const price = priceMap[c.price_key] || 0;
       const value = c.units * price;
       return {
