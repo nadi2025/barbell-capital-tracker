@@ -7,30 +7,30 @@ import {
 import { Button } from "@/components/ui/button";
 
 const offChainNav = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/options", label: "Options Trades", icon: TrendingUp },
-  { path: "/stocks", label: "Stock Positions", icon: Building2 },
-  { path: "/deposits", label: "Deposits", icon: Wallet },
-  { path: "/reports", label: "Reports", icon: FileText },
-  { path: "/debt", label: "Debt & Capital", icon: Landmark },
-  { path: "/offchain-investors", label: "Investors (Off-Chain)", icon: Users },
-  { path: "/weekly-report", label: "דוח שבועי", icon: FileText },
-];
+{ path: "/", label: "Dashboard", icon: LayoutDashboard },
+{ path: "/options", label: "Options Trades", icon: TrendingUp },
+{ path: "/stocks", label: "Stock Positions", icon: Building2 },
+{ path: "/deposits", label: "Deposits", icon: Wallet },
+{ path: "/reports", label: "Reports", icon: FileText },
+{ path: "/debt", label: "Debt & Capital", icon: Landmark },
+{ path: "/offchain-investors", label: "Investors (Off-Chain)", icon: Users },
+{ path: "/weekly-report", label: "דוח שבועי", icon: FileText }];
+
 
 const onChainNav = [
-  { path: "/crypto", label: "Crypto Dashboard", icon: Bitcoin },
-  { path: "/crypto/wallets", label: "Wallets & Assets", icon: Wallet },
-  { path: "/crypto/leveraged", label: "Leveraged Positions", icon: Layers },
-  { path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
-  { path: "/crypto/investors", label: "Investors", icon: Users },
-  { path: "/crypto/activity", label: "Activity Log", icon: FileText },
-  { path: "/crypto/aave", label: "Aave Account", icon: Zap },
-  { path: "/crypto/options", label: "Options", icon: TrendingDown },
-];
+{ path: "/crypto", label: "Crypto Dashboard", icon: Bitcoin },
+{ path: "/crypto/wallets", label: "Wallets & Assets", icon: Wallet },
+{ path: "/crypto/leveraged", label: "Leveraged Positions", icon: Layers },
+{ path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
+{ path: "/crypto/investors", label: "Investors", icon: Users },
+{ path: "/crypto/activity", label: "Activity Log", icon: FileText },
+{ path: "/crypto/aave", label: "Aave Account", icon: Zap },
+{ path: "/crypto/options", label: "Options", icon: TrendingDown }];
+
 
 const settingsNav = [
-  { path: "/settings/assets", label: "ניהול נכסים", icon: Settings },
-];
+{ path: "/settings/assets", label: "ניהול נכסים", icon: Settings }];
+
 
 const navItems = [
 ...offChainNav, ...onChainNav];
@@ -83,18 +83,18 @@ export default function Layout() {
         <nav className="flex-1 py-4 px-3 overflow-y-auto">
           <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-1">Off-Chain</p>
           <div className="space-y-0.5 mb-4">
-            {offChainNav.filter(item => isInvestor ? item.path === "/" || item.path === "/reports" : true).map((item) => {
+            {offChainNav.filter((item) => isInvestor ? item.path === "/" || item.path === "/reports" : true).map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
                   <Icon className="w-4 h-4" />
                   {item.label}
                   {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-                </Link>
-              );
+                </Link>);
+
             })}
           </div>
           <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider px-3 mb-1">On-Chain · קריפטו</p>
@@ -104,13 +104,13 @@ export default function Layout() {
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isActive ? "bg-orange-500/15 text-orange-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
                   <Icon className="w-4 h-4" />
                   {item.label}
                   {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-                </Link>
-              );
+                </Link>);
+
             })}
           </div>
           <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-4">הגדרות</p>
@@ -120,13 +120,13 @@ export default function Layout() {
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
                   <Icon className="w-4 h-4" />
                   {item.label}
                   {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
-                </Link>
-              );
+                </Link>);
+
             })}
           </div>
         </nav>
@@ -172,9 +172,9 @@ export default function Layout() {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          <Outlet />
-        </main>
+        
+
+        
       </div>
     </div>);
 
