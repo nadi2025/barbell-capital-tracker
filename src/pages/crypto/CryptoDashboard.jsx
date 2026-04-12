@@ -162,7 +162,7 @@ export default function CryptoDashboard() {
           <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
           <p className={`text-2xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
           <p className="text-xs mt-1">Perf: <span className={nav >= 0 ? "text-profit" : "text-loss"}>{((nav / investorDebt) * 100).toFixed(1)}%</span></p>
-          <p className="text-xs text-muted-foreground">Assets {fmt(totalAssets)} − Debt {fmt(totalDebt)}</p>
+          <p className="text-xs text-muted-foreground">Assets {fmt(totalAssets)} − Debt {fmt(aaveBorrow + investorDebt)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
