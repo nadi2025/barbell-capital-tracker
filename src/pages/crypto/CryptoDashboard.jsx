@@ -51,16 +51,11 @@ export default function CryptoDashboard() {
   const aaveBorrow = 327000; // Aave USDC borrow
   const aaveNetWorth = aaveCollateralValue - aaveBorrow;
   const stablecoinsValue = assets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const hlEquity = leveraged.reduce((s, l) => {
-    const pnl = l.mark_price && l.entry_price && l.size
-      ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
-      : 0;
-    return s + (l.margin_usd || 0) + pnl;
-  }, 0);
+  const totalMarginFromPositions = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
   const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
-  const totalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + lentValue;
+  const totalAssets = walletValue + Math.max(0, totalMarginFromPositions) + vaultValue + lentValue;
   const totalDebt = investorDebt + aaveBorrow;
   const nav = aaveNetWorth + stablecoinsValue + lentValue;
   const totalLent = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
@@ -170,9 +165,9 @@ export default function CryptoDashboard() {
           <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalAssets)}</p>
           <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
-            <p>Aave: {fmt(walletValue)}</p>
-            <p>HL equity: {fmt(Math.max(0, hlEquity))}</p>
-            <p>Vaults: {fmt(vaultValue)}</p>
+           <p>Aave: {fmt(walletValue)}</p>
+           <p>HL Margin: {fmt(Math.max(0, totalMarginFromPositions))}</p>
+           <p>Vaults: {fmt(vaultValue)}</p>
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
