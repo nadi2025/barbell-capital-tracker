@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [cryptoLoans, setCryptoLoans] = useState([]);
   const [cryptoLending, setCryptoLending] = useState([]);
   const [leveraged, setLeveraged] = useState([]);
+  const [hlTrades, setHlTrades] = useState([]);
   const [aaveAccount, setAaveAccount] = useState(null);
   const [aaveCollateral, setAaveCollateral] = useState([]);
   const [aaveBorrow, setAaveBorrow] = useState(null);
@@ -48,7 +49,7 @@ export default function Dashboard() {
   const [priceModalOpen, setPriceModalOpen] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, aa, ac, ab, co, oci, hlt] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -63,11 +64,13 @@ export default function Dashboard() {
       base44.entities.AaveBorrow.list(),
       base44.entities.CryptoOptionsPosition.list(),
       base44.entities.OffChainInvestor.filter({ status: "Active" }),
+      base44.entities.HLTrade.list("-trade_date", 500),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
     setCryptoAssets(ca); setCryptoLoans(cl); setCryptoLending(cle);
     setLeveraged(lev);
+    setHlTrades(hlt || []);
     setAaveAccount(aa[0] || null);
     setAaveCollateral(ac);
     setAaveBorrow(ab[0] || null);
@@ -180,6 +183,7 @@ export default function Dashboard() {
         cryptoAssets={cryptoAssets}
         aaveCollateral={aaveCollateral}
         leveraged={leveraged}
+        hlTrades={hlTrades}
         openOptions={openOptions}
         cryptoOptions={cryptoOptions}
         offChainInvestors={offChainInvestors}

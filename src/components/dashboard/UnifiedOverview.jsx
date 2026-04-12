@@ -32,7 +32,7 @@ function SvgPie({ slices, size = 130 }) {
 
 export default function UnifiedOverview({
   ibNav, cryptoNAV, totalDeposited, investorDebt,
-  cryptoAssets, aaveCollateral, leveraged, openOptions, cryptoOptions,
+  cryptoAssets, aaveCollateral, leveraged, hlTrades = [], openOptions, cryptoOptions,
   offChainInvestors, aaveAccount, realizedPnl, ibPnl
 }) {
   const today = new Date();
@@ -91,17 +91,21 @@ export default function UnifiedOverview({
     return s + ((c.supply_apy || 0) / 100) * (c.units || 0) * p / 52;
   }, 0);
   const ryskPremium = cryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0);
-  const hlPnl = leveraged.reduce((s, l) => {
+  const hlUnrealizedPnl = leveraged.reduce((s, l) => {
     const price = l.asset?.toUpperCase() === "BTC" ? btcPrice : l.asset?.toUpperCase() === "ETH" ? ethPrice : l.asset?.toUpperCase() === "AAVE" ? aavePrice : l.asset?.toUpperCase() === "MSTR" ? mstrPrice : 0;
     const pnlCalc = price && l.entry_price && l.size ? (price - l.entry_price) * l.size * (l.direction === "Short" ? -1 : 1) : (l.pnl_usd || 0);
     return s + pnlCalc;
   }, 0);
+  const hlRealizedPnl = hlTrades
+    .filter(t => t.direction?.toLowerCase().includes("close"))
+    .reduce((s, t) => s + (t.closed_pnl || 0), 0);
+  const hlPnl = hlUnrealizedPnl + hlRealizedPnl;
 
   const barItems = [
     { label: "IB Options", val: realizedPnl, color: realizedPnl >= 0 ? "#22c55e" : "#ef4444" },
     { label: "Rysk Finance", val: ryskPremium, color: ryskPremium >= 0 ? "#22c55e" : "#ef4444" },
     { label: "Aave Yield", val: Math.round(aaveYield), color: "#22c55e" },
-    { label: "HyperLiquid", val: Math.round(hlPnl), color: hlPnl >= 0 ? "#22c55e" : "#ef4444" },
+    { label: "HyperLiquid", val: Math.round(hlPnl), color: hlPnl >= 0 ? "#22c55e" : "#ef4444", sub: `(${hlUnrealizedPnl >= 0 ? "+" : ""}${Math.round(hlUnrealizedPnl).toLocaleString()} unrealized)` },
     { label: "IB P&L", val: ibPnl, color: ibPnl >= 0 ? "#22c55e" : "#ef4444" },
   ].filter(b => Math.abs(b.val) > 0);
   const maxBarVal = Math.max(...barItems.map(b => Math.abs(b.val)), 1);
