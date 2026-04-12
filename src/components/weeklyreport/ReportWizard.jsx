@@ -7,7 +7,7 @@ export default function ReportWizard({ defaults, onComplete, onCancel }) {
   const QUESTIONS = [
     { key: "ib_nav", label: "מה ה-NAV הנוכחי בתיק IB?", type: "number", unit: "USD", hint: "היכנס ל-IB ובדוק את שווי התיק הנוכחי" },
     { key: "ib_options_pnl", label: "מה ה-P&L הממומש על אופציות ב-IB השבוע?", type: "number", unit: "USD", hint: "יכול להיות שלילי. בדוק ב-IB תחת Realized P&L" },
-    { key: "ib_stocks_pnl", label: "מה ה-P&L הלא ממומש על מניות ב-IB?", type: "number", unit: "USD", hint: "Unrealized P&L על פוזיציות מניות פתוחות" },
+
     { key: "ib_win_rate", label: "מה ה-Win Rate על אופציות ב-IB?", type: "number", unit: "%", hint: "אחוז עסקאות שהסתיימו ברווח" },
     { key: "btc_price", label: "מה מחיר ה-BTC הנוכחי?", type: "number", unit: "USD", hint: "מחיר Bitcoin עכשיו" },
     { key: "eth_price", label: "מה מחיר ה-ETH הנוכחי?", type: "number", unit: "USD", hint: "מחיר Ethereum עכשיו" },
