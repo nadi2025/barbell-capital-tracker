@@ -124,6 +124,7 @@ export default function Dashboard() {
   const vaultValue = 0;
   const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
   const stablecoinsValue = cryptoAssets.filter(a => a.asset_category === "Stablecoin").reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const aaveNetWorth = aaveCollateralUsd - aaveBorrowUsd;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
 
   // ── Aave health ──
