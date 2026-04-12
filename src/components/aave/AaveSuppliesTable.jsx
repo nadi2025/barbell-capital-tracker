@@ -53,8 +53,8 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
           </tr>
         </thead>
         <tbody>
-          {collateralDetails?.map(asset => (
-            <tr key={asset.asset_name} className="border-b border-border/50 hover:bg-muted/30">
+          {collateralDetails?.map((asset, idx) => (
+            <tr key={`${asset.asset_name}-${idx}`} className="border-b border-border/50 hover:bg-muted/30">
               <td className="py-3 font-medium">{asset.asset_name}</td>
               <td className="text-right py-3">
                 {editingAsset === asset.asset_name ? (
