@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { format, differenceInDays, subDays } from "date-fns";
-import { FileText, Plus, Trash2, Send, Eye } from "lucide-react";
+import { format, subDays } from "date-fns";
+import { FileText, Plus, Trash2, Send, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -15,6 +15,17 @@ export default function WeeklyReportPage() {
   const [reports, setReports] = useState([]);
   const [appData, setAppData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshResult, setRefreshResult] = useState(null);
+
+  const handleRefreshPrices = async () => {
+    setRefreshing(true);
+    setRefreshResult(null);
+    const res = await base44.functions.invoke('fetchLivePrices', {});
+    setRefreshResult(res.data);
+    setRefreshing(false);
+    load();
+  };
 
   const load = async () => {
     const [
@@ -57,10 +68,7 @@ export default function WeeklyReportPage() {
         ib_stocks_pnl: lastReport?.wizard_ib_stocks_pnl || 0,
         ib_premium_total: lastReport?.wizard_ib_premium_total || null,
         ib_win_rate: lastReport?.wizard_ib_win_rate || null,
-        btc_price: getPrice("BTC") || lastReport?.wizard_btc_price || null,
-        eth_price: getPrice("ETH") || lastReport?.wizard_eth_price || null,
-        aave_price: getPrice("AAVE") || lastReport?.wizard_aave_price || null,
-        mstr_price: getPrice("MSTR") || lastReport?.wizard_mstr_price || null,
+
         aave_borrowed: aaveAccounts[0]?.borrow_usd || lastReport?.wizard_aave_borrowed || null,
         aave_hf: aaveAccounts[0]?.health_factor || lastReport?.wizard_aave_hf || null,
         manager_notes: "",
@@ -85,16 +93,26 @@ export default function WeeklyReportPage() {
       const today = format(new Date(), "yyyy-MM-dd");
       const periodStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
 
+      // Get live prices from app data
+      const getPrice = (token) => appData.assets.find(a => a.token?.toUpperCase() === token)?.current_price_usd || 0;
+      const btc_price = getPrice("BTC");
+      const eth_price = getPrice("ETH");
+      const aave_price = getPrice("AAVE");
+      const mstr_price = getPrice("MSTR");
+
+      // Merge prices into answers
+      const fullAnswers = { ...answers, btc_price, eth_price, aave_price, mstr_price };
+
       // Recalculate on-chain NAV for saving
       const ethUnits = appData.aaveCollateral.find(a => a.token?.includes("ETH"))?.units || 0;
       const wbtcUnits = appData.aaveCollateral.find(a => a.token?.includes("BTC") || a.token?.includes("WBTC"))?.units || 0;
       const aaveTokenUnits = appData.aaveCollateral.find(a => a.token === "AAVE")?.units || 0;
-      const collateral = (ethUnits * (answers.eth_price || 0)) + (wbtcUnits * (answers.btc_price || 0)) + (aaveTokenUnits * (answers.aave_price || 0));
+      const collateral = (ethUnits * eth_price) + (wbtcUnits * btc_price) + (aaveTokenUnits * aave_price);
       const onChainNav = collateral - (answers.aave_borrowed || 0);
 
       // Generate HTML report
       const html = generateReportHTML({
-        wizardAnswers: answers,
+        wizardAnswers: fullAnswers,
         prevReport: appData.prevReport,
         investors: appData.investors,
         investorPayments: appData.payments,
@@ -119,10 +137,10 @@ export default function WeeklyReportPage() {
         wizard_ib_stocks_pnl: answers.ib_stocks_pnl,
         wizard_ib_premium_total: answers.ib_premium_total,
         wizard_ib_win_rate: answers.ib_win_rate,
-        wizard_btc_price: answers.btc_price,
-        wizard_eth_price: answers.eth_price,
-        wizard_aave_price: answers.aave_price,
-        wizard_mstr_price: answers.mstr_price,
+        wizard_btc_price: btc_price,
+        wizard_eth_price: eth_price,
+        wizard_aave_price: aave_price,
+        wizard_mstr_price: mstr_price,
         wizard_aave_borrowed: answers.aave_borrowed,
         wizard_aave_hf: answers.aave_hf,
         wizard_on_chain_nav: onChainNav,
@@ -136,24 +154,7 @@ export default function WeeklyReportPage() {
         });
       }
 
-      // Update crypto asset prices
-      const priceUpdates = [
-        { token: "BTC", price: answers.btc_price },
-        { token: "ETH", price: answers.eth_price },
-        { token: "AAVE", price: answers.aave_price },
-        { token: "MSTR", price: answers.mstr_price },
-      ];
-      for (const { token, price } of priceUpdates) {
-        if (!price) continue;
-        const asset = appData.assets.find(a => a.token?.toUpperCase() === token);
-        if (asset) {
-          await base44.entities.CryptoAsset.update(asset.id, {
-            current_price_usd: price,
-            current_value_usd: asset.amount ? asset.amount * price : asset.current_value_usd,
-            last_updated: today,
-          });
-        }
-      }
+      // Prices are updated via fetchLivePrices — no manual update needed here
 
       // Create portfolio snapshot
       await base44.entities.PortfolioSnapshot.create({
@@ -207,11 +208,44 @@ export default function WeeklyReportPage() {
           <p className="text-xs text-muted-foreground mt-0.5">Weekly Investment Management Report</p>
         </div>
         {!step && (
-          <Button onClick={() => setStep("wizard")} className="gap-2">
-            <Plus className="w-4 h-4" /> הפק דוח שבועי
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "מעדכן..." : "עדכן מחירים"}
+            </Button>
+            <Button onClick={() => setStep("wizard")} className="gap-2">
+              <Plus className="w-4 h-4" /> הפק דוח שבועי
+            </Button>
+          </div>
         )}
       </div>
+
+      {/* Price refresh result */}
+      {refreshResult && !step && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-2" dir="rtl">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            מחירים עודכנו בהצלחה
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            {Object.entries(refreshResult.crypto || {}).map(([k, v]) => v && (
+              <div key={k} className="bg-muted/40 rounded-lg px-3 py-2">
+                <p className="text-muted-foreground">{k}</p>
+                <p className="font-mono font-bold">${v?.toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+          {refreshResult.tickers_updated?.length > 0 && (
+            <p className="text-xs text-muted-foreground">מניות עודכנו: {refreshResult.tickers_updated.join(", ")}</p>
+          )}
+          {refreshResult.tickers_failed?.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-amber-600">
+              <AlertTriangle className="w-3 h-3" />
+              לא עודכנו: {refreshResult.tickers_failed.join(", ")} — ייתכן שהטיקר שונה
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Wizard */}
       {step === "wizard" && appData && (

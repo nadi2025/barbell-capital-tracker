@@ -9,10 +9,7 @@ export default function ReportWizard({ defaults, onComplete, onCancel }) {
     { key: "ib_options_pnl", label: "מה ה-P&L הממומש על אופציות ב-IB השבוע?", type: "number", unit: "USD", hint: "יכול להיות שלילי. בדוק ב-IB תחת Realized P&L" },
 
     { key: "ib_win_rate", label: "מה ה-Win Rate על אופציות ב-IB?", type: "number", unit: "%", hint: "אחוז עסקאות שהסתיימו ברווח" },
-    { key: "btc_price", label: "מה מחיר ה-BTC הנוכחי?", type: "number", unit: "USD", hint: "מחיר Bitcoin עכשיו" },
-    { key: "eth_price", label: "מה מחיר ה-ETH הנוכחי?", type: "number", unit: "USD", hint: "מחיר Ethereum עכשיו" },
-    { key: "aave_price", label: "מה מחיר ה-AAVE הנוכחי?", type: "number", unit: "USD", hint: "מחיר AAVE עכשיו" },
-    { key: "mstr_price", label: "מה מחיר ה-MSTR הנוכחי?", type: "number", unit: "USD", hint: "מחיר MicroStrategy עכשיו" },
+
     { key: "aave_borrowed", label: "מה סכום החוב הנוכחי ב-Aave? (USDC)", type: "number", unit: "USD", hint: "כמה USDC לווית ב-Aave כרגע" },
     { key: "aave_hf", label: "מה ה-Health Factor הנוכחי ב-Aave?", type: "number", unit: "", hint: "מספר עשרוני, לדוגמה: 2.55" },
     { key: "manager_notes", label: "הערות או דגשים לדוח? (אופציונלי)", type: "textarea", unit: "", hint: "כל הערה שתרצה שתופיע בדוח — אירועים, החלטות, דגשים" },
