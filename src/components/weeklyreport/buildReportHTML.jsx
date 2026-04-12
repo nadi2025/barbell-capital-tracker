@@ -84,12 +84,13 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     .reduce((s, t) => s + (t.closed_pnl || 0), 0);
   const hlTotalPnl = hlPnl + hlRealizedPnl;
 
-  // On-chain NAV
+  // On-chain NAV (same formula as Crypto Dashboard: Aave net + stablecoins + lending)
   const stablecoins = assets.filter(a => /usdc|usdt|dai/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const otherAssets = assets.filter(a => !/usdc|usdt|dai|eth|weth|btc|wbtc|aave|mstr/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const hlMarginTotal = openLev.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const cryptoInvestorDebt = 1700000; // S&T debt — fixed
-  const onChainNav = totalCollateral + stablecoins + otherAssets + hlMarginTotal - aaveBorrow - cryptoInvestorDebt;
+  const aaveNetWorth = totalCollateral - aaveBorrow;
+  const lentValue = 0; // No active lending positions
+  const onChainNav = aaveNetWorth + stablecoins + otherAssets + lentValue;
 
   // Total NAV
   const ibNav = answers.ib_nav;
