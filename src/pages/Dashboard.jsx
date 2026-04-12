@@ -64,6 +64,7 @@ export default function Dashboard() {
       base44.entities.OffChainInvestor.filter({ status: "Active" }),
       base44.entities.HLTrade.list("-trade_date", 500),
       base44.entities.Prices.list(),
+      base44.functions.invoke('calculateAavePosition', {}),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
