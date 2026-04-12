@@ -1,0 +1,52 @@
+{
+  "name": "HLTrade",
+  "type": "object",
+  "properties": {
+    "trade_date": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Trade Date"
+    },
+    "asset": {
+      "type": "string",
+      "title": "Asset"
+    },
+    "direction": {
+      "type": "string",
+      "title": "Direction (Open Long / Close Long / etc)"
+    },
+    "price": {
+      "type": "number",
+      "title": "Execution Price"
+    },
+    "size": {
+      "type": "number",
+      "title": "Size (units)"
+    },
+    "notional_usd": {
+      "type": "number",
+      "title": "Notional (USD)"
+    },
+    "fee_usd": {
+      "type": "number",
+      "title": "Fee (USD)"
+    },
+    "closed_pnl": {
+      "type": "number",
+      "title": "Closed P&L (only for Close trades)"
+    },
+    "import_batch": {
+      "type": "string",
+      "title": "Import Batch (timestamp)"
+    },
+    "raw_key": {
+      "type": "string",
+      "title": "Dedup key (time+coin+dir+px)"
+    }
+  },
+  "required": [
+    "trade_date",
+    "asset",
+    "direction"
+  ]
+}
