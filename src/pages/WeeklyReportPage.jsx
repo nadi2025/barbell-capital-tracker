@@ -93,8 +93,17 @@ export default function WeeklyReportPage() {
       const today = format(new Date(), "yyyy-MM-dd");
       const periodStart = format(subDays(new Date(), 7), "yyyy-MM-dd");
 
-      // Get live prices from app data
-      const getPrice = (token) => appData.assets.find(a => a.token?.toUpperCase() === token)?.current_price_usd || 0;
+      // Get live prices from app data (BTC also matches WBTC, ETH also matches WETH)
+      const getPrice = (token) => {
+        const t = token.toUpperCase();
+        const asset = appData.assets.find(a => {
+          const at = a.token?.toUpperCase();
+          if (t === "BTC") return at === "BTC" || at === "WBTC";
+          if (t === "ETH") return at === "ETH" || at === "WETH";
+          return at === t;
+        });
+        return asset?.current_price_usd || 0;
+      };
       const btc_price = getPrice("BTC");
       const eth_price = getPrice("ETH");
       const aave_price = getPrice("AAVE");
@@ -126,8 +135,12 @@ export default function WeeklyReportPage() {
       const collateralUSD = (ethUnitsV * eth_price) + (wbtcUnitsV * btc_price) + (aaveTokenUnitsV * aave_price);
 
       // Validate prices
-      if (!btc_price || !eth_price || !aave_price) {
-        toast.error("מחירי BTC/ETH/AAVE חסרים — עדכן מחירים לפני הפקת הדוח");
+      const missingPrices = [];
+      if (!btc_price) missingPrices.push("BTC");
+      if (!eth_price) missingPrices.push("ETH");
+      if (!aave_price) missingPrices.push("AAVE");
+      if (missingPrices.length > 0) {
+        toast.error(`מחירי ${missingPrices.join(", ")} חסרים ($0) — לחץ "עדכן מחירים" קודם`);
         setStep(null);
         return;
       }
