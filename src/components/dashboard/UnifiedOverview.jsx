@@ -53,7 +53,7 @@ export default function UnifiedOverview({
   // Row 1 calcs
   const totalInvested = totalDeposited + investorDebt;
   const currentValue = ibNav + cryptoNAV;
-  const totalPnl = (ibNav - totalDeposited) + (cryptoNAV - (aaveAccount?.borrow_usd || 0) - investorDebt);
+  const totalPnl = (ibNav - totalDeposited) + cryptoNAV;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
   // Pie data

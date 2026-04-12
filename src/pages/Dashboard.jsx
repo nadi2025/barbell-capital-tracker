@@ -115,17 +115,16 @@ export default function Dashboard() {
   const cryptoTotalAssets = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const loansGivenValue = cryptoLending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = cryptoLoans.reduce((s, l) => s + (l.principal_usd || 0), 0);
-  const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  // Same formula as OpenPositionsTab
   const hlEquity = leveraged.reduce((s, l) => {
-    if (!l.mark_price || !l.entry_price || !l.size) return s + (l.margin_usd || 0);
-    const pnl = l.direction === "Long"
-      ? (l.mark_price - l.entry_price) * l.size
-      : (l.entry_price - l.mark_price) * l.size;
+    const pnl = l.mark_price && l.entry_price && l.size
+      ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size
+      : 0;
     return s + (l.margin_usd || 0) + pnl;
   }, 0);
   const vaultValue = 0;
-  const cryptoNAV = cryptoTotalAssets + loansGivenValue;
+  const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
+  const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
+  const cryptoNAV = cryptoTotalAssets_WithHL - cryptoTotalDebt;
 
   // ── Aave health ──
   const healthFactor = aaveAccount?.health_factor || (aaveCollateral.reduce((s, c) => {
