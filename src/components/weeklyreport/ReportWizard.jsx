@@ -12,13 +12,26 @@ function isStale(dateStr) {
 }
 
 export default function ReportWizard({ appData, lastReport, onComplete, onCancel }) {
-  const { assets, aaveAccount, aaveCollateral } = appData;
+  const { assets, aaveAccount, aaveCollateral, ibOptions } = appData;
 
   // Derive staleness
   const btcAsset = assets.find((a) => ["BTC", "WBTC"].includes(a.token?.toUpperCase()));
   const ethAsset = assets.find((a) => ["ETH", "WETH"].includes(a.token?.toUpperCase()));
   const aaveAsset = assets.find((a) => a.token?.toUpperCase() === "AAVE");
   const mstrAsset = assets.find((a) => a.token?.toUpperCase() === "MSTR");
+
+  // Calculate win rate automatically from closed options
+  const calculateWinRate = () => {
+    if (!ibOptions || ibOptions.length === 0) return 0;
+    const closed = ibOptions.filter(o => 
+      (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && 
+      (o.pnl != null)
+    );
+    if (closed.length === 0) return 0;
+    const winners = closed.filter(o => o.pnl > 0).length;
+    return (winners / closed.length) * 100;
+  };
+  const autoWinRate = calculateWinRate();
 
   const pricesStale = isStale(btcAsset?.last_updated) || isStale(ethAsset?.last_updated) || isStale(aaveAsset?.last_updated);
   const aaveStale = isStale(aaveAccount?.updated_date);
@@ -27,7 +40,7 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
   const [answers, setAnswers] = useState({
     ib_nav: lastReport?.ib_nav ? String(lastReport.ib_nav) : "",
     ib_options_pnl: lastReport?.wizard_ib_options_pnl != null ? String(lastReport.wizard_ib_options_pnl) : "",
-    ib_win_rate: lastReport?.wizard_ib_win_rate != null ? String(lastReport.wizard_ib_win_rate) : "",
+    ib_win_rate: String(autoWinRate.toFixed(1)),
     notes: lastReport?.notes || "",
     // manual price overrides (only if stale)
     btc_price: btcAsset?.current_price_usd ? String(btcAsset.current_price_usd) : "",
@@ -109,30 +122,19 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
       {step === 1 &&
       <div className="space-y-4">
           <label className="text-lg font-bold block">IB אופציות — P&L ו-Win Rate</label>
-          <p className="text-sm text-muted-foreground">P&L ממומש מאופציות השבוע (יכול להיות שלילי)</p>
+          <p className="text-sm text-muted-foreground">P&L ממומש מאופציות (יכול להיות שלילי)</p>
           <div className="space-y-3">
             <div className="relative">
               <Input type="number" value={answers.ib_options_pnl} onChange={(e) => set("ib_options_pnl", e.target.value)}
             className="h-12 pl-16 font-mono" placeholder="P&L ממומש" autoFocus />
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">USD</span>
             </div>
-            <div className="relative">
-              
-            
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+            <div className="bg-muted/50 rounded-lg px-4 py-3">
+              <p className="text-xs text-muted-foreground mb-1">Win Rate (מחושב אוטומטית)</p>
+              <p className="text-2xl font-bold font-mono">{autoWinRate.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground mt-1">{ibOptions?.filter(o => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl > 0).length || 0} זכיות מתוך {ibOptions?.filter(o => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl != null).length || 0}</p>
             </div>
           </div>
-        </div>
-      }
-
-      {/* Step 2: Notes */}
-      {step === 2 &&
-      <div className="space-y-4">
-          <label className="text-lg font-bold block">הערות לדוח (אופציונלי)</label>
-          <p className="text-sm text-muted-foreground">כל הערה שתופיע בדוח — ניתן לדלג</p>
-          <textarea value={answers.notes} onChange={(e) => set("notes", e.target.value)}
-        className="w-full border border-input rounded-lg px-3 py-2.5 text-sm bg-transparent resize-none min-h-[100px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        placeholder="(אופציונלי)" autoFocus />
         </div>
       }
 
