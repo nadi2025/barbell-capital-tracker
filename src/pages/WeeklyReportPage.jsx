@@ -30,7 +30,7 @@ export default function WeeklyReportPage() {
   const load = async () => {
     const [
       reportsList, assets, leveraged, aaveAccounts, aaveCollateral,
-      optionsList, investors, payments, snapshots
+      optionsList, investors, payments, snapshots, ibOptions
     ] = await Promise.all([
       base44.entities.WeeklyReport.list("-report_date", 50),
       base44.entities.CryptoAsset.list("-last_updated", 50),
@@ -41,6 +41,7 @@ export default function WeeklyReportPage() {
       base44.entities.OffChainInvestor.list(),
       base44.entities.InvestorPayment.list("-payment_date", 200),
       base44.entities.PortfolioSnapshot.list("-snapshot_date", 5),
+      base44.entities.OptionsTrade.list("-open_date", 200),
     ]);
 
     setReports(reportsList);
@@ -67,7 +68,12 @@ export default function WeeklyReportPage() {
         ib_options_pnl: lastReport?.wizard_ib_options_pnl || 0,
         ib_stocks_pnl: lastReport?.wizard_ib_stocks_pnl || 0,
         ib_premium_total: lastReport?.wizard_ib_premium_total || null,
-        ib_win_rate: lastReport?.wizard_ib_win_rate || null,
+        ib_win_rate: (() => {
+          const closed = ibOptions.filter(o => o.status === "Closed" || o.status === "Expired" || o.status === "Assigned");
+          if (closed.length === 0) return null;
+          const wins = closed.filter(o => (o.pnl || 0) > 0).length;
+          return Math.round((wins / closed.length) * 100);
+        })(),
 
         aave_borrowed: aaveAccounts[0]?.borrow_usd || lastReport?.wizard_aave_borrowed || null,
         aave_hf: aaveAccounts[0]?.health_factor || lastReport?.wizard_aave_hf || null,
