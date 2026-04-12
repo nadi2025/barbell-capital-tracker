@@ -27,7 +27,8 @@ Deno.serve(async (req) => {
     });
 
     const collateralDetails = Object.values(uniqueCollaterals).map(c => {
-      const price = priceMap[c.price_key] || 0;
+      const assetKey = (c.asset_name || c.price_key || '').toUpperCase();
+      const price = priceMap[assetKey] || 0;
       const value = c.units * price;
       return {
         asset_name: c.asset_name,
