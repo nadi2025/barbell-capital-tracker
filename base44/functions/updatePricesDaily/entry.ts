@@ -24,8 +24,9 @@ Deno.serve(async (req) => {
     });
 
     // Update Prices entity
-    const prices = res.data;
-    for (const [asset, price] of Object.entries(prices)) {
+    const prices = res.data || res;
+    const priceEntries = prices && typeof prices === 'object' ? Object.entries(prices) : [];
+    for (const [asset, price] of priceEntries) {
       if (price && price > 0) {
         const existing = await base44.entities.Prices.filter({ asset });
         if (existing.length > 0) {
