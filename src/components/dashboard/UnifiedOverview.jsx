@@ -31,7 +31,7 @@ function SvgPie({ slices, size = 130 }) {
 }
 
 export default function UnifiedOverview({
-  ibNav, cryptoNAV, totalDeposited, investorDebt,
+  ibNav, cryptoNAV, onChainNAV, totalDeposited, investorDebt,
   cryptoAssets, aaveCollateral, leveraged, hlTrades = [], openOptions, cryptoOptions,
   offChainInvestors, aaveAccount, realizedPnl, ibPnl, cryptoTotalAssets_WithHL, aaveBorrowUsd
 }) {
@@ -233,8 +233,8 @@ export default function UnifiedOverview({
         </Link>
         <Link to="/crypto" className="block bg-card border border-border rounded-xl p-4 hover:border-orange-400/40 transition-colors">
           <p className="text-xs text-muted-foreground mb-1">On-Chain NAV</p>
-          <p className={`text-2xl font-bold font-mono ${cryptoNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(cryptoNAV)}</p>
-          <p className="text-xs mt-1">Perf: <span className={cryptoNAV >= 0 ? "text-profit" : "text-loss"}>{((cryptoNAV / investorDebt) * 100).toFixed(1)}%</span></p>
+          <p className={`text-2xl font-bold font-mono ${onChainNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(onChainNAV)}</p>
+          <p className="text-xs mt-1">Perf: <span className={onChainNAV >= 0 ? "text-profit" : "text-loss"}>{((onChainNAV / investorDebt) * 100).toFixed(1)}%</span></p>
           <p className="text-xs text-muted-foreground">Assets {fmt(cryptoTotalAssets_WithHL)} − Debt {fmt(investorDebt + aaveBorrowUsd)}</p>
           <p className="text-xs text-muted-foreground mt-1.5">Crypto Dashboard →</p>
         </Link>

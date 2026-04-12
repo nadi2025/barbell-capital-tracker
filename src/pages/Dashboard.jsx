@@ -188,6 +188,7 @@ export default function Dashboard() {
       <UnifiedOverview
         ibNav={ibNav}
         cryptoNAV={cryptoNAV}
+        onChainNAV={onChainNAV}
         totalDeposited={totalDeposited}
         investorDebt={investorDebt}
         cryptoAssets={cryptoAssets}
@@ -200,6 +201,8 @@ export default function Dashboard() {
         aaveAccount={aaveAccount}
         realizedPnl={realizedPnl}
         ibPnl={ibPnl}
+        cryptoTotalAssets_WithHL={cryptoTotalAssets_WithHL}
+        aaveBorrowUsd={aaveBorrowUsd}
       />
 
       <div className="border-t border-border/40 pt-4">
