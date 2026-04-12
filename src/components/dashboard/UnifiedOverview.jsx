@@ -91,9 +91,12 @@ export default function UnifiedOverview({
     return s + ((c.supply_apy || 0) / 100) * (c.units || 0) * p / 52;
   }, 0);
   const ryskPremium = cryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0);
+  // Use stored mark_price exactly as OpenPositionsTab does
   const hlUnrealizedPnl = leveraged.reduce((s, l) => {
-    const price = l.asset?.toUpperCase() === "BTC" ? btcPrice : l.asset?.toUpperCase() === "ETH" ? ethPrice : l.asset?.toUpperCase() === "AAVE" ? aavePrice : l.asset?.toUpperCase() === "MSTR" ? mstrPrice : 0;
-    const pnlCalc = price && l.entry_price && l.size ? (price - l.entry_price) * l.size * (l.direction === "Short" ? -1 : 1) : (l.pnl_usd || 0);
+    if (!l.mark_price || !l.entry_price || !l.size) return s;
+    const pnlCalc = l.direction === "Long"
+      ? (l.mark_price - l.entry_price) * l.size
+      : (l.entry_price - l.mark_price) * l.size;
     return s + pnlCalc;
   }, 0);
   const hlRealizedPnl = hlTrades

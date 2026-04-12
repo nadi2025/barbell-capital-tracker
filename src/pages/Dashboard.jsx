@@ -116,9 +116,12 @@ export default function Dashboard() {
   const loansGivenValue = cryptoLending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = cryptoLoans.reduce((s, l) => s + (l.principal_usd || 0), 0);
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
+  // Same formula as OpenPositionsTab
   const hlEquity = leveraged.reduce((s, l) => {
-    const pnl = l.mark_price && l.entry_price && l.size
-      ? (l.direction === "Long" ? 1 : -1) * (l.mark_price - l.entry_price) * l.size : 0;
+    if (!l.mark_price || !l.entry_price || !l.size) return s + (l.margin_usd || 0);
+    const pnl = l.direction === "Long"
+      ? (l.mark_price - l.entry_price) * l.size
+      : (l.entry_price - l.mark_price) * l.size;
     return s + (l.margin_usd || 0) + pnl;
   }, 0);
   const vaultValue = 0;
