@@ -54,8 +54,8 @@ export default function UnifiedOverview({
   const mstrPrice = getPrice(["MSTR"]);
 
   // Row 1 calcs — onChainNAV is already calculated properly in Dashboard
-  const totalInvested = totalDeposited + investorDebt;
-  const currentValue = ibNav + onChainNAV; // Net value
+  const totalInvested = totalDeposited + investorDebt + (aaveBorrowUsd || 0);
+  const currentValue = ibNav + cryptoTotalAssets_WithHL; // Total Assets
   const totalPnl = currentValue - totalInvested;
   const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
 
@@ -163,12 +163,12 @@ export default function UnifiedOverview({
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">הושקע סה״כ</p>
           <p className="text-3xl font-bold font-mono">{fmt(totalInvested)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Off: {fmt(totalDeposited, 0)} · On: {fmt(investorDebt, 0)}</p>
+          <p className="text-xs text-muted-foreground mt-1">Capital: {fmt(totalDeposited, 0)} · S&T: {fmt(investorDebt, 0)} · Aave: {fmt(aaveBorrowUsd || 0, 0)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">שווי נוכחי</p>
           <p className={`text-3xl font-bold font-mono ${currentValue >= 0 ? "text-profit" : "text-loss"}`}>{fmt(currentValue)}</p>
-          <p className="text-xs text-muted-foreground mt-1">Off: {fmt(ibNav, 0)} · On: {fmt(onChainNAV, 0)}</p>
+          <p className="text-xs text-muted-foreground mt-1">IB: {fmt(ibNav, 0)} · Crypto: {fmt(cryptoTotalAssets_WithHL, 0)}</p>
         </div>
         <div className={`border rounded-xl p-5 ${totalPnl >= 0 ? "bg-profit/5 border-profit/20" : "bg-loss/5 border-loss/20"}`}>
           <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">רווח / הפסד כולל</p>
