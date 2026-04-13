@@ -242,12 +242,18 @@ export default function UnifiedOverview({
           <p className="text-xs text-muted-foreground mt-1.5">IB Dashboard →</p>
         </Link>
         <Link to="/crypto" className="block bg-card border border-border rounded-xl p-4 hover:border-orange-400/40 transition-colors">
-          <p className="text-xs text-muted-foreground mb-1">On-Chain NAV</p>
-          <p className={`text-2xl font-bold font-mono ${onChainNAV >= 0 ? "text-profit" : "text-loss"}`}>{fmt(onChainNAV)}</p>
-          <p className="text-xs mt-1">Perf: <span className={onChainNAV >= 0 ? "text-profit" : "text-loss"}>{((onChainNAV / investorDebt) * 100).toFixed(1)}%</span></p>
-          <p className="text-xs text-muted-foreground">Assets {fmt(cryptoTotalAssets_WithHL)} − Debt {fmt(investorDebt + aaveBorrowUsd)}</p>
-          {lastPriceUpdate && <p className="text-xs text-muted-foreground mt-1">📊 מחירים: {formatLastUpdate(lastPriceUpdate)}</p>}
-          <p className="text-xs text-muted-foreground mt-1.5">Crypto Dashboard →</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 rounded-full bg-orange-400" />
+            <p className="text-xs font-semibold uppercase tracking-wider text-orange-400/80">ON-CHAIN · Total Assets</p>
+          </div>
+          <p className="text-xl font-bold font-mono text-foreground">{fmt(cryptoTotalAssets_WithHL)}</p>
+          <div className="text-xs text-muted-foreground space-y-0.5 mt-1.5">
+            <p>Aave: {fmt(aaveCollateral.reduce((s,c) => s + (c.value_usd||0), 0))}</p>
+            <p>HL Margin: {fmt(leveraged.reduce((s,l) => s + (l.margin_usd||0), 0))}</p>
+            <p>Options: {fmt(cryptoOptions.reduce((s,o) => s + (o.notional_usd||0), 0))}</p>
+            <p>Stablecoins: {fmt(stablecoins)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Crypto Dashboard →</p>
         </Link>
       </div>
     </div>
