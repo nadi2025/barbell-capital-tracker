@@ -160,12 +160,12 @@ export default function CryptoDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        
-
-
-
-
-        
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
+          <p className={`text-2xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
+          <p className="text-xs mt-1">Perf: <span className={nav >= 0 ? "text-profit" : "text-loss"}>{((nav / Math.max(investorDebt, 1)) * 100).toFixed(1)}%</span></p>
+          <p className="text-xs text-muted-foreground">Assets {fmt(totalAssets)} − Debt {fmt(totalDebt)}</p>
+        </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Total Assets</p>
           <p className="text-xl font-bold font-mono text-foreground">{fmt(totalAssets)}</p>
