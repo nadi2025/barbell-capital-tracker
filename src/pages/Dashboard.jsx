@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [aaveCollateral, setAaveCollateral] = useState([]);
   const [aaveBorrow, setAaveBorrow] = useState({});
   const [cryptoOptions, setCryptoOptions] = useState([]);
+  const [lpPositions, setLpPositions] = useState([]);
   const [offChainInvestors, setOffChainInvestors] = useState([]);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,7 @@ export default function Dashboard() {
   const [fetchingLivePrices, setFetchingLivePrices] = useState(false);
 
   const loadAll = async () => {
-    const [o, s, d, snaps, debtList, ca, cl, cle, lev, co, cop, oci, hlt, pr, aavePos] = await Promise.all([
+    const [o, s, d, snaps, debtList, ca, cl, cle, lev, co, cop, oci, hlt, pr, aavePos, lp] = await Promise.all([
       base44.entities.OptionsTrade.list("-open_date"),
       base44.entities.StockPosition.list(),
       base44.entities.Deposit.list(),
@@ -67,6 +68,7 @@ export default function Dashboard() {
       base44.entities.HLTrade.list("-trade_date", 500),
       base44.entities.Prices.list(),
       base44.functions.invoke('calculateAavePosition', {}),
+      base44.entities.LpPosition.filter({ status: "Active" }),
     ]);
     setOptions(o); setStocks(s); setDeposits(d);
     setSnapshot(snaps[0] || null); setDebts(debtList || []);
@@ -77,6 +79,7 @@ export default function Dashboard() {
     setAaveCollateral(aavePos?.data?.collateralDetails || []);
     setAaveBorrow({ borrow_usd: aavePos?.data?.borrowedAmount || 0, health_factor: aavePos?.data?.healthFactor || 0, borrow_power_used: aavePos?.data?.borrowPowerUsed || 0 });
     setCryptoOptions(co || []);
+    setLpPositions(lp || []);
     setOffChainInvestors(oci || []);
     setPrices(pr || []);
     setLoading(false);
@@ -134,10 +137,11 @@ export default function Dashboard() {
   const aaveNetWorth = aaveCollateralValue - aaveBorrowUsd;
   const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotionalCrypto;
   
-  // Total assets and debt
-  const cryptoTotalAssets = aaveCollateralValue + stablecoinsValue + loansGivenValue + activeNotionalCrypto;
-  const vaultValue = 0;
-  const cryptoTotalAssets_WithHL = cryptoTotalAssets + Math.max(0, hlEquity) + vaultValue + loansGivenValue;
+  // Total assets — same formula as CryptoDashboard
+  const walletValue = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const totalMarginFromPositions = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
+  const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
+  const cryptoTotalAssets_WithHL = walletValue + Math.max(0, totalMarginFromPositions) + vaultValue + loansGivenValue + activeNotionalCrypto;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
 
   // ── Aave health ── FROM BACKEND FUNCTION
@@ -314,7 +318,7 @@ export default function Dashboard() {
           </div>
 
           <Row label="On-Chain NAV" value={fmt(onChainNAV)} valueClass={onChainNAV >= 0 ? "text-profit" : "text-loss"} />
-          <Row label="סה״כ נכסים" value={fmt(cryptoTotalAssets)} />
+          <Row label="סה״כ נכסים" value={fmt(cryptoTotalAssets_WithHL)} />
           <Row label="סה״כ חוב" value={fmt(cryptoTotalDebt)} valueClass="text-loss" />
 
           <SectionLabel label="פירוט נכסים" />
