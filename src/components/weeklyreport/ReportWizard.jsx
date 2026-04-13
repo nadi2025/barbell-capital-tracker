@@ -23,13 +23,13 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
   // Calculate win rate automatically from closed options
   const calculateWinRate = () => {
     if (!ibOptions || ibOptions.length === 0) return 0;
-    const closed = ibOptions.filter(o => 
-      (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && 
-      (o.pnl != null)
+    const closed = ibOptions.filter((o) =>
+    (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") &&
+    o.pnl != null
     );
     if (closed.length === 0) return 0;
-    const winners = closed.filter(o => o.pnl > 0).length;
-    return (winners / closed.length) * 100;
+    const winners = closed.filter((o) => o.pnl > 0).length;
+    return winners / closed.length * 100;
   };
   const autoWinRate = calculateWinRate();
 
@@ -63,9 +63,9 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
       if (cr.MSTR || res.data?.stocks?.MSTR) set("mstr_price", String(cr.MSTR || res.data.stocks.MSTR));
     } catch (e) {
 
+
       // ignore, user can type manually
-    }setRefreshingPrices(false);
-  };
+    }setRefreshingPrices(false);};
 
   // Steps: 0=IB NAV, 1=IB Options, 2=Notes, 3=Price validation (conditional), 4=Review
   const handleNext = () => {
@@ -132,7 +132,7 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
             <div className="bg-muted/50 rounded-lg px-4 py-3">
               <p className="text-xs text-muted-foreground mb-1">Win Rate (מחושב אוטומטית)</p>
               <p className="text-2xl font-bold font-mono">{autoWinRate.toFixed(1)}%</p>
-              <p className="text-xs text-muted-foreground mt-1">{ibOptions?.filter(o => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl > 0).length || 0} זכיות מתוך {ibOptions?.filter(o => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl != null).length || 0}</p>
+              <p className="text-xs text-muted-foreground mt-1">{ibOptions?.filter((o) => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl > 0).length || 0} זכיות מתוך {ibOptions?.filter((o) => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl != null).length || 0}</p>
             </div>
           </div>
         </div>
@@ -159,12 +159,12 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
               </div>
           )}
           </div>
-          {aaveStale &&
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-              <span>נתוני Aave לא עודכנו. <a href="/crypto/aave" className="underline font-semibold">עבור לעמוד Aave</a></span>
-            </div>
-        }
+          
+
+
+
+
+        
         </div>
       }
 
