@@ -35,7 +35,7 @@ export default function LeveragedPage() {
   const handleRefreshPrices = async () => {
     setRefreshing(true);
     try {
-      await base44.functions.invoke('recalculateAllPrices', {});
+      await base44.functions.invoke('dailyFullUpdate', {});
       await load();
       toast.success("מחירים עודכנו בהצלחה");
     } catch (e) {
