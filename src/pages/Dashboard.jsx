@@ -91,6 +91,8 @@ export default function Dashboard() {
     setFetchingLivePrices(true);
     try {
       await base44.functions.invoke('updatePricesDaily', {});
+      await base44.functions.invoke('recalculateAllPrices', {});
+      await base44.functions.invoke('fetchStockPrices', {});
       await loadAll();
     } catch (e) {
       console.error('Error fetching prices:', e);
