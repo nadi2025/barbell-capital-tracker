@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import OpenPositionsTab from "@/components/hyperliquid/OpenPositionsTab";
 import TradeHistoryTab from "@/components/hyperliquid/TradeHistoryTab";
 import PerformanceTab from "@/components/hyperliquid/PerformanceTab";
@@ -15,6 +18,7 @@ export default function LeveragedPage() {
   const [positions, setPositions] = useState([]);
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = async () => {
     const [pos, trd] = await Promise.all([
@@ -28,6 +32,19 @@ export default function LeveragedPage() {
 
   useEffect(() => { load(); }, []);
 
+  const handleRefreshPrices = async () => {
+    setRefreshing(true);
+    try {
+      await base44.functions.invoke('recalculateAllPrices', {});
+      await load();
+      toast.success("מחירים עודכנו בהצלחה");
+    } catch (e) {
+      toast.error("שגיאה בעדכון מחירים");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -37,9 +54,15 @@ export default function LeveragedPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-        <h1 className="text-2xl font-bold">HyperLiquid</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
+          <h1 className="text-2xl font-bold">HyperLiquid</h1>
+        </div>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleRefreshPrices} disabled={refreshing}>
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          {refreshing ? "מעדכן..." : "עדכן מחירים"}
+        </Button>
       </div>
 
       {/* Tabs */}
