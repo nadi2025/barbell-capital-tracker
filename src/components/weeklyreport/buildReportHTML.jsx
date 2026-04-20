@@ -107,7 +107,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const cryptoInvestorDebt = 1700000; // S&T debt — fixed
   const aaveNetWorth = totalCollateral - aaveBorrow;
   const lentValue = 0; // No active lending positions
-  const onChainNav = aaveNetWorth + stablecoins + otherAssets + lentValue;
+  // Sum of HL open positions margin
+  const hlMargin = leveraged.filter(l => l.status === "Open").reduce((s, l) => s + (l.margin_usd || 0), 0);
+  const onChainNav = aaveNetWorth + stablecoins + otherAssets + lentValue + hlMargin;
 
   // Total NAV
   const ibNav = answers.ib_nav;

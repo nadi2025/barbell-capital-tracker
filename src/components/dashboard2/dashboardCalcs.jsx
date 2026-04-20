@@ -56,7 +56,7 @@ export function calcDashboard(data) {
   const totalMargin = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const cryptoTotalAssets = walletValue + Math.max(0, totalMargin) + vaultValue + loansGivenValue + activeNotional;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional;
+  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + totalMargin;
 
   // HL unrealized
   const hlUnrealizedPnl = leveraged.reduce((s, l) => {
