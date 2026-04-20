@@ -27,13 +27,13 @@ export default function WeeklyReportPage() {
 
   const load = async () => {
     const [
-      reportsList, assets, leveraged, aaveAccounts, aaveCollateral,
-      cryptoOptions, investors, payments, ibOptions, stocks, hlTrades
+      reportsList, assets, leveraged, aaveCollateral,
+      cryptoOptions, investors, payments, ibOptions, stocks, hlTrades,
+      prices, aaveRes
     ] = await Promise.all([
       base44.entities.WeeklyReport.list("-report_date", 50),
       base44.entities.CryptoAsset.list("-last_updated", 100),
       base44.entities.LeveragedPosition.filter({ status: "Open" }),
-      base44.entities.AaveAccount.list("-updated_date", 1),
       base44.entities.AaveCollateral.list(),
       base44.entities.CryptoOptionsPosition.list("-opened_date", 100),
       base44.entities.OffChainInvestor.list(),
@@ -41,9 +41,18 @@ export default function WeeklyReportPage() {
       base44.entities.OptionsTrade.list("-open_date", 200),
       base44.entities.StockPosition.filter({ status: "Holding" }),
       base44.entities.HLTrade.list("-trade_date", 500),
+      base44.entities.Prices.list(),
+      base44.functions.invoke("calculateAavePosition", {}),
     ]);
+    const aave = aaveRes?.data || {};
     setReports(reportsList);
-    setAppData({ assets, leveraged, aaveAccount: aaveAccounts[0] || null, aaveCollateral, cryptoOptions, investors, investorPayments: payments, ibOptions, stocks, hlTrades });
+    setAppData({
+      assets, leveraged, aaveCollateral, cryptoOptions, investors,
+      investorPayments: payments, ibOptions, stocks, hlTrades, prices,
+      aaveBorrowUsd: aave.borrowedAmount || 0,
+      aaveHealthFactor: aave.healthFactor || 0,
+      aaveCollateralDetails: aave.collateralDetails || [],
+    });
     setLoading(false);
   };
 
@@ -52,7 +61,7 @@ export default function WeeklyReportPage() {
   const handleRefreshPrices = async () => {
     setRefreshing(true);
     try {
-      await base44.functions.invoke("fetchLivePrices", {});
+      await base44.functions.invoke("dailyFullUpdate", {});
       toast.success("מחירים עודכנו");
       load();
     } catch (e) {

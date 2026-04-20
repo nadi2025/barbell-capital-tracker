@@ -12,9 +12,17 @@ function isStale(dateStr) {
 }
 
 export default function ReportWizard({ appData, lastReport, onComplete, onCancel }) {
-  const { assets, aaveAccount, aaveCollateral, ibOptions } = appData;
+  const { assets, aaveCollateral, ibOptions, prices = [] } = appData;
 
-  // Derive staleness
+  // Get prices from Prices entity (most up-to-date)
+  const priceMap = {};
+  prices.forEach(p => { priceMap[p.asset?.toUpperCase()] = p; });
+  const btcPrice = priceMap["BTC"];
+  const ethPrice = priceMap["ETH"];
+  const aavePrice = priceMap["AAVE"];
+  const mstrPrice = priceMap["MSTR"];
+
+  // Derive staleness from Prices entity
   const btcAsset = assets.find((a) => ["BTC", "WBTC"].includes(a.token?.toUpperCase()));
   const ethAsset = assets.find((a) => ["ETH", "WETH"].includes(a.token?.toUpperCase()));
   const aaveAsset = assets.find((a) => a.token?.toUpperCase() === "AAVE");
@@ -33,20 +41,18 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
   };
   const autoWinRate = calculateWinRate();
 
-  const pricesStale = isStale(btcAsset?.last_updated) || isStale(ethAsset?.last_updated) || isStale(aaveAsset?.last_updated);
-  const aaveStale = isStale(aaveAccount?.updated_date);
+  const pricesStale = isStale(btcPrice?.last_updated) || isStale(ethPrice?.last_updated) || isStale(aavePrice?.last_updated);
 
-  const [step, setStep] = useState(0); // 0-3 = wizard questions, 4 = validation, 5 = review
+  const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({
     ib_nav: lastReport?.ib_nav ? String(lastReport.ib_nav) : "",
     ib_options_pnl: lastReport?.wizard_ib_options_pnl != null ? String(lastReport.wizard_ib_options_pnl) : "",
     ib_win_rate: String(autoWinRate.toFixed(1)),
     notes: lastReport?.notes || "",
-    // manual price overrides (only if stale)
-    btc_price: btcAsset?.current_price_usd ? String(btcAsset.current_price_usd) : "",
-    eth_price: ethAsset?.current_price_usd ? String(ethAsset.current_price_usd) : "",
-    aave_price: aaveAsset?.current_price_usd ? String(aaveAsset.current_price_usd) : "",
-    mstr_price: mstrAsset?.current_price_usd ? String(mstrAsset.current_price_usd) : ""
+    btc_price: btcPrice?.price_usd ? String(btcPrice.price_usd) : (btcAsset?.current_price_usd ? String(btcAsset.current_price_usd) : ""),
+    eth_price: ethPrice?.price_usd ? String(ethPrice.price_usd) : (ethAsset?.current_price_usd ? String(ethAsset.current_price_usd) : ""),
+    aave_price: aavePrice?.price_usd ? String(aavePrice.price_usd) : (aaveAsset?.current_price_usd ? String(aaveAsset.current_price_usd) : ""),
+    mstr_price: mstrPrice?.price_usd ? String(mstrPrice.price_usd) : (mstrAsset?.current_price_usd ? String(mstrAsset.current_price_usd) : ""),
   });
   const [refreshingPrices, setRefreshingPrices] = useState(false);
 
@@ -55,17 +61,20 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
   const handleRefreshPrices = async () => {
     setRefreshingPrices(true);
     try {
-      const res = await base44.functions.invoke("fetchLivePrices", {});
-      const cr = res.data?.crypto || {};
-      if (cr.BTC) set("btc_price", String(cr.BTC));
-      if (cr.ETH) set("eth_price", String(cr.ETH));
-      if (cr.AAVE) set("aave_price", String(cr.AAVE));
-      if (cr.MSTR || res.data?.stocks?.MSTR) set("mstr_price", String(cr.MSTR || res.data.stocks.MSTR));
+      await base44.functions.invoke("dailyFullUpdate", {});
+      // Reload prices from DB
+      const updatedPrices = await base44.entities.Prices.list();
+      const pm = {};
+      updatedPrices.forEach(p => { pm[p.asset?.toUpperCase()] = p.price_usd; });
+      if (pm.BTC) set("btc_price", String(pm.BTC));
+      if (pm.ETH) set("eth_price", String(pm.ETH));
+      if (pm.AAVE) set("aave_price", String(pm.AAVE));
+      if (pm.MSTR) set("mstr_price", String(pm.MSTR));
     } catch (e) {
-
-
       // ignore, user can type manually
-    }setRefreshingPrices(false);};
+    }
+    setRefreshingPrices(false);
+  };
 
   // Steps: 0=IB NAV, 1=IB Options, 2=Notes, 3=Price validation (conditional), 4=Review
   const handleNext = () => {

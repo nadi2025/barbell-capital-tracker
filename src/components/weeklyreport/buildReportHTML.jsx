@@ -32,13 +32,18 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const periodStart = format(new Date(new Date().setDate(today.getDate() - 7)), "d.M.yy");
   const periodEnd = format(today, "d.M.yy");
 
-  const { assets, aaveCollateral, aaveAccount, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [], hlTrades = [] } = appData;
+  const { assets, aaveCollateral, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [], hlTrades = [], prices = [], aaveBorrowUsd = 0, aaveHealthFactor = 0 } = appData;
   // Auto-calculate IB stocks P&L from StockPosition entity
   const ibStocksPnl = stocks.reduce((s, st) => s + (st.gain_loss || 0), 0);
 
-  // Prices
+  // Prices — prefer wizard override, then Prices entity, then CryptoAsset fallback
+  const priceEntityMap = {};
+  prices.forEach(p => { priceEntityMap[p.asset?.toUpperCase()] = p.price_usd; });
   const getPrice = (tokens, override) => {
     if (override && parseFloat(override) > 0) return parseFloat(override);
+    for (const t of tokens) {
+      if (priceEntityMap[t.toUpperCase()] > 0) return priceEntityMap[t.toUpperCase()];
+    }
     for (const t of tokens) {
       const a = assets.find(x => x.token?.toUpperCase() === t.toUpperCase());
       if (a?.current_price_usd > 0) return a.current_price_usd;
@@ -50,10 +55,22 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const aaveP = getPrice(["AAVE"], answers.aave_price);
   const mstrP = getPrice(["MSTR"], answers.mstr_price);
 
-  // Aave collateral values
-  const getCollUnit = (tokens) => {
-    const c = aaveCollateral.find(x => tokens.some(t => x.token?.toUpperCase() === t.toUpperCase()));
-    return c?.units || 0;
+  // Aave collateral values — uses asset_name field (not token)
+  // Deduplicate by asset_name, keep latest
+  const uniqueCollaterals = {};
+  aaveCollateral.forEach(c => {
+    const key = c.asset_name?.toUpperCase();
+    if (!key) return;
+    if (!uniqueCollaterals[key] || new Date(c.updated_date || c.created_date) > new Date(uniqueCollaterals[key].updated_date || uniqueCollaterals[key].created_date)) {
+      uniqueCollaterals[key] = c;
+    }
+  });
+  const getCollUnit = (keys) => {
+    for (const k of keys) {
+      const c = uniqueCollaterals[k.toUpperCase()];
+      if (c) return c.units || 0;
+    }
+    return 0;
   };
   const ethUnits = getCollUnit(["ETH", "WETH"]);
   const btcUnits = getCollUnit(["BTC", "WBTC"]);
@@ -62,9 +79,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const btcCollVal = btcUnits * btcP;
   const aaveCollValUSD = aaveTokenUnits * aaveP;
   const totalCollateral = ethCollVal + btcCollVal + aaveCollValUSD;
-  const aaveBorrow = aaveAccount?.borrow_usd || 0;
-  const aaveHF = aaveAccount?.health_factor;
-  const aaveBP = aaveAccount?.collateral_ratio ? (aaveBorrow / (aaveAccount.collateral_usd || 1)) * 100 : null;
+  // Use live-calculated Aave data (from calculateAavePosition function)
+  const aaveBorrow = aaveBorrowUsd;
+  const aaveHF = aaveHealthFactor > 0 ? aaveHealthFactor : null;
 
   // HL positions
   const openLev = leveraged.filter(l => l.status === "Open").map(l => {
@@ -127,9 +144,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 
   // Bar chart data
   const ryskPremium = cryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0);
-  const aaveYield = aaveCollateral.reduce((s, c) => {
-    const p = c.token?.toUpperCase().includes("BTC") ? btcP : c.token?.toUpperCase().includes("ETH") ? ethP
-      : c.token?.toUpperCase() === "AAVE" ? aaveP : 0;
+  const aaveYield = Object.values(uniqueCollaterals).reduce((s, c) => {
+    const key = c.asset_name?.toUpperCase() || "";
+    const p = key.includes("BTC") ? btcP : key.includes("ETH") ? ethP : key === "AAVE" ? aaveP : 0;
     return s + ((c.supply_apy || 0) / 100) * (c.units || 0) * p / 52;
   }, 0);
   const barData = [
