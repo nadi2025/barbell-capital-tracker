@@ -86,7 +86,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <DollarSign className="w-7 h-7 text-primary mr-2" />
-          <span className="text-sidebar-foreground text-lg font-semibold tracking-tight">CO
+          <span className="text-sidebar-foreground text-lg font-semibold tracking-tight">Company tracker
 
           </span>
         </div>
@@ -188,7 +188,7 @@ export default function Layout() {
             {updatingPrices ? 'עדכון...' : 'עדכן מחירים'}
           </Button>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="hidden sm:inline">Oasis Project G Ltd.</span>
+            <span className="hidden sm:inline hidden hidden">Oasis Project G Ltd.</span>
           </div>
         </header>
 
