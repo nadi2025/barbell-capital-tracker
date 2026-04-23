@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function StockPositionForm({ open, onClose, editStock, onSaved }) {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     ticker: "", source: "Direct Buy", entry_date: "", shares: "",
     average_cost: "", current_price: "", status: "Holding", notes: "",
@@ -72,8 +74,12 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
       toast.success("Position added");
     }
 
+    // Invalidate cached queries so the Dashboard (and any other page) refetches
+    queryClient.invalidateQueries({ queryKey: ["entity", "StockPosition"] });
+    queryClient.invalidateQueries({ queryKey: ["function"] });
+
     setSaving(false);
-    onSaved();
+    onSaved?.();
     onClose();
   };
 

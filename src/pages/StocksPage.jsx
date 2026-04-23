@@ -6,57 +6,58 @@ import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
 import { toast } from "sonner";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 export default function StocksPage() {
-  const [stocks, setStocks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stocks = [], isLoading, refetch } = useEntityList("StockPosition", { sort: "-entry_date" });
+  const deleteStock = useEntityMutation("StockPosition", "delete");
+  const updateStock = useEntityMutation("StockPosition", "update");
+
   const [formOpen, setFormOpen] = useState(false);
   const [editStock, setEditStock] = useState(null);
   const [user, setUser] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null));
+  }, []);
+
   const handleRefreshPrices = async () => {
-    const holdingStocks = stocks.filter(s => s.status !== "Closed" && s.ticker);
+    const holdingStocks = stocks.filter((s) => s.status !== "Closed" && s.ticker);
     if (!holdingStocks.length) return;
     setRefreshing(true);
-    const tickers = [...new Set(holdingStocks.map(s => s.ticker))];
-    const res = await base44.functions.invoke("fetchStockPrices", { tickers });
-    const prices = res.data?.prices || {};
-    await Promise.all(holdingStocks.map(async (s) => {
-      const price = prices[s.ticker];
-      if (!price) return;
-      const current_value = price * s.shares;
-      const gain_loss = current_value - (s.invested_value || 0);
-      const gain_loss_pct = s.invested_value ? gain_loss / s.invested_value : 0;
-      await base44.entities.StockPosition.update(s.id, { current_price: price, current_value, gain_loss, gain_loss_pct });
-    }));
-    toast.success(`מחירים עודכנו בהצלחה`);
-    setRefreshing(false);
-    loadData();
+    try {
+      const tickers = [...new Set(holdingStocks.map((s) => s.ticker))];
+      const res = await base44.functions.invoke("fetchStockPrices", { tickers });
+      const prices = res.data?.prices || {};
+      await Promise.all(
+        holdingStocks.map(async (s) => {
+          const price = prices[s.ticker];
+          if (!price) return;
+          const current_value = price * s.shares;
+          const gain_loss = current_value - (s.invested_value || 0);
+          const gain_loss_pct = s.invested_value ? gain_loss / s.invested_value : 0;
+          await updateStock.mutateAsync({
+            id: s.id,
+            data: { current_price: price, current_value, gain_loss, gain_loss_pct },
+          });
+        })
+      );
+      toast.success("מחירים עודכנו בהצלחה");
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-  const loadData = async () => {
-    const [s, u] = await Promise.all([
-      base44.entities.StockPosition.list("-entry_date"),
-      base44.auth.me(),
-    ]);
-    setStocks(s);
-    setUser(u);
-    setLoading(false);
-  };
-
-  useEffect(() => { loadData(); }, []);
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
   const handleDelete = async (stock) => {
     if (!confirm(`Delete ${stock.ticker} position?`)) return;
-    await base44.entities.StockPosition.delete(stock.id);
+    await deleteStock.mutateAsync(stock.id);
     toast.success("Position deleted");
-    loadData();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
@@ -71,7 +72,9 @@ export default function StocksPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Stock Positions</h1>
-          <p className="text-sm text-muted-foreground mt-1">{stocks.length} positions · Total value: ${totalValue.toLocaleString()}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {stocks.length} positions · Total value: ${totalValue.toLocaleString()}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2">
@@ -155,7 +158,7 @@ export default function StocksPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         editStock={editStock}
-        onSaved={loadData}
+        onSaved={refetch}
       />
     </div>
   );

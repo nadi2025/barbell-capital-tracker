@@ -7,8 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
+  const queryClient = useQueryClient();
   const [form, setForm] = useState({
     type: "Sell", category: "Put", open_date: "", expiration_date: "",
     close_date: "", ticker: "", strike: "", strike_2: "", quantity: "",
@@ -133,8 +135,13 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
       toast.success("Trade added");
     }
 
+    // Invalidate cached queries so the Dashboard (and any other page) refetches
+    queryClient.invalidateQueries({ queryKey: ["entity", "OptionsTrade"] });
+    queryClient.invalidateQueries({ queryKey: ["entity", "StockPosition"] });
+    queryClient.invalidateQueries({ queryKey: ["function"] });
+
     setSaving(false);
-    onSaved();
+    onSaved?.();
     onClose();
   };
 

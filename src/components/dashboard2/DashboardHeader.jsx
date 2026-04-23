@@ -1,34 +1,94 @@
-import { RefreshCw, Edit3 } from "lucide-react";
+import { RefreshCw, Edit3, Radio } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calcDashboard, fmt, pct } from "./dashboardCalcs";
 
-export default function DashboardHeader({ data, refreshing, onLiveRefresh, onManualPrice }) {
+function timeAgo(date) {
+  if (!date) return null;
+  const diff = Math.max(0, (Date.now() - new Date(date).getTime()) / 1000);
+  if (diff < 15) return "זה עתה";
+  if (diff < 60) return `לפני ${Math.round(diff)} שניות`;
+  if (diff < 3600) return `לפני ${Math.round(diff / 60)} דקות`;
+  if (diff < 86400) return `לפני ${Math.round(diff / 3600)} שעות`;
+  return new Date(date).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export default function DashboardHeader({
+  data,
+  refreshing,
+  isFetching,
+  lastSyncedAt,
+  onLiveRefresh,
+  onSoftRefresh,
+  onManualPrice,
+}) {
   const c = calcDashboard(data);
   const lastPrice = data.prices?.[0]?.last_updated;
-  const lastStr = lastPrice
-    ? new Date(lastPrice).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
-    : null;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-      <div>
-        <p className="text-xs text-muted-foreground uppercase tracking-[0.15em] font-medium mb-1">Total Net Worth</p>
-        <p className="text-5xl font-bold font-mono tracking-tight text-foreground">{fmt(c.totalNAV)}</p>
-        <div className="flex items-center gap-3 mt-2">
-          <span className={`text-sm font-mono font-semibold ${c.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-            {fmt(c.totalPnl)} ({pct(c.totalPnlPct)})
-          </span>
-          {lastStr && <span className="text-xs text-muted-foreground">עדכון אחרון: {lastStr}</span>}
+    <div className="bg-gradient-to-br from-card via-card to-muted/30 border border-border rounded-3xl p-6 sm:p-8">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+        {/* Hero: Net Worth */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-semibold">
+              Total Net Worth
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Radio className={`w-3 h-3 ${isFetching ? "text-primary animate-pulse" : "text-profit"}`} />
+              {isFetching ? "מסתנכרן" : "חי"}
+            </span>
+          </div>
+          <p className="text-4xl sm:text-5xl lg:text-6xl font-bold font-mono tracking-tight text-foreground leading-none">
+            {fmt(c.totalNAV)}
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
+            <span className={`text-base sm:text-lg font-mono font-semibold ${c.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+              {fmt(c.totalPnl)}
+            </span>
+            <span className={`text-sm font-mono ${c.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
+              {pct(c.totalPnlPct)}
+            </span>
+            {lastSyncedAt && (
+              <span className="text-xs text-muted-foreground">
+                · סנכרון אחרון: {timeAgo(lastSyncedAt)}
+              </span>
+            )}
+            {lastPrice && (
+              <span className="text-xs text-muted-foreground">
+                · מחירים: {timeAgo(lastPrice)}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={onLiveRefresh} disabled={refreshing}>
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          {refreshing ? "מעדכן..." : "עדכון חי"}
-        </Button>
-        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={onManualPrice}>
-          <Edit3 className="w-3.5 h-3.5" /> ידני
-        </Button>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-2 text-xs w-full sm:w-auto"
+            onClick={onLiveRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            {refreshing ? "מעדכן מקורות..." : "עדכון חי"}
+          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs flex-1"
+              onClick={onSoftRefresh}
+              disabled={isFetching}
+            >
+              <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
+              רענן
+            </Button>
+            <Button variant="ghost" size="sm" className="gap-1.5 text-xs flex-1" onClick={onManualPrice}>
+              <Edit3 className="w-3 h-3" /> ידני
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

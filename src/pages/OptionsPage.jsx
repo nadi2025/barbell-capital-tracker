@@ -9,11 +9,15 @@ import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import OptionTradeForm from "../components/OptionTradeForm";
 import { toast } from "sonner";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 export default function OptionsPage() {
-  const [trades, setTrades] = useState([]);
-  const [stocks, setStocks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { data: trades = [], isLoading: loadingTrades, refetch: refetchTrades } =
+    useEntityList("OptionsTrade", { sort: "-open_date" });
+  const { data: stocks = [], refetch: refetchStocks } = useEntityList("StockPosition");
+  const deleteTrade = useEntityMutation("OptionsTrade", "delete");
+  const updateStock = useEntityMutation("StockPosition", "update");
+
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState(null);
   const [user, setUser] = useState(null);
@@ -21,19 +25,16 @@ export default function OptionsPage() {
   const [filterTicker, setFilterTicker] = useState("all");
   const [refreshingPrices, setRefreshingPrices] = useState(false);
 
-  const loadData = async () => {
-    const [t, u, s] = await Promise.all([
-      base44.entities.OptionsTrade.list("-open_date"),
-      base44.auth.me(),
-      base44.entities.StockPosition.list(),
-    ]);
-    setTrades(t);
-    setUser(u);
-    setStocks(s);
-    setLoading(false);
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null));
+  }, []);
+
+  const loadData = () => {
+    refetchTrades();
+    refetchStocks();
   };
 
-  useEffect(() => { loadData(); }, []);
+  const loading = loadingTrades;
 
   const refreshLivePrices = async () => {
     setRefreshingPrices(true);
@@ -48,15 +49,17 @@ export default function OptionsPage() {
         if (price == null) return;
         const invested = (s.average_cost || 0) * (s.shares || 0);
         const currentVal = price * (s.shares || 0);
-        return base44.entities.StockPosition.update(s.id, {
-          current_price: price,
-          current_value: currentVal,
-          gain_loss: currentVal - invested,
-          gain_loss_pct: invested > 0 ? (currentVal - invested) / invested : 0,
+        return updateStock.mutateAsync({
+          id: s.id,
+          data: {
+            current_price: price,
+            current_value: currentVal,
+            gain_loss: currentVal - invested,
+            gain_loss_pct: invested > 0 ? (currentVal - invested) / invested : 0,
+          },
         });
       })
     );
-    await loadData();
     setRefreshingPrices(false);
     toast.success("Live prices updated");
   };
@@ -65,9 +68,8 @@ export default function OptionsPage() {
 
   const handleDelete = async (trade) => {
     if (!confirm(`Delete ${trade.ticker} ${trade.category} trade?`)) return;
-    await base44.entities.OptionsTrade.delete(trade.id);
+    await deleteTrade.mutateAsync(trade.id);
     toast.success("Trade deleted");
-    loadData();
   };
 
   if (loading) {
