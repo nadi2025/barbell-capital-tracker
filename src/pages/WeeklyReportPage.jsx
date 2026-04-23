@@ -13,8 +13,16 @@ const fmtUSD = (v) => v == null ? "—" : v.toLocaleString("en-US", { style: "cu
 function openHtmlInTab(html) {
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  const newWin = window.open(url, "_blank");
+  if (!newWin || newWin.closed || typeof newWin.closed === "undefined") {
+    // Popup was blocked — fallback: download as file
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `weekly-report-${new Date().toISOString().slice(0, 10)}.html`;
+    a.click();
+    toast.info("הדפדפן חסם את הפופאפ — הדוח הורד כקובץ HTML. פתח אותו בדפדפן ולחץ Ctrl+P");
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 export default function WeeklyReportPage() {
