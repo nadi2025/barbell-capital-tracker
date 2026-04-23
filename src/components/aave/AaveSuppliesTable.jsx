@@ -43,7 +43,8 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
         </div>
       </div>
 
-      <table className="w-full text-sm">
+      {/* Desktop table */}
+      <table className="hidden md:table w-full text-sm">
         <thead>
           <tr className="border-b border-border">
             <th className="text-left py-2 text-xs font-medium text-muted-foreground">Asset</th>
@@ -58,12 +59,7 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
               <td className="py-3 font-medium">{asset.asset_name}</td>
               <td className="text-right py-3">
                 {editingAsset === asset.asset_name ? (
-                  <input
-                    type="number"
-                    value={editUnits}
-                    onChange={(e) => setEditUnits(e.target.value)}
-                    className="w-20 px-2 py-1 border border-border rounded text-right text-sm"
-                  />
+                  <input type="number" value={editUnits} onChange={(e) => setEditUnits(e.target.value)} className="w-20 px-2 py-1 border border-border rounded text-right text-sm" />
                 ) : (
                   <div className="text-xs">
                     <div className="font-mono">{asset.units.toFixed(4)}</div>
@@ -73,12 +69,7 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
               </td>
               <td className="text-right py-3">
                 {editingAsset === asset.asset_name ? (
-                  <input
-                    type="number"
-                    value={editApy}
-                    onChange={(e) => setEditApy(e.target.value)}
-                    className="w-16 px-2 py-1 border border-border rounded text-right text-sm"
-                  />
+                  <input type="number" value={editApy} onChange={(e) => setEditApy(e.target.value)} className="w-16 px-2 py-1 border border-border rounded text-right text-sm" />
                 ) : (
                   <span className="text-xs text-profit">{asset.supply_apy?.toFixed(2) || '0'}%</span>
                 )}
@@ -86,15 +77,11 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
               <td className="text-right py-3">
                 {editingAsset === asset.asset_name ? (
                   <div className="flex gap-1 justify-end">
-                    <Button size="sm" variant="outline" onClick={() => setEditingAsset(null)} disabled={saving}>
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={handleSave} disabled={saving}>
-                      {saving ? '...' : 'Save'}
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingAsset(null)} disabled={saving}>Cancel</Button>
+                    <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Save'}</Button>
                   </div>
                 ) : (
-                  <button onClick={() => handleEditStart(asset)} className="p-1 hover:bg-muted rounded">
+                  <button onClick={() => handleEditStart(asset)} className="h-11 w-11 md:h-8 md:w-8 flex items-center justify-center hover:bg-muted rounded">
                     <Edit2 className="w-4 h-4 text-muted-foreground" />
                   </button>
                 )}
@@ -103,6 +90,48 @@ export default function AaveSuppliesTable({ collateralDetails, totalCollateral, 
           ))}
         </tbody>
       </table>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {collateralDetails?.map((asset, idx) => (
+          <div key={`${asset.asset_name}-${idx}`} className="border border-border/50 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{asset.asset_name}</span>
+              {editingAsset === asset.asset_name ? (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditingAsset(null)} disabled={saving}>Cancel</Button>
+                  <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Save'}</Button>
+                </div>
+              ) : (
+                <button onClick={() => handleEditStart(asset)} className="h-11 w-11 flex items-center justify-center hover:bg-muted rounded">
+                  <Edit2 className="w-4 h-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <p className="text-muted-foreground">Balance</p>
+                {editingAsset === asset.asset_name ? (
+                  <input type="number" value={editUnits} onChange={(e) => setEditUnits(e.target.value)} className="w-full px-2 py-1 border border-border rounded text-sm mt-1" />
+                ) : (
+                  <>
+                    <p className="font-mono">{asset.units.toFixed(4)}</p>
+                    <p className="text-muted-foreground">{fmt(asset.value_usd)}</p>
+                  </>
+                )}
+              </div>
+              <div>
+                <p className="text-muted-foreground">APY</p>
+                {editingAsset === asset.asset_name ? (
+                  <input type="number" value={editApy} onChange={(e) => setEditApy(e.target.value)} className="w-full px-2 py-1 border border-border rounded text-sm mt-1" />
+                ) : (
+                  <p className="text-profit font-semibold">{asset.supply_apy?.toFixed(2) || '0'}%</p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

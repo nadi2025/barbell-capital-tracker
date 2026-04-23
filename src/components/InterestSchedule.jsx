@@ -105,52 +105,85 @@ export default function InterestSchedule({ debts }) {
               No upcoming payments — add active debt facilities with maturity dates.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-xs text-muted-foreground bg-muted/10">
-                    <th className="text-left px-4 py-2.5 font-medium">Payment Date</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Facility</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Lender</th>
-                    <th className="text-left px-4 py-2.5 font-medium">Type</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Amount</th>
-                    <th className="text-right px-4 py-2.5 font-medium">Days Away</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((p, i) => {
-                    const daysAway = moment(p.date).diff(today, "days");
-                    return (
-                      <tr key={i} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${isNear(p.date) ? 'bg-amber-500/5' : ''}`}>
-                        <td className="px-4 py-2.5 font-mono text-xs">
-                          <span className={isNear(p.date) ? 'text-amber-400 font-semibold' : ''}>{p.date}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs font-medium">{p.debtName}</td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{p.lender}</td>
-                        <td className="px-4 py-2.5">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{p.type}</span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono text-xs text-amber-400 font-semibold">
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-xs text-muted-foreground bg-muted/10">
+                      <th className="text-left px-4 py-2.5 font-medium">Payment Date</th>
+                      <th className="text-left px-4 py-2.5 font-medium">Facility</th>
+                      <th className="text-left px-4 py-2.5 font-medium">Lender</th>
+                      <th className="text-left px-4 py-2.5 font-medium">Type</th>
+                      <th className="text-right px-4 py-2.5 font-medium">Amount</th>
+                      <th className="text-right px-4 py-2.5 font-medium">Days Away</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((p, i) => {
+                      const daysAway = moment(p.date).diff(today, "days");
+                      return (
+                        <tr key={i} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${isNear(p.date) ? 'bg-amber-500/5' : ''}`}>
+                          <td className="px-4 py-2.5 font-mono text-xs">
+                            <span className={isNear(p.date) ? 'text-amber-400 font-semibold' : ''}>{p.date}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs font-medium">{p.debtName}</td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{p.lender}</td>
+                          <td className="px-4 py-2.5">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{p.type}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono text-xs text-amber-400 font-semibold">
+                            ${p.amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                          </td>
+                          <td className={`px-4 py-2.5 text-right font-mono text-xs ${daysAway <= 30 ? 'text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
+                            {daysAway}d
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/20 border-t border-border font-semibold">
+                      <td colSpan={4} className="px-4 py-3 text-xs text-muted-foreground">TOTAL</td>
+                      <td className="px-4 py-3 text-right font-mono text-sm text-amber-400">
+                        ${totalUpcoming.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                      </td>
+                      <td />
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Mobile card list */}
+              <div className="md:hidden divide-y divide-border">
+                {filtered.map((p, i) => {
+                  const daysAway = moment(p.date).diff(today, "days");
+                  const near = isNear(p.date);
+                  return (
+                    <div key={i} className={`px-4 py-3 space-y-1.5 ${near ? 'bg-amber-500/5' : ''}`}>
+                      <div className="flex items-center justify-between">
+                        <span className={`font-mono text-xs font-semibold ${near ? 'text-amber-400' : ''}`}>{p.date}</span>
+                        <span className={`font-mono text-sm font-semibold text-amber-400`}>
                           ${p.amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                        </td>
-                        <td className={`px-4 py-2.5 text-right font-mono text-xs ${daysAway <= 30 ? 'text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
-                          {daysAway}d
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-muted/20 border-t border-border font-semibold">
-                    <td colSpan={4} className="px-4 py-3 text-xs text-muted-foreground">TOTAL</td>
-                    <td className="px-4 py-3 text-right font-mono text-sm text-amber-400">
-                      ${totalUpcoming.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{p.debtName}</span>
+                        <span className="text-xs text-muted-foreground">· {p.lender}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground ml-auto">{p.type}</span>
+                      </div>
+                      <div className={`text-xs font-mono ${daysAway <= 30 ? 'text-amber-400 font-semibold' : 'text-muted-foreground'}`}>
+                        {daysAway} days away
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="px-4 py-3 bg-muted/20 flex justify-between text-xs font-semibold">
+                  <span className="text-muted-foreground">TOTAL</span>
+                  <span className="font-mono text-amber-400">${totalUpcoming.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

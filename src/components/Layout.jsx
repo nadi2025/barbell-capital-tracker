@@ -76,6 +76,10 @@ export default function Layout() {
 
   const handleDeleteAccount = async () => {
     try {
+      // Delete the user account via API, then logout
+      await base44.entities.User.delete(user?.id);
+    } catch (_) {}
+    try {
       await base44.auth.logout();
     } catch (_) {}
   };

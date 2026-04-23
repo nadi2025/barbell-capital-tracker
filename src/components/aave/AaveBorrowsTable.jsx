@@ -36,7 +36,8 @@ export default function AaveBorrowsTable({ borrowedAmount, borrowApy, availableT
         </div>
       </div>
 
-      <table className="w-full text-sm mb-4">
+      {/* Desktop table */}
+      <table className="hidden md:table w-full text-sm mb-4">
         <thead>
           <tr className="border-b border-border">
             <th className="text-left py-2 text-xs font-medium text-muted-foreground">Asset</th>
@@ -49,41 +50,21 @@ export default function AaveBorrowsTable({ borrowedAmount, borrowApy, availableT
           <tr className="border-b border-border/50 hover:bg-muted/30">
             <td className="py-3 font-medium">USDC</td>
             <td className="text-right py-3">
-              {editing ? (
-                <input
-                  type="number"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="w-32 px-2 py-1 border border-border rounded text-right text-sm"
-                />
-              ) : (
-                <span className="font-mono text-loss">{fmt(borrowedAmount)}</span>
-              )}
+              {editing ? <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="w-32 px-2 py-1 border border-border rounded text-right text-sm" />
+                : <span className="font-mono text-loss">{fmt(borrowedAmount)}</span>}
             </td>
             <td className="text-right py-3">
-              {editing ? (
-                <input
-                  type="number"
-                  value={editApy}
-                  onChange={(e) => setEditApy(e.target.value)}
-                  className="w-20 px-2 py-1 border border-border rounded text-right text-sm"
-                />
-              ) : (
-                <span className="text-loss">{borrowApy?.toFixed(2) || '0'}%</span>
-              )}
+              {editing ? <input type="number" value={editApy} onChange={(e) => setEditApy(e.target.value)} className="w-20 px-2 py-1 border border-border rounded text-right text-sm" />
+                : <span className="text-loss">{borrowApy?.toFixed(2) || '0'}%</span>}
             </td>
             <td className="text-right py-3">
               {editing ? (
                 <div className="flex gap-1 justify-end">
-                  <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>
-                    Cancel
-                  </Button>
-                  <Button size="sm" onClick={handleSave} disabled={saving}>
-                    {saving ? '...' : 'Save'}
-                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
+                  <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Save'}</Button>
                 </div>
               ) : (
-                <button onClick={() => setEditing(true)} className="p-1 hover:bg-muted rounded">
+                <button onClick={() => setEditing(true)} className="h-11 w-11 md:h-8 md:w-8 flex items-center justify-center hover:bg-muted rounded">
                   <Edit2 className="w-4 h-4 text-muted-foreground" />
                 </button>
               )}
@@ -91,6 +72,41 @@ export default function AaveBorrowsTable({ borrowedAmount, borrowApy, availableT
           </tr>
         </tbody>
       </table>
+
+      {/* Mobile card */}
+      <div className="md:hidden border border-border/50 rounded-lg p-3 space-y-3 mb-4">
+        <div className="flex items-center justify-between">
+          <span className="font-semibold">USDC</span>
+          {editing ? (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(false)} disabled={saving}>Cancel</Button>
+              <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? '...' : 'Save'}</Button>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="h-11 w-11 flex items-center justify-center hover:bg-muted rounded">
+              <Edit2 className="w-4 h-4 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <p className="text-muted-foreground">Debt</p>
+            {editing ? (
+              <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="w-full px-2 py-1 border border-border rounded text-sm mt-1" />
+            ) : (
+              <p className="font-mono text-loss font-semibold">{fmt(borrowedAmount)}</p>
+            )}
+          </div>
+          <div>
+            <p className="text-muted-foreground">APY</p>
+            {editing ? (
+              <input type="number" value={editApy} onChange={(e) => setEditApy(e.target.value)} className="w-full px-2 py-1 border border-border rounded text-sm mt-1" />
+            ) : (
+              <p className="text-loss font-semibold">{borrowApy?.toFixed(2) || '0'}%</p>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-2 text-xs">
         <div className="flex justify-between py-1.5 border-t border-border pt-2">
