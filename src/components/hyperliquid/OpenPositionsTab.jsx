@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 const fmt = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtP = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
@@ -24,6 +25,7 @@ const distToLiq = (p) => {
 const emptyForm = { asset: "", platform: "HyperLiquid", leverage: "", size: "", margin_usd: "", position_value_usd: "", liquidation_price: "", direction: "Long", entry_price: "", mark_price: "", status: "Open", opened_date: "" };
 
 export default function OpenPositionsTab({ positions, onRefresh }) {
+  const queryClient = useQueryClient();
   const [dialog, setDialog] = useState(false);
   const [markDialog, setMarkDialog] = useState(false);
   const [editPos, setEditPos] = useState(null);
@@ -63,6 +65,10 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
       .filter(a => assetPrices[a.symbol])
       .map(a => base44.entities.Asset.update(a.id, { current_price_usd: assetPrices[a.symbol], last_updated: new Date().toISOString() }));
     await Promise.all([...updates, ...assetUpdates]);
+    // Invalidate cached queries so the main Dashboard + Crypto Dashboard refresh
+    queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
+    queryClient.invalidateQueries({ queryKey: ["entity", "Asset"] });
+    queryClient.invalidateQueries({ queryKey: ["function"] });
     toast.success("Mark prices updated");
     setMarkDialog(false);
     onRefresh();
@@ -72,12 +78,16 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
     const data = { ...form, leverage: parseFloat(form.leverage) || null, size: parseFloat(form.size) || null, margin_usd: parseFloat(form.margin_usd) || null, position_value_usd: parseFloat(form.position_value_usd) || null, liquidation_price: parseFloat(form.liquidation_price) || null, entry_price: parseFloat(form.entry_price) || null, mark_price: parseFloat(form.mark_price) || null };
     if (editPos) await base44.entities.LeveragedPosition.update(editPos.id, data);
     else await base44.entities.LeveragedPosition.create(data);
+    queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
+    queryClient.invalidateQueries({ queryKey: ["function"] });
     toast.success("Saved"); setDialog(false); onRefresh();
   };
 
   const del = async (id) => {
     if (!confirm("Delete?")) return;
     await base44.entities.LeveragedPosition.delete(id);
+    queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
+    queryClient.invalidateQueries({ queryKey: ["function"] });
     toast.success("Deleted"); onRefresh();
   };
 

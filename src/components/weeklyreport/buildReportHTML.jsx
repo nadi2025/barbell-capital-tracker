@@ -211,6 +211,150 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   if (risks.length === 0) risks.push({ level: "green", text: "לא זוהו סיכונים מהותיים" });
   const topRisks = risks.slice(0, 5);
 
+  // ─────────────────────────────────────────────────────────
+  // ACTIONS THIS PERIOD (last 7 days) — trades opened/closed,
+  // stock transactions, investor payments, HL trades
+  // ─────────────────────────────────────────────────────────
+  const periodCutoff = new Date(today); periodCutoff.setDate(today.getDate() - 7);
+  const inPeriod = (d) => d && new Date(d) >= periodCutoff && new Date(d) <= today;
+
+  // IB options: opened this week
+  const ibOptsOpened = ibOptions
+    .filter((o) => inPeriod(o.open_date))
+    .map((o) => ({
+      type: "Open",
+      category: "IB Option",
+      date: o.open_date,
+      text: `${o.type || "Sell"} ${o.category} · ${o.ticker} $${o.strike} ×${o.quantity}`,
+      pnl: null,
+      meta: `פרמיה: ${$(((o.fill_price || 0) * (o.quantity || 0) * 100), 0)}`,
+    }));
+
+  // IB options: closed this week
+  const ibOptsClosed = ibOptions
+    .filter((o) => inPeriod(o.close_date) && ["Closed", "Assigned", "Expired"].includes(o.status))
+    .map((o) => ({
+      type: "Close",
+      category: "IB Option",
+      date: o.close_date,
+      text: `${o.status} · ${o.type || "Sell"} ${o.category} ${o.ticker} $${o.strike}`,
+      pnl: o.pnl || 0,
+      meta: o.status === "Assigned" ? "מניות נכנסו לתיק" : null,
+    }));
+
+  // Stock transactions: entered this week
+  const stocksOpened = stocks
+    .filter((s) => inPeriod(s.entry_date))
+    .map((s) => ({
+      type: "Open",
+      category: "Stock",
+      date: s.entry_date,
+      text: `${s.ticker} · ${s.shares} מניות @ ${$(s.average_cost)}`,
+      pnl: null,
+      meta: `מקור: ${s.source || "Direct"} · שווי: ${$(s.invested_value, 0)}`,
+    }));
+
+  // Stock transactions: closed this week
+  const stocksClosed = stocks
+    .filter((s) => s.status === "Closed" && inPeriod(s.close_date || s.last_updated))
+    .map((s) => ({
+      type: "Close",
+      category: "Stock",
+      date: s.close_date || s.last_updated,
+      text: `סגירה · ${s.ticker} ×${s.shares}`,
+      pnl: s.gain_loss || 0,
+      meta: null,
+    }));
+
+  // HL trades (last 7 days) — open and close actions
+  const hlActions = hlTrades
+    .filter((t) => inPeriod(t.trade_date))
+    .map((t) => {
+      const isClose = /close/i.test(t.direction || "");
+      return {
+        type: isClose ? "Close" : "Open",
+        category: "HyperLiquid",
+        date: t.trade_date,
+        text: `${t.direction || ""} ${t.asset || ""} · size ${t.size || "—"}`,
+        pnl: isClose ? (t.closed_pnl || 0) : null,
+        meta: t.entry_price ? `@ $${(t.entry_price).toLocaleString()}` : null,
+      };
+    });
+
+  // Crypto options: opened/closed this week
+  const cryptoOptsOpened = cryptoOptions
+    .filter((o) => inPeriod(o.opened_date))
+    .map((o) => ({
+      type: "Open",
+      category: "Rysk Option",
+      date: o.opened_date,
+      text: `${o.direction || "Sell"} ${o.option_type} · ${o.asset} $${o.strike_price}`,
+      pnl: null,
+      meta: `פרמיה: ${$(o.income_usd, 2)} · פקיעה ${fmtDate(o.maturity_date)}`,
+    }));
+
+  const cryptoOptsClosed = cryptoOptions
+    .filter((o) => ["Expired OTM", "Expired ITM", "Exercised"].includes(o.status) && inPeriod(o.maturity_date))
+    .map((o) => ({
+      type: "Close",
+      category: "Rysk Option",
+      date: o.maturity_date,
+      text: `${o.status} · ${o.asset} ${o.option_type} $${o.strike_price}`,
+      pnl: o.net_pnl || o.income_usd || 0,
+      meta: null,
+    }));
+
+  // Investor payments this week
+  const paymentsMade = (investorPayments || [])
+    .filter((p) => inPeriod(p.payment_date))
+    .map((p) => {
+      const inv = investors.find((i) => i.id === p.investor_id);
+      return {
+        type: "Payment",
+        category: "Investor",
+        date: p.payment_date,
+        text: `תשלום ל-${inv?.name || "—"}`,
+        pnl: -(p.amount || 0), // payment is an outflow
+        meta: p.notes || null,
+      };
+    });
+
+  const actionsThisPeriod = [
+    ...ibOptsOpened, ...ibOptsClosed,
+    ...stocksOpened, ...stocksClosed,
+    ...hlActions,
+    ...cryptoOptsOpened, ...cryptoOptsClosed,
+    ...paymentsMade,
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const actionsPnl = actionsThisPeriod
+    .filter((a) => a.pnl != null)
+    .reduce((s, a) => s + a.pnl, 0);
+
+  const actionsCountBy = {
+    opened: actionsThisPeriod.filter((a) => a.type === "Open").length,
+    closed: actionsThisPeriod.filter((a) => a.type === "Close").length,
+    payments: actionsThisPeriod.filter((a) => a.type === "Payment").length,
+  };
+
+  const actionsTableRows = actionsThisPeriod.slice(0, 40).map((a) => {
+    const typeBadge = a.type === "Open"
+      ? `<span style="background:#dbeafe;color:#1e40af;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">פתיחה</span>`
+      : a.type === "Close"
+      ? `<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">סגירה</span>`
+      : `<span style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600">תשלום</span>`;
+    const pnlCell = a.pnl != null
+      ? `<td class="${clr(a.pnl)}" style="font-family:monospace">${$(a.pnl, 0)}</td>`
+      : `<td style="color:#94a3b8">—</td>`;
+    return `<tr>
+      <td style="font-size:10px;color:#6b7280">${fmtDate(a.date)}</td>
+      <td>${typeBadge}</td>
+      <td style="font-size:10px;color:#475569">${a.category}</td>
+      <td><strong>${a.text}</strong>${a.meta ? `<br><span style='font-size:10px;color:#6b7280'>${a.meta}</span>` : ""}</td>
+      ${pnlCell}
+    </tr>`;
+  }).join("");
+
   // Closed options last 30 days
   const cutoff30 = new Date(today); cutoff30.setDate(today.getDate() - 30);
   const closedOpts = [];
@@ -464,11 +608,27 @@ ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<
 <div class="page-break"></div>
 
 <div class="hdr">
-  <strong>Oasis Project G Ltd. · נתוני קריפטו ומניות · ${periodStart} — ${periodEnd}</strong>
+  <strong>Oasis Project G Ltd. · פעולות ונתוני קריפטו · ${periodStart} — ${periodEnd}</strong>
   <span>${todayStr}</span>
 </div>
 
-<div class="sec">G · מחירי קריפטו בעמוד הדוח</div>
+<!-- Actions This Period (last 7 days) -->
+<div class="sec">★ פעולות שבוצעו השבוע (7 ימים)</div>
+${actionsThisPeriod.length > 0 ? `
+<div style="display:flex;gap:10px;margin-bottom:6px;font-size:11px">
+  <span style="background:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:4px"><strong>${actionsCountBy.opened}</strong> פתיחות</span>
+  <span style="background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:4px"><strong>${actionsCountBy.closed}</strong> סגירות</span>
+  <span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:4px"><strong>${actionsCountBy.payments}</strong> תשלומים</span>
+  <span style="margin-right:auto">P&L ממומש מהפעולות: <strong class="${clr(actionsPnl)}">${$(actionsPnl, 0)}</strong></span>
+</div>
+<table>
+  <tr><th>תאריך</th><th>סוג</th><th>קטגוריה</th><th>פירוט</th><th>P&L</th></tr>
+  ${actionsTableRows}
+</table>
+${actionsThisPeriod.length > 40 ? `<p style='color:#94a3b8;font-size:10px;margin-top:4px'>... ועוד ${actionsThisPeriod.length - 40} פעולות (הוצגו 40 הראשונות)</p>` : ""}
+` : `<p style='color:#94a3b8;font-size:11px;padding:3px 0'>אין פעולות שבוצעו בשבוע האחרון</p>`}
+
+<div class="sec" style="margin-top:12px">G · מחירי קריפטו בעמוד הדוח</div>
 <table>
   <tr><th>נכס</th><th>מחיר נוכחי</th><th>יחידות בחזקה</th><th>שווי כולל</th></tr>
   <tr><td><strong>BTC</strong></td><td>${$(btcP)}</td><td>${btcUnits.toFixed(4)}</td><td class="positive"><strong>${$(btcCollVal)}</strong></td></tr>

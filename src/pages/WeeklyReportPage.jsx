@@ -39,7 +39,7 @@ export default function WeeklyReportPage() {
       base44.entities.OffChainInvestor.list(),
       base44.entities.InvestorPayment.list("-payment_date", 200),
       base44.entities.OptionsTrade.list("-open_date", 200),
-      base44.entities.StockPosition.filter({ status: "Holding" }),
+      base44.entities.StockPosition.list("-entry_date", 500),
       base44.entities.HLTrade.list("-trade_date", 500),
       base44.entities.Prices.list(),
       base44.functions.invoke("calculateAavePosition", {}),

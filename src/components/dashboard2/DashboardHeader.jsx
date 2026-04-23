@@ -1,4 +1,4 @@
-import { RefreshCw, Edit3, Radio } from "lucide-react";
+import { RefreshCw, Radio, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calcDashboard, fmt, pct } from "./dashboardCalcs";
 
@@ -14,12 +14,10 @@ function timeAgo(date) {
 
 export default function DashboardHeader({
   data,
-  refreshing,
   isFetching,
   lastSyncedAt,
-  onLiveRefresh,
+  onOpenPriceHub,
   onSoftRefresh,
-  onManualPrice,
 }) {
   const c = calcDashboard(data);
   const lastPrice = data.prices?.[0]?.last_updated;
@@ -50,7 +48,7 @@ export default function DashboardHeader({
             </span>
             {lastSyncedAt && (
               <span className="text-xs text-muted-foreground">
-                · סנכרון אחרון: {timeAgo(lastSyncedAt)}
+                · סנכרון: {timeAgo(lastSyncedAt)}
               </span>
             )}
             {lastPrice && (
@@ -67,27 +65,21 @@ export default function DashboardHeader({
             variant="default"
             size="sm"
             className="gap-2 text-xs w-full sm:w-auto"
-            onClick={onLiveRefresh}
-            disabled={refreshing}
+            onClick={onOpenPriceHub}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "מעדכן מקורות..." : "עדכון חי"}
+            <Zap className="w-3.5 h-3.5" />
+            מרכז מחירים
           </Button>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs flex-1"
-              onClick={onSoftRefresh}
-              disabled={isFetching}
-            >
-              <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
-              רענן
-            </Button>
-            <Button variant="ghost" size="sm" className="gap-1.5 text-xs flex-1" onClick={onManualPrice}>
-              <Edit3 className="w-3 h-3" /> ידני
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs w-full sm:w-auto"
+            onClick={onSoftRefresh}
+            disabled={isFetching}
+          >
+            <RefreshCw className={`w-3 h-3 ${isFetching ? "animate-spin" : ""}`} />
+            רענן נתונים
+          </Button>
         </div>
       </div>
     </div>
