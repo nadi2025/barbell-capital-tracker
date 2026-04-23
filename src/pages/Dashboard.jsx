@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DashboardHeader from "@/components/dashboard2/DashboardHeader";
-import KpiRow from "@/components/dashboard2/KpiRow";
+import CapitalStructureSection from "@/components/dashboard2/CapitalStructureSection";
 import AllocationSection from "@/components/dashboard2/AllocationSection";
 import SegmentsSection from "@/components/dashboard2/SegmentsSection";
 import AlertsSection from "@/components/dashboard2/AlertsSection";
@@ -32,7 +32,7 @@ export default function Dashboard() {
         />
         {/* Alerts surface high-priority items above the fold */}
         <AlertsSection data={data} />
-        <KpiRow data={data} />
+        <CapitalStructureSection data={data} />
         <SegmentsSection data={data} />
         <HLPositionsSection data={data} />
         <AllocationSection data={data} />
