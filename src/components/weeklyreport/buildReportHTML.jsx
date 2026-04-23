@@ -33,6 +33,11 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const periodEnd = format(today, "d.M.yy");
 
   const { assets, aaveCollateral, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [], hlTrades = [], prices = [], aaveBorrowUsd = 0, aaveHealthFactor = 0 } = appData;
+
+  // Color helpers — defined early, used throughout
+  const clr = (v) => v >= 0 ? "positive" : "negative";
+  const riskDot = { red: "🔴", yellow: "🟡", green: "🟢" };
+
   // Auto-calculate IB stocks P&L from StockPosition entity
   const ibStocksPnl = stocks.reduce((s, st) => s + (st.gain_loss || 0), 0);
 
@@ -389,9 +394,6 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const pieChartJson = JSON.stringify({ labels: pieData.map(p => `${p.label} ${((p.val / pieTotal) * 100).toFixed(1)}%`), datasets: [{ data: pieData.map(p => p.val), backgroundColor: pieData.map(p => p.color), borderWidth: 2, borderColor: "#fff" }] });
   const barChartJson = JSON.stringify({ labels: barData.map(b => b.label), datasets: [{ data: barData.map(b => b.val), backgroundColor: barData.map(b => b.val >= 0 ? "#22c55e" : "#ef4444"), borderRadius: 4 }] });
 
-  // Color helpers
-  const clr = (v) => v >= 0 ? "positive" : "negative";
-  const riskDot = { red: "🔴", yellow: "🟡", green: "🟢" };
   const riskClr = { red: "risk-red", yellow: "risk-yellow", green: "risk-green" };
 
   const eventsHTML = sortedEvents.map(e =>
