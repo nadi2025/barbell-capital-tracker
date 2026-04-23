@@ -77,13 +77,35 @@ export function useEntityMutation(entityName, action, { invalidate = [] } = {}) 
       if (action === "delete") return entity.delete(args);
       throw new Error(`Unknown mutation action: ${action}`);
     },
+    // Optimistic update for "update" actions — reflect change immediately in the UI
+    onMutate: async (args) => {
+      if (action !== "update") return;
+      // Cancel any in-flight refetches so they don't overwrite the optimistic update
+      await queryClient.cancelQueries({ queryKey: ["entity", entityName] });
+      // Snapshot all matching queries for rollback
+      const previousQueries = queryClient.getQueriesData({ queryKey: ["entity", entityName] });
+      // Optimistically patch every cached list that contains this record
+      queryClient.setQueriesData({ queryKey: ["entity", entityName] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item) =>
+          item.id === args.id ? { ...item, ...args.data } : item
+        );
+      });
+      return { previousQueries };
+    },
+    onError: (_err, _args, context) => {
+      // Roll back on failure
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
     onSuccess: () => {
-      // Invalidate this entity + any extras (e.g. dashboard often depends on many entities)
       queryClient.invalidateQueries({ queryKey: ["entity", entityName] });
       invalidate.forEach((name) => {
         queryClient.invalidateQueries({ queryKey: ["entity", name] });
       });
-      // Dashboard aggregate + functions like calculateAavePosition should refresh too
       queryClient.invalidateQueries({ queryKey: ["function"] });
     },
   });

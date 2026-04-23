@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, TrendingUp, Bitcoin, Settings } from "lucide-react";
 
 const tabs = [
@@ -10,6 +10,7 @@ const tabs = [
 
 export default function BottomNav() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <nav
@@ -20,9 +21,9 @@ export default function BottomNav() {
         const isActive =
           path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
         return (
-          <Link
+          <button
             key={path}
-            to={path}
+            onClick={() => navigate(path)}
             className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 select-none transition-colors ${
               isActive
                 ? "text-primary"
@@ -31,7 +32,7 @@ export default function BottomNav() {
           >
             <Icon className="w-5 h-5" />
             <span className="text-[10px] font-medium">{label}</span>
-          </Link>
+          </button>
         );
       })}
     </nav>
