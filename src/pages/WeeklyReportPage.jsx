@@ -77,10 +77,14 @@ export default function WeeklyReportPage() {
       const today = format(new Date(), "yyyy-MM-dd");
       const lastReport = reports[0];
 
-      // Validate critical data
-      if (!answers.btc_price || !answers.eth_price) throw new Error("מחירי קריפטו חסרים — לא ניתן להפיק דוח");
-      const aaveTotal = appData.aaveCollateral.reduce((s, c) => s + (c.units || 0), 0);
-      if (aaveTotal === 0) throw new Error("נתוני Aave חסרים — עדכן באמוד Aave");
+      // Soft warnings — never block the report. Missing data just shows as "—" in the PDF.
+      const warnings = [];
+      if (!answers.btc_price && !answers.eth_price) warnings.push("מחירי קריפטו חסרים — חלק מהטבלאות יהיה ריק");
+      const aaveTotal = (appData.aaveCollateral || []).reduce((s, c) => s + (c.units || 0), 0);
+      if (aaveTotal === 0) warnings.push("נתוני Aave חסרים — קטע Aave יופיע ריק");
+      if (warnings.length > 0) {
+        toast.warning(warnings.join(" · "));
+      }
 
       const prevReport = lastReport ? {
         ib_nav: lastReport.ib_nav,

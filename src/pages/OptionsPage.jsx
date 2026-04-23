@@ -137,6 +137,16 @@ export default function OptionsPage() {
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
   const handleDelete = async (trade) => {
+    // For consolidated rows, delete ALL underlying trades in the group
+    if (trade._consolidated && trade._groupIds?.length > 1) {
+      const n = trade._groupIds.length;
+      if (!confirm(`למחוק את כל ${n} העסקאות המאוחדות של ${trade.ticker} ${trade.category} $${trade.strike}?\nהפעולה הזו תמחק ${n} רשומות מה-DB.`)) return;
+      for (const id of trade._groupIds) {
+        await deleteTrade.mutateAsync(id);
+      }
+      toast.success(`${n} עסקאות נמחקו`);
+      return;
+    }
     if (!confirm(`Delete ${trade.ticker} ${trade.category} trade?`)) return;
     await deleteTrade.mutateAsync(trade.id);
     toast.success("Trade deleted");
@@ -368,7 +378,7 @@ export default function OptionsPage() {
                           size="icon"
                           className="h-7 w-7"
                           disabled={t._consolidated}
-                          title={t._consolidated ? "עבור למצב גולמי לערוך שורה" : "ערוך"}
+                          title={t._consolidated ? "עבור למצב גולמי לערוך שורה בודדת" : "ערוך"}
                           onClick={() => { setEditTrade(t); setFormOpen(true); }}
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -377,8 +387,7 @@ export default function OptionsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive"
-                          disabled={t._consolidated}
-                          title={t._consolidated ? "עבור למצב גולמי למחוק שורה" : "מחק"}
+                          title={t._consolidated ? `מחק את כל ${t._groupSize} העסקאות המאוחדות` : "מחק"}
                           onClick={() => handleDelete(t)}
                         >
                           <Trash2 className="w-3.5 h-3.5" />

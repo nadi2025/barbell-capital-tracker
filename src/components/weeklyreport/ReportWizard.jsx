@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ChevronRight, ChevronLeft, RefreshCw, ExternalLink, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { differenceInHours } from "date-fns";
@@ -106,7 +107,13 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
     <div className="bg-card border border-border rounded-2xl p-6 max-w-lg mx-auto" dir="rtl">
       {/* Progress */}
       <div className="flex justify-between text-xs text-muted-foreground mb-3">
-        <span>{step < 3 ? `שאלה ${step + 1} מתוך 3` : step === 3 ? "עדכון מחירים" : "סיכום"}</span>
+        <span>
+          {step === 0 && "שלב 1 מתוך 3 · NAV"}
+          {step === 1 && "שלב 2 מתוך 3 · אופציות IB"}
+          {step === 2 && "שלב 3 מתוך 3 · הערות"}
+          {step === 3 && "מחירים — אימות"}
+          {step === 4 && "סיכום"}
+        </span>
         <button onClick={onCancel} className="hover:text-foreground">ביטול</button>
       </div>
       <div className="w-full bg-muted rounded-full h-1 mb-6">
@@ -144,6 +151,21 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
               <p className="text-xs text-muted-foreground mt-1">{ibOptions?.filter((o) => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl > 0).length || 0} זכיות מתוך {ibOptions?.filter((o) => (o.status === "Expired" || o.status === "Closed" || o.status === "Assigned") && o.pnl != null).length || 0}</p>
             </div>
           </div>
+        </div>
+      }
+
+      {/* Step 2: Notes */}
+      {step === 2 &&
+        <div className="space-y-4">
+          <label className="text-lg font-bold block">הערות לשבוע</label>
+          <p className="text-sm text-muted-foreground">אופציונלי — כל מה שרלוונטי לציין בדוח (תוכנית להמשך, אירועי שוק וכד׳)</p>
+          <Textarea
+            value={answers.notes}
+            onChange={(e) => set("notes", e.target.value)}
+            rows={6}
+            placeholder="..."
+            autoFocus
+          />
         </div>
       }
 
