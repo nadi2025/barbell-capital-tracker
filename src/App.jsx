@@ -25,6 +25,7 @@ import CryptoOptionsPage from './pages/crypto/OptionsPage';
 import OffChainInvestorsPage from './pages/OffChainInvestorsPage';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import AssetsPage from './pages/AssetsPage';
+import IBImportPage from './pages/IBImportPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/offchain-investors" element={<OffChainInvestorsPage />} />
         <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="/settings/assets" element={<AssetsPage />} />
+        <Route path="/ib-import" element={<IBImportPage />} />
         <Route path="*" element={<PageNotFound />} />
       </Route>
     </Routes>

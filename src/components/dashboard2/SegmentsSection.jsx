@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Building2, Coins } from "lucide-react";
-import { calcDashboard, fmt, pct } from "./dashboardCalcs";
+import { calcDashboard, fmt } from "./dashboardCalcs";
 
 function MetricLine({ label, value, accent, sub }) {
   return (
@@ -14,7 +14,7 @@ function MetricLine({ label, value, accent, sub }) {
   );
 }
 
-function SegmentCard({ title, icon: Icon, accentColor, nav, navLabel, subNav, link, linkLabel, children }) {
+function SegmentCard({ title, icon: Icon, accentColor, nav, navLabel, link, linkLabel, children }) {
   return (
     <div className="bg-card border border-border rounded-2xl p-6 flex flex-col hover:shadow-lg transition-shadow">
       <div className="flex items-center justify-between mb-5">
@@ -32,7 +32,6 @@ function SegmentCard({ title, icon: Icon, accentColor, nav, navLabel, subNav, li
       <div className="mb-4 pb-4 border-b border-border/50">
         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">{navLabel}</p>
         <p className="text-3xl font-bold font-mono text-foreground leading-none">{nav}</p>
-        {subNav && <p className="text-xs text-muted-foreground mt-1.5">{subNav}</p>}
       </div>
 
       <div className="divide-y divide-border/40 flex-1">
@@ -44,29 +43,34 @@ function SegmentCard({ title, icon: Icon, accentColor, nav, navLabel, subNav, li
 
 export default function SegmentsSection({ data }) {
   const c = calcDashboard(data);
-  const equityPct = c.ibNav > 0 && c.totalOffChainDebt > 0
-    ? `${((c.ibNav / (c.ibNav + c.totalOffChainDebt)) * 100).toFixed(0)}% Equity`
-    : "100% Equity";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Off-Chain */}
+      {/* Off-Chain: now shows true composition (Cash + Stocks + Options) */}
       <SegmentCard
         title="Off-Chain · Interactive Brokers"
         icon={Building2}
         accentColor="bg-gradient-to-br from-blue-500 to-blue-600"
         navLabel="NAV"
         nav={fmt(c.ibNav)}
-        subNav={`${pct(c.ibPnlPct)} · הופקד ${fmt(c.totalDeposited, 0)}`}
         link="/options"
         linkLabel="לפירוט IB"
       >
-        <MetricLine label="הופקד" value={fmt(c.totalDeposited)} />
-        <MetricLine label="P&L כולל" value={fmt(c.ibPnl)} accent={c.ibPnl >= 0 ? "text-profit" : "text-loss"} />
-        <MetricLine label="P&L ממומש" sub="אופציות" value={fmt(c.realizedPnl)} accent={c.realizedPnl >= 0 ? "text-profit" : "text-loss"} />
-        <MetricLine label="P&L לא ממומש" sub="מניות" value={fmt(c.unrealizedPnl)} accent={c.unrealizedPnl >= 0 ? "text-profit" : "text-loss"} />
-        <MetricLine label="Win Rate" value={`${(c.winRate * 100).toFixed(0)}%`} accent={c.winRate > 0.6 ? "text-profit" : ""} />
-        <MetricLine label="מבנה הון" value={equityPct} />
+        <MetricLine label="מזומן IB" value={fmt(c.ibCash)} sub={c.snapshot?.snapshot_date ? `snapshot ${c.snapshot.snapshot_date}` : "snapshot חסר — עדכן"} />
+        <MetricLine label="שווי מניות פתוחות" value={fmt(c.ibStocksValue)} sub={`${c.holdingStocks.length} פוזיציות`} />
+        <MetricLine
+          label="שווי אופציות פתוחות"
+          value={fmt(c.ibOptionsValue)}
+          accent={c.ibOptionsValue >= 0 ? "text-profit" : "text-loss"}
+          sub={`${c.openOptions.length} אופציות · לא ממומש`}
+        />
+        <MetricLine
+          label="P&L ממומש (סגורות)"
+          value={fmt(c.realizedPnl)}
+          accent={c.realizedPnl >= 0 ? "text-profit" : "text-loss"}
+          sub={`${c.closedOptions.length} עסקאות`}
+        />
+        <MetricLine label="הון מופקד" value={fmt(c.totalDeposited)} />
       </SegmentCard>
 
       {/* On-Chain */}
@@ -76,14 +80,13 @@ export default function SegmentsSection({ data }) {
         accentColor="bg-gradient-to-br from-orange-500 to-amber-600"
         navLabel="On-Chain NAV"
         nav={fmt(c.onChainNAV)}
-        subNav={`נכסים ${fmt(c.cryptoTotalAssets, 0)} · חוב ${fmt(c.cryptoTotalDebt, 0)}`}
         link="/crypto"
         linkLabel="לדשבורד קריפטו"
       >
-        <MetricLine label="Aave (נטו)" value={fmt(c.aaveNetWorth)} accent={c.aaveNetWorth >= 0 ? "text-profit" : "text-loss"} />
+        <MetricLine label="Aave (נטו)" value={fmt(c.aaveNetWorth)} accent={c.aaveNetWorth >= 0 ? "text-profit" : "text-loss"} sub={`בטוחה ${fmt(c.aaveCollateralValue, 0)}`} />
         <MetricLine label="הלוואות שנתנו" value={fmt(c.loansGivenValue)} />
         <MetricLine label="מזומן / יציב" value={fmt(c.stablecoinsValue)} />
-        <MetricLine label="HL Live P&L" value={fmt(c.hlUnrealizedPnl)} accent={c.hlUnrealizedPnl >= 0 ? "text-profit" : "text-loss"} />
+        <MetricLine label="HL Equity" value={fmt(c.hlEquity)} accent={c.hlUnrealizedPnl >= 0 ? "text-profit" : "text-loss"} sub={`Margin ${fmt(c.totalMargin, 0)} + P&L ${fmt(c.hlUnrealizedPnl, 0)}`} />
         <MetricLine label="חוב משקיעים" value={fmt(c.investorDebt)} accent="text-loss" />
         <MetricLine label="Aave Borrow" value={fmt(c.aaveBorrowUsd)} accent={c.aaveBorrowUsd > 0 ? "text-loss" : ""} />
       </SegmentCard>

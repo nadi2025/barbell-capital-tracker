@@ -5,8 +5,6 @@ export const fmt = (v, d = 0) => {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
 };
 
-export const pct = (v, d = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(d)}%`;
-
 export function calcDashboard(data) {
   const {
     options = [], stocks = [], deposits = [], snapshot,
@@ -24,13 +22,34 @@ export function calcDashboard(data) {
   const aavePrice = priceMap["AAVE"] || 0;
 
   // ── IB / Off-Chain ──
-  const ibNav = snapshot?.nav || 0;
+  // New formula: ibNav = cash + stocks_value + options_value (from latest snapshot,
+  // with live fallbacks computed from current entity state)
+  const holdingStocks = stocks.filter(s => ["Holding", "Partially Sold"].includes(s.status));
+  const openOptions = options.filter(o => o.status === "Open");
+  const closedOptions = options.filter(o => ["Closed", "Expired", "Assigned"].includes(o.status));
+
+  // Live stocks value — sum of current_value on open positions
+  const liveStocksValue = holdingStocks.reduce((s, x) => s + (x.current_value || 0), 0);
+
+  // Live options value = unrealized P&L on open positions.
+  // Positive number = shorts that decayed favorably; negative = positions moved against us.
+  const liveOptionsValue = openOptions.reduce((s, o) => s + (o.pnl || 0), 0);
+
+  // IB cash — prefer snapshot.cash (manually maintained), else fall back to snapshot.nav
+  const ibCash = snapshot?.cash != null ? snapshot.cash : 0;
+
+  // ibNav construction — if snapshot has all three fields, use them directly;
+  // otherwise compute from live data + whatever snapshot fields exist.
+  const snapshotStocks = snapshot?.stocks_value != null ? snapshot.stocks_value : null;
+  const snapshotOptions = snapshot?.options_value != null ? snapshot.options_value : null;
+
+  const ibStocksValue = snapshotStocks != null ? snapshotStocks : liveStocksValue;
+  const ibOptionsValue = snapshotOptions != null ? snapshotOptions : liveOptionsValue;
+  const ibNav = ibCash + ibStocksValue + ibOptionsValue;
+
   const totalDeposited = deposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
   const ibPnl = ibNav - totalDeposited;
-  const ibPnlPct = totalDeposited > 0 ? (ibPnl / totalDeposited) * 100 : 0;
 
-  const closedOptions = options.filter(o => ["Closed", "Expired"].includes(o.status));
-  const openOptions = options.filter(o => o.status === "Open");
   const realizedPnl = closedOptions.reduce((s, o) => s + (o.pnl || 0), 0);
   const winRate = closedOptions.length > 0
     ? closedOptions.filter(o => (o.pnl || 0) > 0).length / closedOptions.length
@@ -38,7 +57,6 @@ export function calcDashboard(data) {
   const premiumCollected = options.filter(o => o.type === "Sell")
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
-  const holdingStocks = stocks.filter(s => ["Holding", "Partially Sold"].includes(s.status));
   const unrealizedPnl = holdingStocks.reduce((s, x) => s + (x.gain_loss || 0), 0);
   const totalOffChainDebt = debts.filter(d => d.status === "Active").reduce((s, d) => s + (d.outstanding_balance || 0), 0);
 
@@ -54,25 +72,23 @@ export function calcDashboard(data) {
 
   const walletValue = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const totalMargin = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
-  const cryptoTotalAssets = walletValue + Math.max(0, totalMargin) + vaultValue + loansGivenValue + activeNotional;
-  const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + totalMargin;
-
-  // HL unrealized
   const hlUnrealizedPnl = leveraged.reduce((s, l) => {
     if (!l.mark_price || !l.entry_price || !l.size) return s;
     return s + (l.direction === "Long"
       ? (l.mark_price - l.entry_price) * l.size
       : (l.entry_price - l.mark_price) * l.size);
   }, 0);
+  const hlEquity = totalMargin + hlUnrealizedPnl;
+
+  const cryptoTotalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + loansGivenValue + activeNotional;
+  const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
+  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + Math.max(0, hlEquity) + vaultValue;
 
   // ── Totals ──
   const totalAssets = ibNav + cryptoTotalAssets;
   const totalDebt = totalOffChainDebt + cryptoTotalDebt;
   const totalNAV = totalAssets - totalDebt;
-  const totalInvested = totalDeposited + investorDebt + aaveBorrowUsd;
   const totalPnl = totalNAV - totalDeposited;
-  const totalPnlPct = totalDeposited > 0 ? (totalPnl / totalDeposited) * 100 : 0;
 
   // ── Allocation slices ──
   const btcCollVal = (aaveCollateral.find(c => c.asset_name === "BTC")?.value_usd || 0);
@@ -97,22 +113,25 @@ export function calcDashboard(data) {
 
   // ── Performance bars ──
   const perfItems = [
-    { label: "IB Options P&L", val: realizedPnl },
-    { label: "IB Unrealized", val: unrealizedPnl },
+    { label: "IB Options P&L (realized)", val: realizedPnl },
+    { label: "IB Unrealized (stocks)", val: unrealizedPnl },
     { label: "HL Live P&L", val: hlUnrealizedPnl },
     { label: "Crypto Options", val: openCryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0) },
   ].filter(b => Math.abs(b.val) > 0);
 
   return {
-    ibNav, totalDeposited, ibPnl, ibPnlPct,
+    ibNav, ibCash, ibStocksValue, ibOptionsValue,
+    liveStocksValue, liveOptionsValue,
+    totalDeposited, ibPnl,
     closedOptions, openOptions, realizedPnl, winRate, premiumCollected,
     holdingStocks, unrealizedPnl, totalOffChainDebt,
     aaveCollateralValue, aaveNetWorth, loansGivenValue, investorDebt,
     stablecoinsValue, activeNotional, vaultValue,
     cryptoTotalAssets, cryptoTotalDebt, onChainNAV,
-    hlUnrealizedPnl, healthFactor, borrowPowerUsed, aaveBorrowUsd,
-    totalAssets, totalDebt, totalNAV, totalInvested, totalPnl, totalPnlPct,
+    hlUnrealizedPnl, hlEquity, totalMargin,
+    healthFactor, borrowPowerUsed, aaveBorrowUsd,
+    totalAssets, totalDebt, totalNAV, totalPnl,
     allocationSlices, perfItems, priceMap, btcPrice, ethPrice, aavePrice,
-    openOptions, openCryptoOptions,
+    snapshot,
   };
 }

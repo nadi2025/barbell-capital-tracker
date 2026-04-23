@@ -1,6 +1,6 @@
 import { RefreshCw, Radio, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { calcDashboard, fmt, pct } from "./dashboardCalcs";
+import { calcDashboard, fmt } from "./dashboardCalcs";
 
 function timeAgo(date) {
   if (!date) return null;
@@ -40,15 +40,9 @@ export default function DashboardHeader({
             {fmt(c.totalNAV)}
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
-            <span className={`text-base sm:text-lg font-mono font-semibold ${c.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-              {fmt(c.totalPnl)}
-            </span>
-            <span className={`text-sm font-mono ${c.totalPnl >= 0 ? "text-profit" : "text-loss"}`}>
-              {pct(c.totalPnlPct)}
-            </span>
             {lastSyncedAt && (
               <span className="text-xs text-muted-foreground">
-                · סנכרון: {timeAgo(lastSyncedAt)}
+                סנכרון: {timeAgo(lastSyncedAt)}
               </span>
             )}
             {lastPrice && (

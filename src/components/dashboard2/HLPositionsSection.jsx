@@ -1,18 +1,12 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
-import { fmt, pct } from "./dashboardCalcs";
+import { fmt } from "./dashboardCalcs";
 
 const calcLivePnl = (p) => {
   if (!p.mark_price || !p.entry_price || !p.size) return null;
   return p.direction === "Long"
     ? (p.mark_price - p.entry_price) * p.size
     : (p.entry_price - p.mark_price) * p.size;
-};
-
-const calcRoe = (p) => {
-  const pnl = calcLivePnl(p);
-  if (pnl == null || !p.margin_usd) return null;
-  return (pnl / p.margin_usd) * 100;
 };
 
 const distToLiq = (p) => {
@@ -36,8 +30,8 @@ function rowBg(d) {
 
 /**
  * Compact HL positions summary for the main dashboard.
- * Shows all open leveraged positions with live P&L, ROE, and liquidation distance.
- * Clicking any row navigates to the detailed LeveragedPage.
+ * Shows open leveraged positions with live P&L and distance-to-liquidation
+ * (kept — risk signal, not a performance percentage).
  */
 export default function HLPositionsSection({ data }) {
   const positions = (data.leveraged || []).filter((p) => p.status !== "Closed");
@@ -49,7 +43,6 @@ export default function HLPositionsSection({ data }) {
   const totalMargin = positions.reduce((s, p) => s + (p.margin_usd || 0), 0);
   const totalNotional = positions.reduce((s, p) => s + (p.position_value_usd || 0), 0);
   const totalLivePnl = positions.reduce((s, p) => s + (calcLivePnl(p) || 0), 0);
-  const totalPnlPct = totalMargin > 0 ? (totalLivePnl / totalMargin) * 100 : 0;
   const accountEquity = totalMargin + totalLivePnl;
 
   // Sort by distance to liquidation (most risky first)
@@ -89,7 +82,7 @@ export default function HLPositionsSection({ data }) {
           <div>
             <span className="text-muted-foreground">Live P&L: </span>
             <span className={`font-mono font-semibold ${totalLivePnl >= 0 ? "text-profit" : "text-loss"}`}>
-              {fmt(totalLivePnl, 0)} ({pct(totalPnlPct)})
+              {fmt(totalLivePnl, 0)}
             </span>
           </div>
           <div>
@@ -111,7 +104,7 @@ export default function HLPositionsSection({ data }) {
               <th className="text-right px-4 py-2 font-medium">כיוון</th>
               <th className="text-right px-4 py-2 font-medium">Mark</th>
               <th className="text-right px-4 py-2 font-medium">Entry</th>
-              <th className="text-right px-4 py-2 font-medium">P&L (ROE)</th>
+              <th className="text-right px-4 py-2 font-medium">P&L</th>
               <th className="text-right px-4 py-2 font-medium">Notional</th>
               <th className="text-right px-4 py-2 font-medium">Margin</th>
               <th className="text-right px-4 py-2 font-medium">מרחק חיסול</th>
@@ -120,7 +113,6 @@ export default function HLPositionsSection({ data }) {
           <tbody>
             {sorted.map((p) => {
               const pnl = calcLivePnl(p);
-              const roe = calcRoe(p);
               const dist = distToLiq(p);
               return (
                 <tr key={p.id} className={`border-t border-border/40 ${rowBg(dist)} hover:bg-muted/20 transition-colors`}>
@@ -148,16 +140,9 @@ export default function HLPositionsSection({ data }) {
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     {pnl != null ? (
-                      <div>
-                        <span className={`font-mono font-semibold text-xs ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
-                          {pnl >= 0 ? "+" : ""}{fmt(pnl, 0)}
-                        </span>
-                        {roe != null && (
-                          <span className={`block text-[10px] ${roe >= 0 ? "text-profit" : "text-loss"}`}>
-                            {roe >= 0 ? "+" : ""}{roe.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
+                      <span className={`font-mono font-semibold text-xs ${pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                        {pnl >= 0 ? "+" : ""}{fmt(pnl, 0)}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
                     )}

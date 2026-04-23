@@ -1,5 +1,5 @@
-import { calcDashboard, fmt, pct } from "./dashboardCalcs";
-import { TrendingUp, TrendingDown, Shield, Landmark, Wallet, Target } from "lucide-react";
+import { calcDashboard, fmt } from "./dashboardCalcs";
+import { TrendingUp, TrendingDown, Shield, Landmark, Wallet } from "lucide-react";
 
 function KpiCard({ label, value, sub, accent, icon: Icon, size = "md", tone }) {
   const sizeClass = size === "lg" ? "min-h-[140px]" : "min-h-[110px]";
@@ -53,41 +53,34 @@ export default function KpiRow({ data }) {
           label="רווח / הפסד כולל"
           value={fmt(c.totalPnl)}
           accent={c.totalPnl >= 0 ? "text-profit" : "text-loss"}
-          sub={`${pct(c.totalPnlPct)} · מההון המופקד`}
+          sub="נכסים פחות חוב פחות הון מופקד"
           icon={c.totalPnl >= 0 ? TrendingUp : TrendingDown}
           tone={pnlTone}
         />
       </div>
 
-      {/* Secondary KPIs — smaller */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* Secondary KPIs */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <KpiCard
           label="Aave Health"
           value={c.healthFactor > 0 ? c.healthFactor.toFixed(2) : "—"}
           accent={c.healthFactor > 2 ? "text-profit" : c.healthFactor > 1.5 ? "text-amber-500" : c.healthFactor > 0 ? "text-loss" : ""}
-          sub={c.aaveBorrowUsd > 0 ? `Borrow: ${c.borrowPowerUsed.toFixed(0)}%` : "ללא חוב"}
+          sub={c.aaveBorrowUsd > 0 ? `Borrow: ${fmt(c.aaveBorrowUsd, 0)}` : "ללא חוב"}
           icon={Shield}
           tone={hfTone}
         />
         <KpiCard
-          label="IB Win Rate"
-          value={`${(c.winRate * 100).toFixed(0)}%`}
-          accent={c.winRate > 0.6 ? "text-profit" : "text-foreground"}
-          sub={`${c.closedOptions.length} עסקאות סגורות`}
-          icon={Target}
-        />
-        <KpiCard
-          label="פרמיה שנגבתה"
+          label="פרמיה שנגבתה (IB)"
           value={fmt(c.premiumCollected, 0)}
           accent="text-profit"
-          sub={`${c.openOptions.length} אופציות פתוחות`}
+          sub={`${c.openOptions.length} אופציות פתוחות · ${c.closedOptions.length} נסגרו`}
           icon={TrendingUp}
         />
         <KpiCard
           label="HL Live P&L"
           value={fmt(c.hlUnrealizedPnl, 0)}
           accent={c.hlUnrealizedPnl >= 0 ? "text-profit" : "text-loss"}
-          sub={`${data.leveraged?.length || 0} פוזיציות פתוחות`}
+          sub={`${data.leveraged?.length || 0} פוזיציות · Margin ${fmt(c.totalMargin, 0)}`}
           icon={c.hlUnrealizedPnl >= 0 ? TrendingUp : TrendingDown}
         />
       </div>

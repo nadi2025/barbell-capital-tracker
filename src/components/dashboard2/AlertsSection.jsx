@@ -81,14 +81,14 @@ function buildAlerts(data, c) {
       }
     });
 
-  // Big stock loss
+  // Big stock loss — threshold-based risk alert (user-chosen 30%+ drawdown)
   const bigLoss = (data.stocks || []).find((s) => s.gain_loss_pct && s.gain_loss_pct < -0.3);
   if (bigLoss) {
     alerts.push({
       urgency: "red",
       icon: TrendingDown,
       title: bigLoss.ticker,
-      text: `${(bigLoss.gain_loss_pct * 100).toFixed(1)}% (${fmt(bigLoss.gain_loss)})`,
+      text: `הפסד ${fmt(bigLoss.gain_loss)}`,
     });
   }
 

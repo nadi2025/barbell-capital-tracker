@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw } from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const offChainNav = [
@@ -14,7 +14,8 @@ const offChainNav = [
 { path: "/reports", label: "Reports", icon: FileText },
 { path: "/debt", label: "Debt & Capital", icon: Landmark },
 { path: "/offchain-investors", label: "Investors (Off-Chain)", icon: Users },
-{ path: "/weekly-report", label: "דוח שבועי", icon: FileText }];
+{ path: "/weekly-report", label: "דוח שבועי", icon: FileText },
+{ path: "/ib-import", label: "ייבוא IB", icon: Upload }];
 
 
 const onChainNav = [
