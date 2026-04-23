@@ -376,21 +376,21 @@ export default function OptionsPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-11 w-11 md:h-7 md:w-7"
                           disabled={t._consolidated}
                           title={t._consolidated ? "עבור למצב גולמי לערוך שורה בודדת" : "ערוך"}
                           onClick={() => { setEditTrade(t); setFormOpen(true); }}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-destructive"
+                          className="h-11 w-11 md:h-7 md:w-7 text-destructive"
                           title={t._consolidated ? `מחק את כל ${t._groupSize} העסקאות המאוחדות` : "מחק"}
                           onClick={() => handleDelete(t)}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>

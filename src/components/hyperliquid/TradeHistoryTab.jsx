@@ -143,7 +143,8 @@ export default function TradeHistoryTab({ trades, onRefresh }) {
       <p className="text-xs text-muted-foreground">{filtered.length} עסקאות</p>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground bg-muted/30">
@@ -158,7 +159,7 @@ export default function TradeHistoryTab({ trades, onRefresh }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t, i) => (
+              {filtered.map((t) => (
                 <tr key={t.id} className={`border-b border-border/40 text-right ${pnlColor(t)}`}>
                   <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                     {t.trade_date ? format(new Date(t.trade_date), "d.M.yy HH:mm") : "—"}
@@ -187,6 +188,46 @@ export default function TradeHistoryTab({ trades, onRefresh }) {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile card list */}
+        <div className="md:hidden divide-y divide-border">
+          {filtered.length === 0 ? (
+            <p className="text-center py-10 text-muted-foreground text-sm px-4">אין עסקאות. ייבא CSV מ-HyperLiquid כדי להתחיל.</p>
+          ) : filtered.map((t) => (
+            <div key={t.id} className={`px-4 py-3 space-y-2 ${pnlColor(t)}`}>
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold">{t.asset}</span>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {t.trade_date ? format(new Date(t.trade_date), "d.M.yy HH:mm") : "—"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isClose(t.direction) ? (t.closed_pnl >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700") : "bg-blue-100 text-blue-700"}`}>
+                  {t.direction}
+                </span>
+                {isClose(t.direction) && t.closed_pnl != null && (
+                  <span className={`font-mono font-semibold text-sm ${t.closed_pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                    {t.closed_pnl >= 0 ? "+" : ""}{fmtP(t.closed_pnl)}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p className="text-muted-foreground">מחיר</p>
+                  <p className="font-mono">${(t.price || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">כמות</p>
+                  <p className="font-mono">{(t.size || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">עמלה</p>
+                  <p className="font-mono text-muted-foreground">${(t.fee_usd || 0).toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

@@ -237,66 +237,126 @@ export default function IBImportPage() {
             )}
           </div>
 
-          {/* Decisions table */}
+          {/* Decisions table — desktop */}
           {decisions.length > 0 && (
-            <div className="overflow-x-auto border border-border rounded-xl">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30 text-[10px] text-muted-foreground uppercase tracking-wider">
-                    <th className="text-right px-3 py-2 font-medium">תאריך</th>
-                    <th className="text-right px-3 py-2 font-medium">פעולה</th>
-                    <th className="text-right px-3 py-2 font-medium">Ticker</th>
-                    <th className="text-right px-3 py-2 font-medium">סוג</th>
-                    <th className="text-right px-3 py-2 font-medium">Strike</th>
-                    <th className="text-right px-3 py-2 font-medium">פקיעה</th>
-                    <th className="text-right px-3 py-2 font-medium">כמות</th>
-                    <th className="text-right px-3 py-2 font-medium">מחיר</th>
-                    <th className="text-right px-3 py-2 font-medium">נטו</th>
-                    <th className="text-right px-3 py-2 font-medium">P&L</th>
-                    <th className="px-3 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {decisions.map((d, i) => {
-                    const m = actionMeta[d.action];
-                    const Icon = m.icon;
-                    return (
-                      <tr key={i} className="border-t border-border/40 hover:bg-muted/20">
-                        <td className="px-3 py-2 font-mono text-[11px]">{d.tx.date}</td>
-                        <td className="px-3 py-2">
-                          <span className={`inline-flex items-center gap-1 ${m.color}`}>
-                            <Icon className="w-3 h-3" /> {m.label}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 font-mono font-bold">{d.tx.ticker}</td>
-                        <td className="px-3 py-2">{d.tx.category}</td>
-                        <td className="px-3 py-2 font-mono text-right">${d.tx.strike}</td>
-                        <td className="px-3 py-2 font-mono text-[11px]">{d.tx.expiration_date}</td>
-                        <td className="px-3 py-2 font-mono text-right">{Math.abs(d.tx.quantity)}</td>
-                        <td className="px-3 py-2 font-mono text-right">{fmtUSD(d.tx.price)}</td>
-                        <td className="px-3 py-2 font-mono text-right">{fmtUSD(d.tx.net)}</td>
-                        <td className="px-3 py-2 font-mono text-right">
-                          {d.updates?.pnl != null ? (
-                            <span className={d.updates.pnl >= 0 ? "text-profit" : "text-loss"}>
-                              {fmtUSD(d.updates.pnl)}
+            <>
+              <div className="hidden md:block overflow-x-auto border border-border rounded-xl">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30 text-[10px] text-muted-foreground uppercase tracking-wider">
+                      <th className="text-right px-3 py-2 font-medium">תאריך</th>
+                      <th className="text-right px-3 py-2 font-medium">פעולה</th>
+                      <th className="text-right px-3 py-2 font-medium">Ticker</th>
+                      <th className="text-right px-3 py-2 font-medium">סוג</th>
+                      <th className="text-right px-3 py-2 font-medium">Strike</th>
+                      <th className="text-right px-3 py-2 font-medium">פקיעה</th>
+                      <th className="text-right px-3 py-2 font-medium">כמות</th>
+                      <th className="text-right px-3 py-2 font-medium">מחיר</th>
+                      <th className="text-right px-3 py-2 font-medium">נטו</th>
+                      <th className="text-right px-3 py-2 font-medium">P&L</th>
+                      <th className="px-3 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {decisions.map((d, i) => {
+                      const m = actionMeta[d.action];
+                      const Icon = m.icon;
+                      return (
+                        <tr key={i} className="border-t border-border/40 hover:bg-muted/20">
+                          <td className="px-3 py-2 font-mono text-[11px]">{d.tx.date}</td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex items-center gap-1 ${m.color}`}>
+                              <Icon className="w-3 h-3" /> {m.label}
                             </span>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </td>
-                        <td className="px-3 py-2">
-                          <button
-                            onClick={() => removeDecision(i)}
-                            className="text-muted-foreground hover:text-destructive p-1"
-                            aria-label="remove"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                          <td className="px-3 py-2 font-mono font-bold">{d.tx.ticker}</td>
+                          <td className="px-3 py-2">{d.tx.category}</td>
+                          <td className="px-3 py-2 font-mono text-right">${d.tx.strike}</td>
+                          <td className="px-3 py-2 font-mono text-[11px]">{d.tx.expiration_date}</td>
+                          <td className="px-3 py-2 font-mono text-right">{Math.abs(d.tx.quantity)}</td>
+                          <td className="px-3 py-2 font-mono text-right">{fmtUSD(d.tx.price)}</td>
+                          <td className="px-3 py-2 font-mono text-right">{fmtUSD(d.tx.net)}</td>
+                          <td className="px-3 py-2 font-mono text-right">
+                            {d.updates?.pnl != null ? (
+                              <span className={d.updates.pnl >= 0 ? "text-profit" : "text-loss"}>
+                                {fmtUSD(d.updates.pnl)}
+                              </span>
+                            ) : <span className="text-muted-foreground">—</span>}
+                          </td>
+                          <td className="px-3 py-2">
+                            <button
+                              onClick={() => removeDecision(i)}
+                              className="text-muted-foreground hover:text-destructive p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                              aria-label="remove"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile decision cards */}
+              <div className="md:hidden space-y-2">
+                {decisions.map((d, i) => {
+                  const m = actionMeta[d.action];
+                  const Icon = m.icon;
+                  return (
+                    <div key={i} className="border border-border rounded-xl px-4 py-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 text-xs font-medium ${m.color}`}>
+                            <Icon className="w-3.5 h-3.5" /> {m.label}
+                          </span>
+                          <span className="font-mono font-bold">{d.tx.ticker}</span>
+                          <span className="text-xs text-muted-foreground">{d.tx.category}</span>
+                        </div>
+                        <button
+                          onClick={() => removeDecision(i)}
+                          className="text-muted-foreground hover:text-destructive h-11 w-11 flex items-center justify-center"
+                          aria-label="remove"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Strike</p>
+                          <p className="font-mono">${d.tx.strike}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">פקיעה</p>
+                          <p className="font-mono">{d.tx.expiration_date}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">כמות</p>
+                          <p className="font-mono">{Math.abs(d.tx.quantity)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">נטו</p>
+                          <p className="font-mono">{fmtUSD(d.tx.net)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">P&L</p>
+                          {d.updates?.pnl != null ? (
+                            <p className={`font-mono font-semibold ${d.updates.pnl >= 0 ? "text-profit" : "text-loss"}`}>
+                              {fmtUSD(d.updates.pnl)}
+                            </p>
+                          ) : <p className="text-muted-foreground">—</p>}
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">תאריך</p>
+                          <p className="font-mono text-[11px]">{d.tx.date}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
 
           {parsed.otherRows.length > 0 && (

@@ -3,11 +3,11 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 export default function StockPositionForm({ open, onClose, editStock, onSaved }) {
   const queryClient = useQueryClient();
@@ -96,14 +96,16 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
           </div>
           <div>
             <Label className="text-xs">Source</Label>
-            <Select value={form.source} onValueChange={v => setForm(f => ({ ...f, source: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Assignment">Assignment</SelectItem>
-                <SelectItem value="Direct Buy">Direct Buy</SelectItem>
-                <SelectItem value="SDI">SDI</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={form.source}
+              onValueChange={v => setForm(f => ({ ...f, source: v }))}
+              placeholder="Source"
+              options={[
+                { value: "Assignment", label: "Assignment" },
+                { value: "Direct Buy", label: "Direct Buy" },
+                { value: "SDI", label: "SDI" },
+              ]}
+            />
           </div>
           <div>
             <Label className="text-xs">Entry Date</Label>
@@ -111,14 +113,16 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
           </div>
           <div>
             <Label className="text-xs">Status</Label>
-            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Holding">Holding</SelectItem>
-                <SelectItem value="Partially Sold">Partially Sold</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={form.status}
+              onValueChange={v => setForm(f => ({ ...f, status: v }))}
+              placeholder="Status"
+              options={[
+                { value: "Holding", label: "Holding" },
+                { value: "Partially Sold", label: "Partially Sold" },
+                { value: "Closed", label: "Closed" },
+              ]}
+            />
           </div>
           <div>
             <Label className="text-xs">Shares</Label>

@@ -1,6 +1,7 @@
 import moment from "moment";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import PnlBadge from "../PnlBadge";
 
 function getDteColor(dte) {
   if (dte <= 14) return "text-loss font-semibold";
@@ -33,7 +34,9 @@ export default function OpenOptionsTable({ options }) {
           View all <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Desktop table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
@@ -77,6 +80,49 @@ export default function OpenOptionsTable({ options }) {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden divide-y divide-border">
+        {sorted.length === 0 ? (
+          <p className="px-4 py-8 text-center text-muted-foreground text-xs">No open positions</p>
+        ) : sorted.map((opt) => {
+          const dte = opt.expiration_date ? moment(opt.expiration_date).diff(moment(), "days") : null;
+          const premium = (opt.fill_price || 0) * (opt.quantity || 0) * 100;
+          const stratLabel = `${opt.type} ${opt.category}`;
+          return (
+            <div key={opt.id} className="px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono font-bold text-base">{opt.ticker}</span>
+                <span className={`px-2 py-0.5 rounded text-xs ${opt.type === 'Sell' ? 'bg-profit/10 text-profit' : 'bg-chart-2/10 text-chart-2'}`}>
+                  {stratLabel}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p className="text-muted-foreground">Strike</p>
+                  <p className="font-mono">${opt.strike}{opt.strike_2 ? `/$${opt.strike_2}` : ""}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Qty</p>
+                  <p className="font-mono">{opt.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">DTE</p>
+                  <p className={`font-mono ${dte !== null ? getDteColor(dte) : ''}`}>{dte !== null ? `${dte}d` : "LEAPS"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Premium</p>
+                  <p className="font-mono text-profit">${premium.toLocaleString()}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Collateral</p>
+                  <p className="font-mono text-muted-foreground">${(opt.collateral || 0).toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

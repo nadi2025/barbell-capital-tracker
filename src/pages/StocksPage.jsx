@@ -136,11 +136,11 @@ function StockCard({ stock, optionsForTicker, totalValue, onEdit, onDelete, isRe
         </div>
         {!isReadOnly && (
           <div className="flex flex-col gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(stock)}>
-              <Pencil className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="icon" className="h-11 w-11 md:h-7 md:w-7" onClick={() => onEdit(stock)}>
+              <Pencil className="w-4 h-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => onDelete(stock)}>
-              <Trash2 className="w-3.5 h-3.5" />
+            <Button variant="ghost" size="icon" className="h-11 w-11 md:h-7 md:w-7 text-destructive" onClick={() => onDelete(stock)}>
+              <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         )}

@@ -3,11 +3,11 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
   const queryClient = useQueryClient();
@@ -156,26 +156,30 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
             <Label className="text-xs">Type</Label>
-            <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Sell">Sell</SelectItem>
-                <SelectItem value="Buy">Buy</SelectItem>
-                <SelectItem value="Ass">Assigned</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={form.type}
+              onValueChange={v => setForm(f => ({ ...f, type: v }))}
+              placeholder="Type"
+              options={[
+                { value: "Sell", label: "Sell" },
+                { value: "Buy", label: "Buy" },
+                { value: "Ass", label: "Assigned" },
+              ]}
+            />
           </div>
           <div>
             <Label className="text-xs">Category</Label>
-            <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Put">Put</SelectItem>
-                <SelectItem value="Call">Call</SelectItem>
-                <SelectItem value="PCS">Put Credit Spread</SelectItem>
-                <SelectItem value="CCS">Call Credit Spread</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={form.category}
+              onValueChange={v => setForm(f => ({ ...f, category: v }))}
+              placeholder="Category"
+              options={[
+                { value: "Put", label: "Put" },
+                { value: "Call", label: "Call" },
+                { value: "PCS", label: "Put Credit Spread" },
+                { value: "CCS", label: "Call Credit Spread" },
+              ]}
+            />
           </div>
           <div>
             <Label className="text-xs">Ticker</Label>
@@ -183,15 +187,17 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
           </div>
           <div>
             <Label className="text-xs">Status</Label>
-            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Open">Open</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-                <SelectItem value="Assigned">Assigned</SelectItem>
-                <SelectItem value="Expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
+            <MobileSelect
+              value={form.status}
+              onValueChange={v => setForm(f => ({ ...f, status: v }))}
+              placeholder="Status"
+              options={[
+                { value: "Open", label: "Open" },
+                { value: "Closed", label: "Closed" },
+                { value: "Assigned", label: "Assigned" },
+                { value: "Expired", label: "Expired" },
+              ]}
+            />
           </div>
           <div>
             <Label className="text-xs">Open Date</Label>

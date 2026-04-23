@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 const STRATEGIES = [
   { label: "Cash Secured Put", type: "Put", direction: "Sell" },
@@ -82,23 +83,27 @@ export default function AddEditPositionDialog({ open, onClose, onSave, initialDa
           {/* Asset */}
           <div>
             <Label>Asset</Label>
-            <select value={form.asset} onChange={e => handleAssetChange(e.target.value)} className="w-full border border-input rounded-md px-3 py-1.5 text-sm bg-transparent">
-              <option value="UETH">UETH</option>
-              <option value="UBTC">UBTC</option>
-              <option value="Other">Other</option>
-            </select>
+            <MobileSelect
+              value={form.asset}
+              onValueChange={handleAssetChange}
+              placeholder="Asset"
+              options={[
+                { value: "UETH", label: "UETH" },
+                { value: "UBTC", label: "UBTC" },
+                { value: "Other", label: "Other" },
+              ]}
+            />
           </div>
 
           {/* Strategy */}
           <div>
             <Label>Strategy</Label>
-            <select
+            <MobileSelect
               value={STRATEGIES.find(s => s.label.toLowerCase() === form.strategy)?.label || ""}
-              onChange={e => handleStrategyChange(e.target.value)}
-              className="w-full border border-input rounded-md px-3 py-1.5 text-sm bg-transparent"
-            >
-              {STRATEGIES.map(s => <option key={s.label} value={s.label}>{s.label}</option>)}
-            </select>
+              onValueChange={handleStrategyChange}
+              placeholder="Strategy"
+              options={STRATEGIES.map(s => ({ value: s.label, label: s.label }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
