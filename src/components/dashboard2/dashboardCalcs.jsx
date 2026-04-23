@@ -12,6 +12,7 @@ export function calcDashboard(data) {
     leveraged = [], cryptoOptions = [], openCryptoOptions = [],
     prices = [], aaveCollateral = [], aaveBorrowUsd = 0,
     healthFactor = 0, borrowPowerUsed = 0, lpPositions = [],
+    offChainInvestors = [],
   } = data;
 
   // ── Price map ──
@@ -64,7 +65,23 @@ export function calcDashboard(data) {
     ibNavSource = "live_only";
   }
 
+  // Total net flows through the Deposits ledger (includes both own equity AND
+  // debt-funded transfers — kept for backward compatibility).
   const totalDeposited = deposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
+
+  // Own equity only — Deposit rows flagged as Equity Investment / Equity Cash Flow.
+  const equityDeposits = deposits.filter((d) =>
+    d.capital_source === "Equity Investment" || d.capital_source === "Equity Cash Flow"
+  );
+  const ownEquity = equityDeposits.reduce((s, d) => d.type === "Deposit" ? s + (d.amount || 0) : s - (d.amount || 0), 0);
+
+  // Informational: which part of the Deposit ledger was funded by debt (should
+  // roughly match OffChainInvestor principal, used to detect missing investor
+  // records).
+  const debtFundedDeposits = deposits
+    .filter((d) => d.capital_source === "Debt Investment")
+    .reduce((s, d) => s + (d.type === "Deposit" ? (d.amount || 0) : -(d.amount || 0)), 0);
+
   const ibPnl = ibNav - totalDeposited;
 
   const realizedPnl = closedOptions.reduce((s, o) => s + (o.pnl || 0), 0);
@@ -75,7 +92,18 @@ export function calcDashboard(data) {
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
   const unrealizedPnl = holdingStocks.reduce((s, x) => s + (x.gain_loss || 0), 0);
-  const totalOffChainDebt = debts.filter(d => d.status === "Active").reduce((s, d) => s + (d.outstanding_balance || 0), 0);
+
+  // Off-chain debt comes from two authoritative sources:
+  //   1. OffChainInvestor entity — private investors (loan-like). Source of truth
+  //      for things like עידו/טל/נעמה/אלינור.
+  //   2. DebtFacility entity — bank loans and other institutional facilities.
+  const offChainInvestorDebt = offChainInvestors
+    .filter((inv) => inv.status === "Active")
+    .reduce((s, inv) => s + (inv.principal_usd || 0), 0);
+  const offChainFacilityDebt = debts
+    .filter((d) => d.status === "Active")
+    .reduce((s, d) => s + (d.outstanding_balance || 0), 0);
+  const totalOffChainDebt = offChainInvestorDebt + offChainFacilityDebt;
 
   // ── On-Chain ──
   const aaveCollateralValue = aaveCollateral.reduce((s, c) => s + (c.value_usd || 0), 0);
@@ -139,9 +167,10 @@ export function calcDashboard(data) {
   return {
     ibNav, ibCash, ibStocksValue, ibOptionsValue, ibNavSource,
     liveStocksValue, liveOptionsValue,
-    totalDeposited, ibPnl,
+    totalDeposited, ownEquity, debtFundedDeposits, ibPnl,
     closedOptions, openOptions, realizedPnl, winRate, premiumCollected,
-    holdingStocks, unrealizedPnl, totalOffChainDebt,
+    holdingStocks, unrealizedPnl,
+    totalOffChainDebt, offChainInvestorDebt, offChainFacilityDebt,
     aaveCollateralValue, aaveNetWorth, loansGivenValue, investorDebt,
     stablecoinsValue, activeNotional, vaultValue,
     cryptoTotalAssets, cryptoTotalDebt, onChainNAV,

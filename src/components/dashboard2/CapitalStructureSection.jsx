@@ -26,11 +26,17 @@ export default function CapitalStructureSection({ data }) {
   const c = calcDashboard(data);
 
   // ── Capital sources ──
-  const ownEquity = c.totalDeposited;              // Deposit entity (flagged as own)
-  const offChainDebt = c.totalOffChainDebt;        // DebtFacility (active)
+  // Own equity = Deposit rows flagged as "Equity Investment" / "Equity Cash Flow".
+  // Off-chain debt = OffChainInvestor (private investors) + DebtFacility (banks).
+  const ownEquity = c.ownEquity;
+  const offChainDebt = c.totalOffChainDebt;
   const onChainDebt = c.investorDebt;              // CryptoLoan (active, S&T)
   const aaveLeverage = c.aaveBorrowUsd;            // from calculateAavePosition
   const totalCapital = ownEquity + offChainDebt + onChainDebt + aaveLeverage;
+
+  // Sanity check: if Deposit ledger has "Debt Investment" flows that don't
+  // match the OffChainInvestor total, flag a reconcile gap.
+  const depositDebtGap = c.debtFundedDeposits - c.offChainInvestorDebt;
 
   // ── P&L split — capital deployed per side ──
   const offChainCapital = ownEquity + offChainDebt;
@@ -79,9 +85,16 @@ export default function CapitalStructureSection({ data }) {
               <span className="font-mono font-semibold">{fmt(ownEquity)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">חוב Off-Chain</span>
+              <span className="text-muted-foreground" title="משקיעים פרטיים (OffChainInvestor) + הלוואות מוסדיות (DebtFacility)">
+                חוב Off-Chain
+              </span>
               <span className="font-mono font-semibold">{fmt(offChainDebt)}</span>
             </div>
+            {(c.offChainInvestorDebt > 0 || c.offChainFacilityDebt > 0) && (
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground/70 pl-3">
+                <span>· משקיעים {fmt(c.offChainInvestorDebt, 0)} · בנקים {fmt(c.offChainFacilityDebt, 0)}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">חוב On-Chain (S&T)</span>
               <span className="font-mono font-semibold">{fmt(onChainDebt)}</span>
@@ -91,9 +104,17 @@ export default function CapitalStructureSection({ data }) {
               <span className="font-mono font-semibold">{fmt(aaveLeverage)}</span>
             </div>
           </div>
-          <div className="mt-3 flex gap-3 text-[11px]">
+          {Math.abs(depositDebtGap) > 100 && (
+            <div className="mt-2 text-[10px] text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-1">
+              ⚠ פער של {fmt(Math.abs(depositDebtGap), 0)} בין הפקדות Debt ל-OffChainInvestor
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap gap-3 text-[11px]">
             <Link to="/deposits" className="text-primary hover:underline flex items-center gap-1">
               <ArrowUpRight className="w-3 h-3" /> הפקדות
+            </Link>
+            <Link to="/offchain-investors" className="text-primary hover:underline flex items-center gap-1">
+              <ArrowUpRight className="w-3 h-3" /> משקיעים
             </Link>
             <Link to="/debt" className="text-primary hover:underline flex items-center gap-1">
               <Plus className="w-3 h-3" /> נהל חוב
