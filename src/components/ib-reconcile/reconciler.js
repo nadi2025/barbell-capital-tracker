@@ -271,15 +271,19 @@ export function reconcileCsv(csvText, today = new Date()) {
     }
   }
 
-  // Post-process: options still "Open" but past expiration → Expired OTM
+  // Post-process: options still "Open" past expiration → mark Expired.
+  // OptionsTrade.status enum accepts only Open / Closed / Assigned / Expired,
+  // so we tag the OTM distinction in notes (plus the `expiredOtm` flag we
+  // surface to the UI).
   const openOptions = [];
   const expiredOtm = [];
   for (const [key, p] of optionPositions) {
     const exp = new Date(p.expiration_date);
     if (exp < today) {
-      p.status = "Expired OTM";
+      p.status = "Expired";
       p.close_date = p.expiration_date;
       p.close_price = 0;
+      p.expiredOtm = true;
       p.pnl = p.direction === "Short"
         ? (p.avgFillPrice * p.initial_qty * OPT_MULT - p.totalCommission)
         : -(p.avgFillPrice * p.initial_qty * OPT_MULT) - p.totalCommission;
@@ -355,6 +359,8 @@ export function openOptionToEntity(p) {
 }
 
 export function closedOptionToEntity(p) {
+  const noteBits = ["IB reconcile"];
+  if (p.expiredOtm) noteBits.push("OTM (auto-classified)");
   return {
     type: p.type,
     category: p.category,
@@ -370,7 +376,7 @@ export function closedOptionToEntity(p) {
     pnl: p.pnl != null ? Number(p.pnl.toFixed(2)) : null,
     status: p.status,
     collateral: p.collateral || 0,
-    notes: "IB reconcile",
+    notes: noteBits.join(" · "),
   };
 }
 

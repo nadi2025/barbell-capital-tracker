@@ -51,13 +51,28 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
     const strike = parseFloat(form.strike) || 0;
     const strike2 = parseFloat(form.strike_2) || 0;
     const fill = parseFloat(form.fill_price) || 0;
-    const close = parseFloat(form.close_price) || 0;
+    // Expired options that weren't bought back are assumed worthless → close_price = 0.
+    // This ensures premium received becomes the realized P&L when the user just
+    // flips status to "Expired" without typing 0 themselves.
+    const closeRaw = parseFloat(form.close_price);
+    const close = form.status === "Expired" && (isNaN(closeRaw) || form.close_price === "")
+      ? 0
+      : (closeRaw || 0);
     const fee = parseFloat(form.fee) || 0;
 
-    // Calculate collateral
-    let collateral = strike * qty * 100;
-    if ((form.category === "PCS" || form.category === "CCS") && strike2) {
-      collateral = Math.abs(strike - strike2) * qty * 100;
+    // Calculate collateral based on strategy:
+    //   Cash-Secured Put (Sell Put) → strike × qty × 100 (cash to buy stock if assigned)
+    //   Covered Call (Sell Call)    → 0 (the stock itself is the cover, no cash reserved)
+    //   Credit Spread (PCS / CCS)    → (strike − strike2) × qty × 100 (max loss)
+    //   Long option (Buy anything)   → 0 (premium already paid, nothing further at risk)
+    let collateral = 0;
+    if (form.type === "Sell") {
+      if (form.category === "Put") {
+        collateral = strike * qty * 100;
+      } else if ((form.category === "PCS" || form.category === "CCS") && strike2) {
+        collateral = Math.abs(strike - strike2) * qty * 100;
+      }
+      // Sell Call (Covered Call) → collateral stays 0
     }
 
     // Calculate P&L for closed trades
