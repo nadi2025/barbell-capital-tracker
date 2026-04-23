@@ -35,17 +35,34 @@ export function calcDashboard(data) {
   // Positive number = shorts that decayed favorably; negative = positions moved against us.
   const liveOptionsValue = openOptions.reduce((s, o) => s + (o.pnl || 0), 0);
 
-  // IB cash — prefer snapshot.cash (manually maintained), else fall back to snapshot.nav
-  const ibCash = snapshot?.cash != null ? snapshot.cash : 0;
+  // ibNav — priority-ordered fallback:
+  //   1. Snapshot has cash field → use full breakdown (imported from IB CSV)
+  //   2. Snapshot has only nav  → use that directly (legacy entry)
+  //   3. No snapshot            → use live stocks + options only (cash unknown)
+  const hasBreakdown = snapshot?.cash != null;
+  const hasLegacyNav = !hasBreakdown && snapshot?.nav != null;
+  let ibCash, ibStocksValue, ibOptionsValue, ibNav, ibNavSource;
 
-  // ibNav construction — if snapshot has all three fields, use them directly;
-  // otherwise compute from live data + whatever snapshot fields exist.
-  const snapshotStocks = snapshot?.stocks_value != null ? snapshot.stocks_value : null;
-  const snapshotOptions = snapshot?.options_value != null ? snapshot.options_value : null;
-
-  const ibStocksValue = snapshotStocks != null ? snapshotStocks : liveStocksValue;
-  const ibOptionsValue = snapshotOptions != null ? snapshotOptions : liveOptionsValue;
-  const ibNav = ibCash + ibStocksValue + ibOptionsValue;
+  if (hasBreakdown) {
+    ibCash = snapshot.cash;
+    ibStocksValue = snapshot.stocks_value != null ? snapshot.stocks_value : liveStocksValue;
+    ibOptionsValue = snapshot.options_value != null ? snapshot.options_value : liveOptionsValue;
+    ibNav = ibCash + ibStocksValue + ibOptionsValue;
+    ibNavSource = "breakdown";
+  } else if (hasLegacyNav) {
+    // Legacy snapshot only carries a single NAV number — trust it.
+    ibNav = snapshot.nav;
+    ibCash = null;
+    ibStocksValue = liveStocksValue;
+    ibOptionsValue = liveOptionsValue;
+    ibNavSource = "legacy_nav";
+  } else {
+    ibCash = null;
+    ibStocksValue = liveStocksValue;
+    ibOptionsValue = liveOptionsValue;
+    ibNav = liveStocksValue + liveOptionsValue;
+    ibNavSource = "live_only";
+  }
 
   const totalDeposited = deposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
   const ibPnl = ibNav - totalDeposited;
@@ -120,7 +137,7 @@ export function calcDashboard(data) {
   ].filter(b => Math.abs(b.val) > 0);
 
   return {
-    ibNav, ibCash, ibStocksValue, ibOptionsValue,
+    ibNav, ibCash, ibStocksValue, ibOptionsValue, ibNavSource,
     liveStocksValue, liveOptionsValue,
     totalDeposited, ibPnl,
     closedOptions, openOptions, realizedPnl, winRate, premiumCollected,

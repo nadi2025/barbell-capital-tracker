@@ -1,6 +1,11 @@
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Building2, Coins } from "lucide-react";
+import { ArrowUpRight, Building2, Coins, AlertCircle } from "lucide-react";
 import { calcDashboard, fmt } from "./dashboardCalcs";
+
+function snapshotAgeDays(date) {
+  if (!date) return null;
+  return Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+}
 
 function MetricLine({ label, value, accent, sub }) {
   return (
@@ -43,6 +48,10 @@ function SegmentCard({ title, icon: Icon, accentColor, nav, navLabel, link, link
 
 export default function SegmentsSection({ data }) {
   const c = calcDashboard(data);
+  const snapshotDate = c.snapshot?.snapshot_date;
+  const ageDays = snapshotAgeDays(snapshotDate);
+  const isStale = ageDays != null && ageDays > 2;
+  const needsImport = c.ibNavSource !== "breakdown";
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -56,7 +65,21 @@ export default function SegmentsSection({ data }) {
         link="/options"
         linkLabel="לפירוט IB"
       >
-        <MetricLine label="מזומן IB" value={fmt(c.ibCash)} sub={c.snapshot?.snapshot_date ? `snapshot ${c.snapshot.snapshot_date}` : "snapshot חסר — עדכן"} />
+        {(needsImport || isStale) && (
+          <div className="mb-2 flex items-start gap-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-600 rounded-lg px-2.5 py-1.5">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+            <div>
+              {needsImport
+                ? <span>אין snapshot מלא של IB. <Link to="/ib-import" className="font-semibold underline">יבא CSV</Link> לנתונים מדויקים.</span>
+                : <span>snapshot אחרון לפני {ageDays} ימים — <Link to="/ib-import" className="font-semibold underline">עדכן</Link></span>}
+            </div>
+          </div>
+        )}
+        <MetricLine
+          label="מזומן IB"
+          value={c.ibCash != null ? fmt(c.ibCash) : "—"}
+          sub={snapshotDate ? `snapshot ${snapshotDate}` : "לא הוגדר"}
+        />
         <MetricLine label="שווי מניות פתוחות" value={fmt(c.ibStocksValue)} sub={`${c.holdingStocks.length} פוזיציות`} />
         <MetricLine
           label="שווי אופציות פתוחות"
