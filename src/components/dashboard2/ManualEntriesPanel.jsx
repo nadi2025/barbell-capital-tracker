@@ -12,6 +12,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+/**
+ * Page-level maintenance widgets are exposed via named exports below
+ * (AaveMaintenanceSection, HLMaintenanceSection, etc.) so each
+ * relevant page can mount only the slice that belongs to it. The full
+ * cross-cutting panel (default export) was removed from the main
+ * Dashboard at user request — too much noise. It's still available if
+ * a future settings/ops page wants it.
+ */
+
 const HL_WALLET_KEY = "hl_wallet_address";
 function getStoredHLWallet() {
   try { return localStorage.getItem(HL_WALLET_KEY) || ""; } catch { return ""; }
@@ -390,4 +399,214 @@ export default function ManualEntriesPanel() {
       )}
     </div>
   );
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Page-level maintenance widgets
+// ──────────────────────────────────────────────────────────────────────────
+
+/**
+ * Renders one or more SectionCards by key. Used by per-page widgets so each
+ * surface (Aave page, Leveraged page, Wallets page, Off-chain investors
+ * page) shows exactly the rows that belong to it — without dragging the
+ * cross-cutting panel into the main dashboard.
+ */
+function MaintenanceShell({ keys, headerActions = {} }) {
+  // Re-run the same computations the full panel does, but render only the
+  // requested subset. We deliberately do not auto-expand here — pages already
+  // have their own focus, the section is a quiet sidebar by default.
+  const collateralsQ = useEntityList("AaveCollateral");
+  const borrowsQ = useEntityList("AaveBorrow");
+  const leveragedQ = useEntityList("LeveragedPosition", { filter: { status: "Open" } });
+  const cryptoAssetsQ = useEntityList("CryptoAsset");
+  const lpQ = useEntityList("LpPosition", { filter: { status: "Active" } });
+  const investorsQ = useEntityList("OffChainInvestor", { filter: { status: "Active" } });
+  const paymentsQ = useEntityList("InvestorPayment", { sort: "-payment_date", limit: 500 });
+  const hlTradesQ = useEntityList("HLTrade", { sort: "-trade_date", limit: 100 });
+  const { priceMap } = usePrices();
+
+  const collateralItems = useMemo(() => {
+    return (collateralsQ.data || [])
+      .filter((c) => c.asset_name && (c.price_key || c.asset_name))
+      .map((c) => {
+        const days = daysSince(c.last_updated || c.updated_date || c.created_date);
+        const status = statusFor(days, 14);
+        const derived = computeAaveCollateralDerived(c, priceMap);
+        return {
+          id: c.id,
+          primary: `${c.asset_name} · ${(c.units || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })} units`,
+          secondary: `שווי נגזר: ${fmt(derived.value_usd)}`,
+          days, status,
+          editHref: `/crypto/aave?editId=${c.id}&type=collateral`,
+        };
+      });
+  }, [collateralsQ.data, priceMap]);
+
+  const borrowItems = useMemo(() => {
+    return (borrowsQ.data || []).map((b) => {
+      const days = daysSince(b.last_updated || b.updated_date || b.created_date);
+      const status = statusFor(days, 7);
+      return {
+        id: b.id,
+        primary: `${b.asset_name || "USDC"} · borrowed ${fmt(b.borrowed_amount)}`,
+        secondary: `APY ${(b.borrow_apy || 0).toFixed(2)}%`,
+        days, status,
+        editHref: `/crypto/aave?editId=${b.id}&type=borrow`,
+      };
+    });
+  }, [borrowsQ.data]);
+
+  const hlItems = useMemo(() => {
+    const trades = hlTradesQ.data || [];
+    const latestTradeByAsset = {};
+    for (const t of trades) {
+      const k = (t.asset || "").toUpperCase();
+      const cur = latestTradeByAsset[k];
+      const tDate = new Date(t.trade_date || 0).getTime();
+      if (!cur || tDate > cur) latestTradeByAsset[k] = tDate;
+    }
+    return (leveragedQ.data || []).map((p) => {
+      const days = daysSince(p.last_updated || p.opened_date);
+      const tradeMs = latestTradeByAsset[(p.asset || "").toUpperCase()];
+      const positionUpdatedMs = new Date(p.last_updated || p.opened_date || 0).getTime();
+      const tradedAfterUpdate = tradeMs && positionUpdatedMs && tradeMs > positionUpdatedMs;
+      let status = statusFor(days, 30);
+      if (tradedAfterUpdate) status = "red";
+      return {
+        id: p.id,
+        primary: `${p.asset} ${p.direction} ${p.leverage}x · size ${p.size || 0}`,
+        secondary: `entry ${fmt(p.entry_price)} · margin ${fmt(p.margin_usd)} · liq ${fmt(p.liquidation_price)}${tradedAfterUpdate ? " · trade newer than last update!" : ""}`,
+        days, status,
+        editHref: `/crypto/leveraged?editId=${p.id}`,
+      };
+    });
+  }, [leveragedQ.data, hlTradesQ.data]);
+
+  const aTokenItems = useMemo(() => {
+    return (cryptoAssetsQ.data || [])
+      .filter((a) => {
+        const t = (a.token || "").toUpperCase();
+        return t.startsWith("A") && TOKEN_ALIAS_TO_BASE[t];
+      })
+      .map((a) => {
+        const days = daysSince(a.last_updated);
+        const status = statusFor(days, 30);
+        return {
+          id: a.id,
+          primary: `${a.token} · ${(a.amount || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
+          secondary: `wallet: ${a.wallet_name || "—"}`,
+          days, status,
+          editHref: `/crypto/wallets?editId=${a.id}`,
+        };
+      });
+  }, [cryptoAssetsQ.data]);
+
+  const lpItems = useMemo(() => {
+    return (lpQ.data || []).map((l) => {
+      const days = daysSince(l.last_updated || l.updated_date || l.created_date);
+      const status = statusFor(days, 14);
+      return {
+        id: l.id,
+        primary: `${l.protocol || l.platform || "LP"} · ${l.pair || ""}`,
+        secondary: `שווי: ${fmt(l.current_value_usd)}`,
+        days, status,
+        editHref: `/settings/assets?editId=${l.id}`,
+      };
+    });
+  }, [lpQ.data]);
+
+  const investorItems = useMemo(() => {
+    const payments = paymentsQ.data || [];
+    const latestByInvestor = {};
+    for (const p of payments) {
+      const cur = latestByInvestor[p.investor_id];
+      const pDate = new Date(p.payment_date || 0).getTime();
+      if (!cur || pDate > cur) latestByInvestor[p.investor_id] = pDate;
+    }
+    return (investorsQ.data || [])
+      .filter((inv) => inv.interest_schedule === "Monthly")
+      .map((inv) => {
+        const lastMs = latestByInvestor[inv.id];
+        const days = lastMs ? Math.floor((Date.now() - lastMs) / 86400000) : Infinity;
+        const status = statusFor(days, 30);
+        return {
+          id: inv.id,
+          primary: `${inv.name} · ${fmt(inv.principal_usd)} @ ${inv.interest_rate}%`,
+          secondary: lastMs
+            ? `תשלום אחרון לפני ${days} ימים`
+            : "אין תיעוד תשלום",
+          days, status,
+          editHref: `/offchain-investors?editId=${inv.id}`,
+        };
+      });
+  }, [investorsQ.data, paymentsQ.data]);
+
+  const allSections = useMemo(() => [
+    { key: "collateral", title: "Aave Collateral", items: collateralItems, threshold: 14, emptyMessage: "אין collateral" },
+    { key: "borrow",     title: "Aave Borrow", items: borrowItems, threshold: 7, emptyMessage: "אין borrow" },
+    { key: "hl",         title: "HL Positions", items: hlItems, threshold: 30, emptyMessage: "אין פוזיציות פתוחות" },
+    { key: "atokens",    title: "Crypto Wallet aTokens", items: aTokenItems, threshold: 30, emptyMessage: "אין aTokens במעקב" },
+    { key: "lp",         title: "LP Positions", items: lpItems, threshold: 14, emptyMessage: "אין LP positions פעילים" },
+    { key: "investors",  title: "Off-Chain Investors (חודשי)", items: investorItems, threshold: 30, emptyMessage: "אין משקיעים חודשיים" },
+  ], [collateralItems, borrowItems, hlItems, aTokenItems, lpItems, investorItems]);
+
+  const filtered = allSections.filter((s) => keys.includes(s.key));
+  if (filtered.every((s) => s.items.length === 0)) return null;
+
+  // Sections start expanded on per-page mount; they're already focused.
+  const [openMap, setOpenMap] = useState(() => Object.fromEntries(filtered.map((s) => [s.key, true])));
+
+  return (
+    <div className="space-y-2">
+      {filtered.map((sec) => {
+        const hasRed = sec.items.some((it) => it.status === "red");
+        const headerAction = headerActions[sec.key];
+        return (
+          <SectionCard
+            key={sec.key}
+            title={sec.title}
+            count={sec.items.length}
+            threshold={sec.threshold}
+            items={sec.items}
+            hasRed={hasRed}
+            expanded={!!openMap[sec.key]}
+            onToggle={() => setOpenMap((p) => ({ ...p, [sec.key]: !p[sec.key] }))}
+            emptyMessage={sec.emptyMessage}
+            headerAction={headerAction}
+            renderItem={(item) => (
+              <Link
+                key={item.id}
+                to={item.editHref}
+                className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors ${STATUS_CLASSES[item.status].row}`}
+              >
+                <StatusDot status={item.status} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-mono truncate">{item.primary}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{item.secondary}</p>
+                </div>
+                <DaysBadge days={item.days} status={item.status} />
+                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
+              </Link>
+            )}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export function AaveMaintenance() {
+  return <MaintenanceShell keys={["collateral", "borrow"]} />;
+}
+
+export function HLMaintenance() {
+  return <MaintenanceShell keys={["hl"]} headerActions={{ hl: <HLSyncButton /> }} />;
+}
+
+export function WalletsMaintenance() {
+  return <MaintenanceShell keys={["atokens", "lp"]} />;
+}
+
+export function InvestorsMaintenance() {
+  return <MaintenanceShell keys={["investors"]} />;
 }

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, Wallet, AlertCircle } from "lucide-react";
+import { WalletsMaintenance } from "@/components/dashboard2/ManualEntriesPanel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -283,6 +284,11 @@ export default function WalletsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Maintenance — surfaces aTokens/LP positions that haven't been refreshed
+          recently. Lives on this page since wallet management is where the user
+          would naturally update these. */}
+      <WalletsMaintenance />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import AaveSuppliesTable from '../../components/aave/AaveSuppliesTable';
 import AaveBorrowsTable from '../../components/aave/AaveBorrowsTable';
 import AaveStressTest from '../../components/aave/AaveStressTest';
 import AaveActivityLog from '../../components/aave/AaveActivityLog';
+import { AaveMaintenance } from '../../components/dashboard2/ManualEntriesPanel';
 
 /**
  * AaveAccountPage — Aave dashboard page.
@@ -85,6 +86,10 @@ export default function AaveAccountPage() {
         <AaveStressTest />
         <AaveActivityLog />
       </div>
+
+      {/* Manual maintenance reminders — surfaced here on the Aave page rather
+          than the main dashboard so they don't add noise where most users land. */}
+      <AaveMaintenance />
 
       {lastUpdated && (
         <div className="text-xs text-muted-foreground text-center py-4">

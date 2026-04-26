@@ -5,7 +5,6 @@ import AllocationSection from "@/components/dashboard2/AllocationSection";
 import SegmentsSection from "@/components/dashboard2/SegmentsSection";
 import AlertsSection from "@/components/dashboard2/AlertsSection";
 import HLPositionsSection from "@/components/dashboard2/HLPositionsSection";
-import ManualEntriesPanel from "@/components/dashboard2/ManualEntriesPanel";
 import { useDashboardData } from "@/hooks/useDashboardData";
 
 export default function Dashboard() {
@@ -33,9 +32,6 @@ export default function Dashboard() {
         />
         {/* Alerts surface high-priority items above the fold */}
         <AlertsSection data={data} />
-        {/* Manual entries — fields the auto-update can't touch (Aave units,
-            HL position structure, aToken amounts, investor balances). */}
-        <ManualEntriesPanel />
         <CapitalStructureSection data={data} />
         <SegmentsSection data={data} />
         <HLPositionsSection data={data} />

@@ -3,6 +3,7 @@ import OpenPositionsTab from "@/components/hyperliquid/OpenPositionsTab";
 import TradeHistoryTab from "@/components/hyperliquid/TradeHistoryTab";
 import PerformanceTab from "@/components/hyperliquid/PerformanceTab";
 import { useEntityList } from "@/hooks/useEntityQuery";
+import { HLMaintenance } from "@/components/dashboard2/ManualEntriesPanel";
 
 const TABS = [
   { id: "positions", label: "פוזיציות פתוחות" },
@@ -72,6 +73,11 @@ export default function LeveragedPage() {
       {tab === "positions" && <OpenPositionsTab positions={positions} onRefresh={() => {}} />}
       {tab === "history" && <TradeHistoryTab trades={trades} onRefresh={() => {}} />}
       {tab === "performance" && <PerformanceTab trades={trades} positions={positions} />}
+
+      {/* Maintenance reminders — auto-sync button pulls live state from
+          HyperLiquid's public API, plus per-position staleness so the user
+          knows what to refresh. */}
+      <HLMaintenance />
     </div>
   );
 }

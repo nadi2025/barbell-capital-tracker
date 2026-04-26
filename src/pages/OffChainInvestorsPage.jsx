@@ -8,6 +8,7 @@ import MaturityInvestorCard from "@/components/offchain/MaturityInvestorCard";
 import RecordPaymentDialog from "@/components/offchain/RecordPaymentDialog";
 import AddInvestorDialog from "@/components/offchain/AddInvestorDialog";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { InvestorsMaintenance } from "@/components/dashboard2/ManualEntriesPanel";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -183,6 +184,9 @@ export default function OffChainInvestorsPage() {
         onClose={() => setEditTarget(null)}
         onSave={handleEdit}
       />
+
+      {/* Highlights monthly investors who haven't been paid in 30+ days. */}
+      <InvestorsMaintenance />
     </div>
   );
 }
