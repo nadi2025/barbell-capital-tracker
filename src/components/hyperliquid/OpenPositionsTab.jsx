@@ -241,7 +241,20 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
                     <td className="px-4 py-3 font-mono text-sm">{p.size?.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
                     <td className="px-4 py-3 font-mono text-right">{fmt(p.position_value_usd)}</td>
                     <td className="px-4 py-3 font-mono text-right">${(p.entry_price || 0).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
-                    <td className="px-4 py-3 font-mono text-right">{p.mark_price ? `$${p.mark_price.toLocaleString(undefined, { maximumFractionDigits: 3 })}` : <span className="text-muted-foreground">—</span>}</td>
+                    {/* Mark price comes from priceMap[asset] when available; falls back to
+                        the stored mark_price when the asset is not in Prices. The dot
+                        indicates which: green = live, amber = stored fallback. */}
+                    <td className="px-4 py-3 font-mono text-right">
+                      {p.mark_price ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className={`inline-block w-1.5 h-1.5 rounded-full ${p.priceMissing ? "bg-amber-500" : "bg-profit"}`}
+                            title={p.priceMissing ? "מחיר מאוחסן (אין ערך חי ב-Prices)" : "מחיר חי מ-Prices entity"}
+                          />
+                          ${p.mark_price.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                        </span>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       {p.pnl_usd != null ? (
                         <div>
@@ -300,6 +313,10 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
       <Dialog open={dialog} onOpenChange={setDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editPos ? "Edit Position" : "New Position"}</DialogTitle></DialogHeader>
+          <p className="text-[11px] text-muted-foreground bg-muted/30 border border-border/40 rounded p-2">
+            <strong>Mark Price</strong> מתעדכן אוטומטית מ-priceMap (size × מחיר חי = שווי + PnL מחושבים בזמן אמת).
+            Liquidation ו-Margin הם ידניים — עדכן בכל שבוע או לאחר שינוי משמעותי.
+          </p>
           <div className="grid grid-cols-2 gap-3 pt-2">
             {[{ label: "Asset", key: "asset" }, { label: "Leverage", key: "leverage", type: "number" }, { label: "Size", key: "size", type: "number" }, { label: "Margin ($)", key: "margin_usd", type: "number" }, { label: "Position Value ($)", key: "position_value_usd", type: "number" }, { label: "Entry Price", key: "entry_price", type: "number" }, { label: "Mark Price", key: "mark_price", type: "number" }, { label: "Liquidation Price", key: "liquidation_price", type: "number" }, { label: "Opened Date", key: "opened_date", type: "date" }].map((f) => (
               <div key={f.key}><Label className="text-xs mb-1 block">{f.label}</Label><Input type={f.type || "text"} value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} /></div>
