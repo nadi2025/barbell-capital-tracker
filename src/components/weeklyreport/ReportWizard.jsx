@@ -1,9 +1,9 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronRight, ChevronLeft, RefreshCw, ExternalLink, AlertTriangle } from "lucide-react";
-import { base44 } from "@/api/base44Client";
 import { differenceInHours } from "date-fns";
 
 // Is a date string stale (older than 48h)?
@@ -13,6 +13,11 @@ function isStale(dateStr) {
 }
 
 export default function ReportWizard({ appData, lastReport, onComplete, onCancel }) {
+  // PriceHub is mounted at the Layout level; the wizard opens it through
+  // the same Outlet context the page does. After the modal closes, the
+  // wizard's data already reflects new prices via React Query — no manual
+  // refetch is necessary.
+  const { openPriceHub } = useOutletContext() || {};
   const { assets, aaveCollateral, ibOptions, prices = [] } = appData;
 
   // Get prices from Prices entity (most up-to-date)
@@ -55,30 +60,7 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
     aave_price: aavePrice?.price_usd ? String(aavePrice.price_usd) : (aaveAsset?.current_price_usd ? String(aaveAsset.current_price_usd) : ""),
     mstr_price: mstrPrice?.price_usd ? String(mstrPrice.price_usd) : (mstrAsset?.current_price_usd ? String(mstrAsset.current_price_usd) : ""),
   });
-  const [refreshingPrices, setRefreshingPrices] = useState(false);
-
   const set = (key, val) => setAnswers((a) => ({ ...a, [key]: val }));
-
-  const handleRefreshPrices = async () => {
-    setRefreshingPrices(true);
-    try {
-      // dailyFullUpdate has been removed; this wizard now calls syncPrices
-      // (the single price-fetch path). Phase 4 will route this through the
-      // top-bar PriceHub instead so there's only one button in the app, but
-      // for now keep the inline button working with the new function name.
-      await base44.functions.invoke("syncPrices", {});
-      const updatedPrices = await base44.entities.Prices.list();
-      const pm = {};
-      updatedPrices.forEach((p) => { pm[p.asset?.toUpperCase()] = p.price_usd; });
-      if (pm.BTC) set("btc_price", String(pm.BTC));
-      if (pm.ETH) set("eth_price", String(pm.ETH));
-      if (pm.AAVE) set("aave_price", String(pm.AAVE));
-      if (pm.MSTR) set("mstr_price", String(pm.MSTR));
-    } catch (e) {
-      // ignore — user can type manually
-    }
-    setRefreshingPrices(false);
-  };
 
   // Steps: 0=IB NAV, 1=IB Options, 2=Notes, 3=Price validation (conditional), 4=Review
   const handleNext = () => {
@@ -180,9 +162,9 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
             <label className="text-lg font-bold">מחירי קריפטו לא עודכנו לאחרונה</label>
           </div>
           <p className="text-sm text-muted-foreground">עדכן מחירים ממקור חי או הזן ידנית</p>
-          <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshingPrices} className="w-full gap-2">
-            <RefreshCw className={`w-4 h-4 ${refreshingPrices ? "animate-spin" : ""}`} />
-            {refreshingPrices ? "מעדכן..." : "עדכן מחירים אוטומטית"}
+          <Button variant="outline" onClick={openPriceHub} className="w-full gap-2">
+            <RefreshCw className="w-4 h-4" />
+            פתח את מרכז המחירים
           </Button>
           <div className="grid grid-cols-2 gap-3">
             {[["btc_price", "BTC"], ["eth_price", "ETH"], ["aave_price", "AAVE"], ["mstr_price", "MSTR"]].map(([k, label]) =>

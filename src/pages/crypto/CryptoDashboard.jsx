@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { TrendingUp, DollarSign, RefreshCw, Wallet, Activity, Zap } from "lucide-react";
+import { Link, useOutletContext } from "react-router-dom";
+import { TrendingUp, RefreshCw, Wallet, Activity, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
-import PriceHub from "@/components/PriceHub";
 import AlertsPanel from "@/components/crypto/AlertsPanel";
 import { useEntityList } from "@/hooks/useEntityQuery";
 import { useAavePosition } from "@/hooks/useAavePosition";
@@ -15,7 +13,8 @@ const pct = (v) => (v == null ? "0%" : `${(v * 100).toFixed(1)}%`);
 const COLORS = ["#f7931a", "#627eea", "#b6509e", "#2775ca", "#16c784", "#6c757d", "#94a3b8"];
 
 export default function CryptoDashboard() {
-  const [priceHubOpen, setPriceHubOpen] = useState(false);
+  // PriceHub lives at the Layout level — opened via Outlet context
+  const { openPriceHub } = useOutletContext() || {};
 
   // Real-time queries — auto-refresh every 60s + on window focus + on any mutation
   const { data: assets = [], isLoading: la } = useEntityList("CryptoAsset");
@@ -152,7 +151,7 @@ export default function CryptoDashboard() {
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">MAGAM DeFi · Oasis Project G Ltd.</p>
         </div>
-        <Button size="sm" className="gap-2" onClick={() => setPriceHubOpen(true)}>
+        <Button size="sm" className="gap-2" onClick={openPriceHub}>
           <Zap className="w-4 h-4" /> מרכז מחירים
         </Button>
       </div>
@@ -307,7 +306,6 @@ export default function CryptoDashboard() {
         ))}
       </div>
 
-      <PriceHub open={priceHubOpen} onClose={() => setPriceHubOpen(false)} />
     </div>
   );
 }

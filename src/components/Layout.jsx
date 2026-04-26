@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/mobile/BottomNav";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import RouteTransition from "@/components/mobile/RouteTransition";
+import PriceHub from "@/components/PriceHub";
 
 const offChainNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -48,7 +49,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [updatingPrices, setUpdatingPrices] = useState(false);
+  const [priceHubOpen, setPriceHubOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isRootPath = ROOT_PATHS.includes(location.pathname);
@@ -63,16 +64,10 @@ export default function Layout() {
     base44.auth.me().then(setUser).catch(() => {});
   }, []);
 
-  const handleUpdatePrices = async () => {
-    setUpdatingPrices(true);
-    try {
-      await base44.functions.invoke('updatePricesDaily', {});
-      window.location.reload();
-    } catch (error) {
-      console.error('Error updating prices:', error);
-      setUpdatingPrices(false);
-    }
-  };
+  // PriceHub is the single price-update entry point in the app. Every
+  // child page can open it through Outlet context — no more page-level
+  // refresh buttons calling deleted Deno functions.
+  const openPriceHub = () => setPriceHubOpen(true);
 
   const handleDeleteAccount = async () => {
     try {
@@ -227,11 +222,10 @@ export default function Layout() {
             variant="outline"
             size="sm"
             className="gap-1.5"
-            onClick={handleUpdatePrices}
-            disabled={updatingPrices}
+            onClick={openPriceHub}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${updatingPrices ? "animate-spin" : ""}`} />
-            <span className="hidden sm:inline">{updatingPrices ? "עדכון..." : "עדכן מחירים"}</span>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">עדכן מחירים</span>
           </Button>
         </header>
 
@@ -242,7 +236,9 @@ export default function Layout() {
             style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom) + 56px)" }}
           >
             <RouteTransition>
-              <Outlet />
+              {/* Outlet context exposes openPriceHub to every child page so
+                  page-level refresh buttons can open the modal centrally. */}
+              <Outlet context={{ openPriceHub }} />
             </RouteTransition>
           </main>
         </PullToRefresh>
@@ -250,6 +246,9 @@ export default function Layout() {
 
       {/* Mobile bottom nav */}
       <BottomNav />
+
+      {/* PriceHub — the single price-update modal for the whole app */}
+      <PriceHub open={priceHubOpen} onClose={() => setPriceHubOpen(false)} />
     </div>
   );
 }

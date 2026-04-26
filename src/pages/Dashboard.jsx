@@ -1,16 +1,16 @@
-import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import DashboardHeader from "@/components/dashboard2/DashboardHeader";
 import CapitalStructureSection from "@/components/dashboard2/CapitalStructureSection";
 import AllocationSection from "@/components/dashboard2/AllocationSection";
 import SegmentsSection from "@/components/dashboard2/SegmentsSection";
 import AlertsSection from "@/components/dashboard2/AlertsSection";
 import HLPositionsSection from "@/components/dashboard2/HLPositionsSection";
-import PriceHub from "@/components/PriceHub";
 import { useDashboardData } from "@/hooks/useDashboardData";
 
 export default function Dashboard() {
   const { data, isLoading, isFetching, refetchAll, lastSyncedAt } = useDashboardData();
-  const [priceHubOpen, setPriceHubOpen] = useState(false);
+  // PriceHub is mounted once at the Layout level; pages open it via context.
+  const { openPriceHub } = useOutletContext() || {};
 
   if (isLoading) {
     return (
@@ -27,7 +27,7 @@ export default function Dashboard() {
           data={data}
           isFetching={isFetching}
           lastSyncedAt={lastSyncedAt}
-          onOpenPriceHub={() => setPriceHubOpen(true)}
+          onOpenPriceHub={openPriceHub}
           onSoftRefresh={refetchAll}
         />
         {/* Alerts surface high-priority items above the fold */}
@@ -37,7 +37,6 @@ export default function Dashboard() {
         <HLPositionsSection data={data} />
         <AllocationSection data={data} />
       </div>
-      <PriceHub open={priceHubOpen} onClose={() => setPriceHubOpen(false)} />
     </div>
   );
 }

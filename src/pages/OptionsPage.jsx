@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import AssignmentAnalysis from "../components/AssignmentAnalysis";
 import ExpiryAlerts from "../components/ExpiryAlerts";
 import { base44 } from "@/api/base44Client";
@@ -85,14 +86,15 @@ export default function OptionsPage() {
     useEntityList("OptionsTrade", { sort: "-open_date" });
   const { data: stocks = [], refetch: refetchStocks } = useEntityList("StockPosition");
   const deleteTrade = useEntityMutation("OptionsTrade", "delete");
-  const updateStock = useEntityMutation("StockPosition", "update");
+
+  // PriceHub mounted at the Layout level — open it from here via Outlet context.
+  const { openPriceHub } = useOutletContext() || {};
 
   const [formOpen, setFormOpen] = useState(false);
   const [editTrade, setEditTrade] = useState(null);
   const [user, setUser] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTicker, setFilterTicker] = useState("all");
-  const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [consolidated, setConsolidated] = useState(true);
 
   useEffect(() => {
@@ -106,33 +108,9 @@ export default function OptionsPage() {
 
   const loading = loadingTrades;
 
-  const refreshLivePrices = async () => {
-    setRefreshingPrices(true);
-    const holdingStocks = stocks.filter((s) => s.status === "Holding" || s.status === "Partially Sold");
-    const tickers = [...new Set(holdingStocks.map((s) => s.ticker))];
-    if (tickers.length === 0) { setRefreshingPrices(false); return; }
-    const res = await base44.functions.invoke("fetchStockPrices", { tickers });
-    const prices = res.data?.prices || {};
-    await Promise.all(
-      holdingStocks.map((s) => {
-        const price = prices[s.ticker];
-        if (price == null) return;
-        const invested = (s.average_cost || 0) * (s.shares || 0);
-        const currentVal = price * (s.shares || 0);
-        return updateStock.mutateAsync({
-          id: s.id,
-          data: {
-            current_price: price,
-            current_value: currentVal,
-            gain_loss: currentVal - invested,
-            gain_loss_pct: invested > 0 ? (currentVal - invested) / invested : 0,
-          },
-        });
-      })
-    );
-    setRefreshingPrices(false);
-    toast.success("Live prices updated");
-  };
+  // "Live Prices" button now opens PriceHub. Stocks pull live values from
+  // priceMap × shares at render time, so a single Prices update propagates
+  // automatically — no per-stock write loop, no fetchStockPrices round-trip.
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
@@ -210,9 +188,9 @@ export default function OptionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={refreshLivePrices} disabled={refreshingPrices} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${refreshingPrices ? "animate-spin" : ""}`} />
-            {refreshingPrices ? "Updating..." : "Live Prices"}
+          <Button variant="outline" onClick={openPriceHub} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Live Prices
           </Button>
           {!isReadOnly && (
             <Button onClick={() => { setEditTrade(null); setFormOpen(true); }} className="gap-2">

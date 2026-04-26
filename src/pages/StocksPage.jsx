@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useOutletContext } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import {
@@ -285,12 +286,12 @@ export default function StocksPage() {
   const { data: stocks = [], isLoading } = useEntityList("StockPosition", { sort: "-entry_date" });
   const { data: allOptions = [] } = useEntityList("OptionsTrade");
   const deleteStock = useEntityMutation("StockPosition", "delete");
-  const updateStock = useEntityMutation("StockPosition", "update");
 
   const [formOpen, setFormOpen] = useState(false);
   const [editStock, setEditStock] = useState(null);
   const [user, setUser] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  // PriceHub is mounted at the Layout level — open it from here via Outlet context.
+  const { openPriceHub } = useOutletContext() || {};
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => setUser(null));
@@ -310,32 +311,10 @@ export default function StocksPage() {
     return m;
   }, [allOptions]);
 
-  const handleRefreshPrices = async () => {
-    const holdingStocks = stocks.filter((s) => s.status !== "Closed" && s.ticker);
-    if (!holdingStocks.length) return;
-    setRefreshing(true);
-    try {
-      const tickers = [...new Set(holdingStocks.map((s) => s.ticker))];
-      const res = await base44.functions.invoke("fetchStockPrices", { tickers });
-      const prices = res.data?.prices || {};
-      await Promise.all(
-        holdingStocks.map(async (s) => {
-          const price = prices[s.ticker];
-          if (!price) return;
-          const current_value = price * s.shares;
-          const gain_loss = current_value - (s.invested_value || 0);
-          const gain_loss_pct = s.invested_value ? gain_loss / s.invested_value : 0;
-          await updateStock.mutateAsync({
-            id: s.id,
-            data: { current_price: price, current_value, gain_loss, gain_loss_pct },
-          });
-        })
-      );
-      toast.success("מחירים עודכנו בהצלחה");
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  // Per-page refresh button now opens PriceHub (the single price-update path
+  // for the whole app). Stocks are derived from priceMap × position at render
+  // time, so a Prices entity update flows here automatically — no per-stock
+  // write loop, no fetchStockPrices Deno round-trip.
 
   const handleDelete = async (stock) => {
     if (!confirm(`Delete ${stock.ticker} position?`)) return;
@@ -390,9 +369,9 @@ export default function StocksPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2 flex-1 sm:flex-initial">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "מעדכן..." : "עדכן מחירים"}
+          <Button variant="outline" size="sm" onClick={openPriceHub} className="gap-2 flex-1 sm:flex-initial">
+            <RefreshCw className="w-4 h-4" />
+            עדכן מחירים
           </Button>
           {!isReadOnly && (
             <Button size="sm" onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2 flex-1 sm:flex-initial">
