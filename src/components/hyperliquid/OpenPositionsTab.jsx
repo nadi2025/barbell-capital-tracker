@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { Plus, Pencil, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,24 +8,35 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEntityMutation } from "@/hooks/useEntityQuery";
+import { usePrices } from "@/hooks/usePrices";
+import { computeLeveragedDerived } from "@/lib/portfolioMath";
 
 const fmt = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtP = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 
-const calcPnl = (p) => {
-  if (!p.mark_price || !p.entry_price || !p.size) return null;
-  return p.direction === "Long" ? (p.mark_price - p.entry_price) * p.size : (p.entry_price - p.mark_price) * p.size;
-};
-const calcRoe = (p) => { const pnl = calcPnl(p); return (pnl == null || !p.margin_usd) ? null : (pnl / p.margin_usd) * 100; };
-const distToLiq = (p) => {
-  if (!p.liquidation_price || !p.mark_price) return null;
-  return Math.abs((p.mark_price - p.liquidation_price) / p.mark_price) * 100;
-};
-
 const emptyForm = { asset: "", platform: "HyperLiquid", leverage: "", size: "", margin_usd: "", position_value_usd: "", liquidation_price: "", direction: "Long", entry_price: "", mark_price: "", status: "Open", opened_date: "" };
 
+/**
+ * OpenPositionsTab — HyperLiquid open positions with per-row enrichment.
+ *
+ * Live values (mark_price, position_value_usd, pnl_usd, roe_pct, dist_to_liq)
+ * are derived per render from `priceMap × position` via computeLeveragedDerived.
+ * The local calcPnl/calcRoe/distToLiq helpers were removed — single source of
+ * truth in portfolioMath.
+ *
+ * Mark Prices dialog rewires: instead of writing to the deleted Asset entity
+ * and dead-caching mark_price on LeveragedPosition, it upserts each typed
+ * price to the canonical Prices entity. Cascade is automatic: every consumer
+ * of usePrices/priceMap rerenders and sees the new mark_price → fresh PnL
+ * within the same React tick. (Phase 4-aligned per spec.)
+ */
 export default function OpenPositionsTab({ positions, onRefresh }) {
   const queryClient = useQueryClient();
+  const { priceMap, prices } = usePrices();
+  const updatePrice = useEntityMutation("Prices", "update");
+  const createPrice = useEntityMutation("Prices", "create");
+
   const [dialog, setDialog] = useState(false);
   const [markDialog, setMarkDialog] = useState(false);
   const [editPos, setEditPos] = useState(null);
@@ -33,62 +44,98 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
   const [markPrices, setMarkPrices] = useState({});
   const [filter, setFilter] = useState("Open");
 
-  const open = positions.filter(p => p.status === "Open");
-  const totalMargin = open.reduce((s, p) => s + (p.margin_usd || 0), 0);
-  const totalNotional = open.reduce((s, p) => s + (p.position_value_usd || 0), 0);
-  const avgLev = open.length > 0 ? open.reduce((s, p) => s + (p.leverage || 0), 0) / open.length : 0;
-  const totalLivePnl = open.reduce((s, p) => s + (calcPnl(p) || 0), 0);
-  const accountEquity = totalMargin + totalLivePnl;
-  const equityPct = totalMargin > 0 ? (accountEquity / totalMargin) * 100 : 100;
+  // Enrich each position with derived values (mark/pnl/roe/dist) from priceMap
+  const enriched = useMemo(
+    () => positions.map((p) => ({ ...p, ...computeLeveragedDerived(p, priceMap) })),
+    [positions, priceMap]
+  );
 
-  const filtered = filter === "all" ? positions : positions.filter(p => p.status === filter);
+  const open = useMemo(() => enriched.filter((p) => p.status === "Open"), [enriched]);
+  const filtered = useMemo(
+    () => (filter === "all" ? enriched : enriched.filter((p) => p.status === filter)),
+    [enriched, filter]
+  );
+
+  // Aggregates over the derived (live) values
+  const aggregates = useMemo(() => {
+    const totalMargin = open.reduce((s, p) => s + (p.margin_usd || 0), 0);
+    const totalNotional = open.reduce((s, p) => s + (p.position_value_usd || 0), 0);
+    const avgLev = open.length > 0
+      ? open.reduce((s, p) => s + (p.leverage || 0), 0) / open.length
+      : 0;
+    const totalLivePnl = open.reduce((s, p) => s + (p.pnl_usd || 0), 0);
+    const accountEquity = totalMargin + totalLivePnl;
+    const equityPct = totalMargin > 0 ? (accountEquity / totalMargin) * 100 : 100;
+    return { totalMargin, totalNotional, avgLev, totalLivePnl, accountEquity, equityPct };
+  }, [open]);
 
   const openMarkDialog = () => {
     const mp = {};
-    open.forEach(p => { mp[p.id] = p.mark_price || ""; });
+    open.forEach((p) => { mp[p.id] = p.mark_price || ""; });
     setMarkPrices(mp);
     setMarkDialog(true);
   };
 
   const saveMarkPrices = async () => {
-    const updates = open.map(p => {
-      const mp = parseFloat(markPrices[p.id]);
-      if (!mp || mp === p.mark_price) return Promise.resolve();
-      const posVal = mp * (p.size || 0);
-      return base44.entities.LeveragedPosition.update(p.id, { mark_price: mp, position_value_usd: posVal });
-    });
-    // Also update global Asset prices
-    const assetPrices = {};
-    open.forEach(p => { if (markPrices[p.id]) assetPrices[p.asset] = parseFloat(markPrices[p.id]); });
-    const assetRecords = await base44.entities.Asset.list();
-    const assetUpdates = assetRecords
-      .filter(a => assetPrices[a.symbol])
-      .map(a => base44.entities.Asset.update(a.id, { current_price_usd: assetPrices[a.symbol], last_updated: new Date().toISOString() }));
-    await Promise.all([...updates, ...assetUpdates]);
-    // Invalidate cached queries so the main Dashboard + Crypto Dashboard refresh
-    queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
-    queryClient.invalidateQueries({ queryKey: ["entity", "Asset"] });
-    queryClient.invalidateQueries({ queryKey: ["function"] });
+    // Collect unique (asset → price) tuples — multiple positions on the same
+    // asset should write a single Prices row, not duplicate.
+    const upserts = {};
+    for (const p of open) {
+      const raw = markPrices[p.id];
+      const price = parseFloat(raw);
+      if (!price || price <= 0) continue;
+      const sym = String(p.asset || "").toUpperCase();
+      if (!sym) continue;
+      // Last-write-wins if multiple positions on same asset have different
+      // prices typed in — user can adjust before saving.
+      upserts[sym] = price;
+    }
+
+    const now = new Date().toISOString();
+    for (const [asset, price] of Object.entries(upserts)) {
+      const existing = prices.find((row) => row.asset === asset);
+      if (existing) {
+        await updatePrice.mutateAsync({
+          id: existing.id,
+          data: { price_usd: price, last_updated: now },
+        });
+      } else {
+        await createPrice.mutateAsync({ asset, price_usd: price, last_updated: now });
+      }
+    }
+
+    // useEntityMutation already invalidates ["entity", "Prices"] which
+    // cascades to every consumer of usePrices in the app.
     toast.success("Mark prices updated");
     setMarkDialog(false);
-    onRefresh();
+    onRefresh?.();
   };
 
   const save = async () => {
-    const data = { ...form, leverage: parseFloat(form.leverage) || null, size: parseFloat(form.size) || null, margin_usd: parseFloat(form.margin_usd) || null, position_value_usd: parseFloat(form.position_value_usd) || null, liquidation_price: parseFloat(form.liquidation_price) || null, entry_price: parseFloat(form.entry_price) || null, mark_price: parseFloat(form.mark_price) || null };
+    const data = {
+      ...form,
+      leverage: parseFloat(form.leverage) || null,
+      size: parseFloat(form.size) || null,
+      margin_usd: parseFloat(form.margin_usd) || null,
+      position_value_usd: parseFloat(form.position_value_usd) || null,
+      liquidation_price: parseFloat(form.liquidation_price) || null,
+      entry_price: parseFloat(form.entry_price) || null,
+      mark_price: parseFloat(form.mark_price) || null,
+    };
     if (editPos) await base44.entities.LeveragedPosition.update(editPos.id, data);
     else await base44.entities.LeveragedPosition.create(data);
     queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
-    queryClient.invalidateQueries({ queryKey: ["function"] });
-    toast.success("Saved"); setDialog(false); onRefresh();
+    toast.success("Saved");
+    setDialog(false);
+    onRefresh?.();
   };
 
   const del = async (id) => {
     if (!confirm("Delete?")) return;
     await base44.entities.LeveragedPosition.delete(id);
     queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
-    queryClient.invalidateQueries({ queryKey: ["function"] });
-    toast.success("Deleted"); onRefresh();
+    toast.success("Deleted");
+    onRefresh?.();
   };
 
   const distColor = (d) => {
@@ -98,10 +145,10 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
     return "text-emerald-500";
   };
 
-  const rowBg = (p) => {
-    const d = distToLiq(p);
-    if (d != null && d < 15) return "bg-red-50 border-red-200";
-    if (d != null && d < 25) return "bg-amber-50/50";
+  const rowBg = (d) => {
+    if (d == null) return "";
+    if (d < 15) return "bg-red-50 border-red-200";
+    if (d < 25) return "bg-amber-50/50";
     return "";
   };
 
@@ -111,33 +158,33 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Total Margin</p>
-          <p className="text-xl font-bold font-mono">{fmt(totalMargin)}</p>
+          <p className="text-xl font-bold font-mono">{fmt(aggregates.totalMargin)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Notional Value</p>
-          <p className="text-xl font-bold font-mono">{fmt(totalNotional)}</p>
+          <p className="text-xl font-bold font-mono">{fmt(aggregates.totalNotional)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Avg Leverage</p>
-          <p className="text-xl font-bold font-mono">{avgLev.toFixed(1)}x</p>
+          <p className="text-xl font-bold font-mono">{aggregates.avgLev.toFixed(1)}x</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Live PnL</p>
-          <p className={`text-xl font-bold font-mono ${totalLivePnl >= 0 ? "text-profit" : "text-loss"}`}>
-            {totalLivePnl >= 0 ? "+" : ""}{fmtP(totalLivePnl)}
+          <p className={`text-xl font-bold font-mono ${aggregates.totalLivePnl >= 0 ? "text-profit" : "text-loss"}`}>
+            {aggregates.totalLivePnl >= 0 ? "+" : ""}{fmtP(aggregates.totalLivePnl)}
           </p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground">Account Equity</p>
-          <p className={`text-xl font-bold font-mono ${accountEquity >= 0 ? "" : "text-loss"}`}>{fmt(accountEquity)}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{equityPct.toFixed(1)}% of deposited margin</p>
+          <p className={`text-xl font-bold font-mono ${aggregates.accountEquity >= 0 ? "" : "text-loss"}`}>{fmt(aggregates.accountEquity)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{aggregates.equityPct.toFixed(1)}% of deposited margin</p>
         </div>
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
-          {["Open", "Closed", "all"].map(s => (
+          {["Open", "Closed", "all"].map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>
               {s === "all" ? "All" : s}
             </Button>
@@ -173,13 +220,13 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(p => {
-                const livePnl = calcPnl(p);
-                const roe = calcRoe(p);
-                const dist = distToLiq(p);
-                const portPct = totalMargin > 0 ? ((p.margin_usd || 0) / totalMargin * 100) : 0;
+              {filtered.map((p) => {
+                const dist = p.distance_to_liq_pct;
+                const portPct = aggregates.totalMargin > 0
+                  ? ((p.margin_usd || 0) / aggregates.totalMargin * 100)
+                  : 0;
                 return (
-                  <tr key={p.id} className={`border-b border-border/40 hover:bg-muted/20 ${rowBg(p)}`}>
+                  <tr key={p.id} className={`border-b border-border/40 hover:bg-muted/20 ${rowBg(dist)}`}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         {dist != null && dist < 15 && <AlertTriangle className="w-3.5 h-3.5 text-red-500 animate-pulse" />}
@@ -193,10 +240,10 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
                     <td className="px-4 py-3 font-mono text-right">${(p.entry_price || 0).toLocaleString(undefined, { maximumFractionDigits: 3 })}</td>
                     <td className="px-4 py-3 font-mono text-right">{p.mark_price ? `$${p.mark_price.toLocaleString(undefined, { maximumFractionDigits: 3 })}` : <span className="text-muted-foreground">—</span>}</td>
                     <td className="px-4 py-3 text-right">
-                      {livePnl != null ? (
+                      {p.pnl_usd != null ? (
                         <div>
-                          <span className={`font-mono font-semibold ${livePnl >= 0 ? "text-profit" : "text-loss"}`}>{livePnl >= 0 ? "+" : ""}{fmtP(livePnl)}</span>
-                          {roe != null && <span className={`ml-1 text-xs ${roe >= 0 ? "text-profit" : "text-loss"}`}>({roe >= 0 ? "+" : ""}{roe.toFixed(1)}%)</span>}
+                          <span className={`font-mono font-semibold ${p.pnl_usd >= 0 ? "text-profit" : "text-loss"}`}>{p.pnl_usd >= 0 ? "+" : ""}{fmtP(p.pnl_usd)}</span>
+                          {p.roe_pct != null && <span className={`ml-1 text-xs ${p.roe_pct >= 0 ? "text-profit" : "text-loss"}`}>({p.roe_pct >= 0 ? "+" : ""}{p.roe_pct.toFixed(1)}%)</span>}
                         </div>
                       ) : <span className="text-muted-foreground text-xs">—</span>}
                     </td>
@@ -231,12 +278,12 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
           <table className="w-full text-sm mt-2">
             <thead><tr className="text-xs text-muted-foreground border-b border-border"><th className="text-right pb-2">נכס</th><th className="text-right pb-2">מחיר נוכחי</th><th className="text-right pb-2">מחיר חדש</th></tr></thead>
             <tbody>
-              {open.map(p => (
+              {open.map((p) => (
                 <tr key={p.id} className="border-b border-border/30">
                   <td className="py-2 font-mono font-bold">{p.asset}</td>
                   <td className="py-2 font-mono text-right text-muted-foreground">${(p.mark_price || 0).toLocaleString()}</td>
                   <td className="py-2 pl-3">
-                    <Input type="number" value={markPrices[p.id] || ""} onChange={e => setMarkPrices(prev => ({ ...prev, [p.id]: e.target.value }))} className="h-8 text-sm font-mono" placeholder="0" />
+                    <Input type="number" value={markPrices[p.id] || ""} onChange={(e) => setMarkPrices((prev) => ({ ...prev, [p.id]: e.target.value }))} className="h-8 text-sm font-mono" placeholder="0" />
                   </td>
                 </tr>
               ))}
@@ -251,17 +298,17 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editPos ? "Edit Position" : "New Position"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {[{ label: "Asset", key: "asset" }, { label: "Leverage", key: "leverage", type: "number" }, { label: "Size", key: "size", type: "number" }, { label: "Margin ($)", key: "margin_usd", type: "number" }, { label: "Position Value ($)", key: "position_value_usd", type: "number" }, { label: "Entry Price", key: "entry_price", type: "number" }, { label: "Mark Price", key: "mark_price", type: "number" }, { label: "Liquidation Price", key: "liquidation_price", type: "number" }, { label: "Opened Date", key: "opened_date", type: "date" }].map(f => (
-              <div key={f.key}><Label className="text-xs mb-1 block">{f.label}</Label><Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} /></div>
+            {[{ label: "Asset", key: "asset" }, { label: "Leverage", key: "leverage", type: "number" }, { label: "Size", key: "size", type: "number" }, { label: "Margin ($)", key: "margin_usd", type: "number" }, { label: "Position Value ($)", key: "position_value_usd", type: "number" }, { label: "Entry Price", key: "entry_price", type: "number" }, { label: "Mark Price", key: "mark_price", type: "number" }, { label: "Liquidation Price", key: "liquidation_price", type: "number" }, { label: "Opened Date", key: "opened_date", type: "date" }].map((f) => (
+              <div key={f.key}><Label className="text-xs mb-1 block">{f.label}</Label><Input type={f.type || "text"} value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} /></div>
             ))}
             <div><Label className="text-xs mb-1 block">Direction</Label>
-              <Select value={form.direction} onValueChange={v => setForm(p => ({ ...p, direction: v }))}>
+              <Select value={form.direction} onValueChange={(v) => setForm((p) => ({ ...p, direction: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="Long">Long</SelectItem><SelectItem value="Short">Short</SelectItem></SelectContent>
               </Select>
             </div>
             <div><Label className="text-xs mb-1 block">Status</Label>
-              <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
+              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="Closed">Closed</SelectItem></SelectContent>
               </Select>

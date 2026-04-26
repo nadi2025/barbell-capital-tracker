@@ -1,11 +1,8 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { useState } from "react";
 import OpenPositionsTab from "@/components/hyperliquid/OpenPositionsTab";
 import TradeHistoryTab from "@/components/hyperliquid/TradeHistoryTab";
 import PerformanceTab from "@/components/hyperliquid/PerformanceTab";
+import { useEntityList } from "@/hooks/useEntityQuery";
 
 const TABS = [
   { id: "positions", label: "פוזיציות פתוחות" },
@@ -13,43 +10,36 @@ const TABS = [
   { id: "performance", label: "ניתוח ביצועים" },
 ];
 
+/**
+ * LeveragedPage — HyperLiquid leveraged trading.
+ *
+ * Migrated to React Query: positions and trades come from useEntityList.
+ * Any mutation (mark price update, position edit, trade import) invalidates
+ * the matching entity cache and the page rerenders automatically — no
+ * imperative `load()` callback chain required.
+ *
+ * The old "עדכן מחירים" button (which called the deleted dailyFullUpdate
+ * Deno function) was removed; price refresh now happens exclusively through
+ * PriceHub at the top of the app (Phase 4 wiring redirects all such buttons
+ * there). LeveragedPosition rows pick up new prices instantly via the
+ * computed-on-the-fly architecture.
+ */
 export default function LeveragedPage() {
   const [tab, setTab] = useState("positions");
-  const [positions, setPositions] = useState([]);
-  const [trades, setTrades] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const positionsQ = useEntityList("LeveragedPosition", { sort: "-opened_date" });
+  const tradesQ = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
 
-  const load = async () => {
-    const [pos, trd] = await Promise.all([
-      base44.entities.LeveragedPosition.list("-opened_date"),
-      base44.entities.HLTrade.list("-trade_date", 500),
-    ]);
-    setPositions(pos);
-    setTrades(trd);
-    setLoading(false);
-  };
+  const positions = positionsQ.data || [];
+  const trades = tradesQ.data || [];
+  const loading = positionsQ.isLoading || tradesQ.isLoading;
 
-  useEffect(() => { load(); }, []);
-
-  const handleRefreshPrices = async () => {
-    setRefreshing(true);
-    try {
-      await base44.functions.invoke('dailyFullUpdate', {});
-      await load();
-      toast.success("מחירים עודכנו בהצלחה");
-    } catch (e) {
-      toast.error("שגיאה בעדכון מחירים");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -59,15 +49,11 @@ export default function LeveragedPage() {
           <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
           <h1 className="text-2xl font-bold">HyperLiquid</h1>
         </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={handleRefreshPrices} disabled={refreshing}>
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          {refreshing ? "מעדכן..." : "עדכן מחירים"}
-        </Button>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border" dir="rtl">
-        {TABS.map(t => (
+        {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -81,9 +67,10 @@ export default function LeveragedPage() {
         ))}
       </div>
 
-      {/* Tab content */}
-      {tab === "positions" && <OpenPositionsTab positions={positions} onRefresh={load} />}
-      {tab === "history" && <TradeHistoryTab trades={trades} onRefresh={load} />}
+      {/* Tab content — onRefresh kept as a no-op; child mutations invalidate
+          their own caches via useEntityMutation, so there's nothing to do here. */}
+      {tab === "positions" && <OpenPositionsTab positions={positions} onRefresh={() => {}} />}
+      {tab === "history" && <TradeHistoryTab trades={trades} onRefresh={() => {}} />}
       {tab === "performance" && <PerformanceTab trades={trades} positions={positions} />}
     </div>
   );

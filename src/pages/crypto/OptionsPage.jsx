@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { useState, useMemo } from "react";
 import { Plus, AlertTriangle, TrendingUp, DollarSign, Award, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -7,10 +6,10 @@ import OpenPositionCard from "@/components/crypto/options/OpenPositionCard";
 import ClosedPositionCard from "@/components/crypto/options/ClosedPositionCard";
 import SettleDialog from "@/components/crypto/options/SettleDialog";
 import AddEditPositionDialog from "@/components/crypto/options/AddEditPositionDialog";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { usePrices } from "@/hooks/usePrices";
 
 const fmt = (v, d = 0) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
-
-const GLOBAL_PRICES = { ETH: 2260, BTC: 71000 };
 
 function KpiCard({ icon: Icon, label, value, sub, valueClass = "" }) {
   return (
@@ -27,15 +26,15 @@ function KpiCard({ icon: Icon, label, value, sub, valueClass = "" }) {
 
 function ClosedSummary({ closed }) {
   if (closed.length === 0) return null;
-  const wins = closed.filter(p => p.status === "Expired OTM");
+  const wins = closed.filter((p) => p.status === "Expired OTM");
   const winRate = (wins.length / closed.length) * 100;
   const totalPremium = closed.reduce((s, p) => s + (p.income_usd || 0), 0);
   const totalPnl = closed.reduce((s, p) => s + (p.net_pnl || (p.status === "Expired OTM" ? p.income_usd || 0 : 0)), 0);
-  const withDuration = closed.filter(p => p.opened_date && p.maturity_date);
+  const withDuration = closed.filter((p) => p.opened_date && p.maturity_date);
   const avgDuration = withDuration.length > 0
     ? Math.round(withDuration.reduce((s, p) => s + Math.ceil((new Date(p.maturity_date) - new Date(p.opened_date)) / 86400000), 0) / withDuration.length)
     : null;
-  const pnls = closed.map(p => ({ pnl: p.net_pnl || (p.status === "Expired OTM" ? p.income_usd || 0 : 0), label: `${p.asset} ${p.option_type}` }));
+  const pnls = closed.map((p) => ({ pnl: p.net_pnl || (p.status === "Expired OTM" ? p.income_usd || 0 : 0), label: `${p.asset} ${p.option_type}` }));
   const best = pnls.length > 0 ? pnls.reduce((a, b) => a.pnl > b.pnl ? a : b) : null;
   const worst = pnls.length > 0 ? pnls.reduce((a, b) => a.pnl < b.pnl ? a : b) : null;
 
@@ -87,46 +86,64 @@ function ClosedSummary({ closed }) {
   );
 }
 
+/**
+ * crypto/OptionsPage — Rysk options dashboard.
+ *
+ * Migrated to React Query: positions read via useEntityList with auto-refresh
+ * + per-mutation invalidation. The previous load() callback chain was
+ * removed; child dialogs trigger mutations and the table rerenders without
+ * an imperative refetch.
+ *
+ * Hardcoded GLOBAL_PRICES = { ETH: 2260, BTC: 71000 } removed — the dialogs
+ * now receive a real priceMap from usePrices() so option valuation reflects
+ * live data.
+ */
 export default function OptionsPage() {
-  const [positions, setPositions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const positionsQ = useEntityList("CryptoOptionsPosition", { sort: "-opened_date" });
+  const positions = positionsQ.data || [];
+  const { priceMap } = usePrices();
+
+  const updatePosition = useEntityMutation("CryptoOptionsPosition", "update");
+  const createPosition = useEntityMutation("CryptoOptionsPosition", "create");
+  const createActivityLog = useEntityMutation("CryptoActivityLog", "create");
+
   const [tab, setTab] = useState("Open");
   const [settlePos, setSettlePos] = useState(null);
   const [editPos, setEditPos] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const load = async () => {
-    const p = await base44.entities.CryptoOptionsPosition.list("-opened_date");
-    setPositions(p);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
   // Detect expired-but-still-open positions
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const needsSettlement = positions.filter(p =>
-    p.status === "Open" && p.maturity_date && new Date(p.maturity_date) < today
-  );
+  const today = useMemo(() => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  }, []);
 
-  const openPositions = positions.filter(p => p.status === "Open" && (!p.maturity_date || new Date(p.maturity_date) >= today));
-  const closedPositions = positions.filter(p => p.status !== "Open" || (p.maturity_date && new Date(p.maturity_date) < today));
-  const allClosed = positions.filter(p => p.status === "Expired OTM" || p.status === "Expired ITM" || p.status === "Exercised");
+  const needsSettlement = useMemo(
+    () => positions.filter((p) => p.status === "Open" && p.maturity_date && new Date(p.maturity_date) < today),
+    [positions, today]
+  );
+  const openPositions = useMemo(
+    () => positions.filter((p) => p.status === "Open" && (!p.maturity_date || new Date(p.maturity_date) >= today)),
+    [positions, today]
+  );
+  const allClosed = useMemo(
+    () => positions.filter((p) => p.status === "Expired OTM" || p.status === "Expired ITM" || p.status === "Exercised"),
+    [positions]
+  );
 
   // KPI
   const activeNotional = openPositions.reduce((s, p) => s + (p.notional_usd || 0), 0);
   const totalPremium = positions.reduce((s, p) => s + (p.income_usd || 0), 0);
-  const wins = allClosed.filter(p => p.status === "Expired OTM");
+  const wins = allClosed.filter((p) => p.status === "Expired OTM");
   const winRate = allClosed.length > 0 ? (wins.length / allClosed.length) * 100 : 0;
   const realizedPnl = allClosed.reduce((s, p) => s + (p.net_pnl || (p.status === "Expired OTM" ? p.income_usd || 0 : 0)), 0);
 
   const handleSettle = async (id, data) => {
-    await base44.entities.CryptoOptionsPosition.update(id, data);
-    // Log activity
-    const pos = positions.find(p => p.id === id);
+    await updatePosition.mutateAsync({ id, data });
+    const pos = positions.find((p) => p.id === id);
     if (pos) {
-      await base44.entities.CryptoActivityLog.create({
+      await createActivityLog.mutateAsync({
         date: new Date().toISOString().split("T")[0],
         action_type: "Other",
         description: `Option settled: ${pos.asset} ${pos.option_type} ${pos.strike_price ? "$" + pos.strike_price : ""} ${data.status === "Expired OTM" ? "expired OTM" : "expired ITM"}, ${data.settlement_result}`,
@@ -135,31 +152,28 @@ export default function OptionsPage() {
     }
     toast.success("Position settled");
     setSettlePos(null);
-    load();
   };
 
   const handleAdd = async (data) => {
     if (!data.asset || !data.maturity_date) { toast.error("Asset and maturity date required"); return; }
-    await base44.entities.CryptoOptionsPosition.create(data);
+    await createPosition.mutateAsync(data);
     setShowAdd(false);
     toast.success("Position added");
-    load();
   };
 
   const handleEdit = async (data) => {
-    await base44.entities.CryptoOptionsPosition.update(editPos.id, data);
+    await updatePosition.mutateAsync({ id: editPos.id, data });
     setEditPos(null);
     toast.success("Position updated");
-    load();
   };
 
   const tabPositions = tab === "Open"
     ? [...needsSettlement, ...openPositions]
     : tab === "Closed"
-    ? allClosed
-    : positions;
+      ? allClosed
+      : positions;
 
-  if (loading) return (
+  if (positionsQ.isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
     </div>
@@ -199,7 +213,7 @@ export default function OptionsPage() {
 
       {/* Tabs */}
       <div className="flex gap-2">
-        {["Open", "Closed", "All"].map(t => (
+        {["Open", "Closed", "All"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -218,9 +232,8 @@ export default function OptionsPage() {
 
       {/* Cards grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {tabPositions.map(pos => {
+        {tabPositions.map((pos) => {
           const isClosed = pos.status === "Expired OTM" || pos.status === "Expired ITM" || pos.status === "Exercised";
-          const isExpiredOpen = pos.status === "Open" && pos.maturity_date && new Date(pos.maturity_date) < today;
           if (isClosed && tab !== "Open") {
             return <ClosedPositionCard key={pos.id} pos={pos} />;
           }
@@ -251,14 +264,14 @@ export default function OptionsPage() {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onSave={handleAdd}
-        globalPrices={GLOBAL_PRICES}
+        globalPrices={priceMap}
       />
       <AddEditPositionDialog
         open={!!editPos}
         initialData={editPos}
         onClose={() => setEditPos(null)}
         onSave={handleEdit}
-        globalPrices={GLOBAL_PRICES}
+        globalPrices={priceMap}
       />
     </div>
   );
