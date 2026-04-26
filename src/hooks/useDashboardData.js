@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useEntityList, useFunction } from "./useEntityQuery";
+import { useEntityList } from "./useEntityQuery";
+import { useAavePosition } from "./useAavePosition";
 
 /**
  * Central hook for the main Dashboard.
@@ -28,19 +29,29 @@ export function useDashboardData() {
   const prices = useEntityList("Prices");
   const lpPositions = useEntityList("LpPosition", { filter: { status: "Active" } });
   const hlTrades = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
-  const aave = useFunction("calculateAavePosition", {});
+  // Aave aggregation is now derived on the client from AaveCollateral +
+  // AaveBorrow + Prices via portfolioMath, instead of round-tripping to the
+  // calculateAavePosition Deno function. Same return shape, instant cache
+  // invalidation through React Query.
+  const aave = useAavePosition();
 
   const allQueries = [
     options, stocks, deposits, snapshots, debts,
     cryptoAssets, cryptoLoans, cryptoLending, leveraged, cryptoOptions,
-    offChainInvestors, prices, lpPositions, hlTrades, aave,
+    offChainInvestors, prices, lpPositions, hlTrades,
   ];
 
-  const isLoading = allQueries.some((q) => q.isLoading);
-  const isFetching = allQueries.some((q) => q.isFetching);
-  const error = allQueries.find((q) => q.error)?.error || null;
+  // aave is derived (not a real query) but it does wrap real queries
+  // (AaveCollateral, AaveBorrow, Prices) — its loading/fetching flags reflect
+  // those, so they need to be folded into the dashboard's overall loading state.
+  const isLoading = allQueries.some((q) => q.isLoading) || aave.isLoading;
+  const isFetching = allQueries.some((q) => q.isFetching) || aave.isFetching;
+  const error = allQueries.find((q) => q.error)?.error || aave.error || null;
 
-  const refetchAll = () => allQueries.forEach((q) => q.refetch?.());
+  const refetchAll = () => {
+    allQueries.forEach((q) => q.refetch?.());
+    aave.refetch?.();
+  };
 
   // Find the most recent "data freshness" timestamp (when ANY query last finished)
   const lastSyncedAt = useMemo(() => {
@@ -51,7 +62,8 @@ export function useDashboardData() {
   }, [allQueries.map((q) => q.dataUpdatedAt).join(",")]);
 
   const data = useMemo(() => {
-    const aaveData = aave.data || {};
+    // useAavePosition now returns the aggregate at top level (not wrapped in
+    // .data) — it's a derived object from React Query data, not a query itself.
     const cryptoOpts = cryptoOptions.data || [];
     return {
       options: options.data || [],
@@ -67,10 +79,10 @@ export function useDashboardData() {
       openCryptoOptions: cryptoOpts.filter((o) => o.status === "Open"),
       offChainInvestors: offChainInvestors.data || [],
       prices: prices.data || [],
-      aaveCollateral: aaveData.collateralDetails || [],
-      aaveBorrowUsd: aaveData.borrowedAmount || 0,
-      healthFactor: aaveData.healthFactor || 0,
-      borrowPowerUsed: aaveData.borrowPowerUsed || 0,
+      aaveCollateral: aave.collateralDetails || [],
+      aaveBorrowUsd: aave.borrowedAmount || 0,
+      healthFactor: aave.healthFactor || 0,
+      borrowPowerUsed: aave.borrowPowerUsed || 0,
       lpPositions: lpPositions.data || [],
       hlTrades: hlTrades.data || [],
     };
@@ -78,7 +90,8 @@ export function useDashboardData() {
     options.data, stocks.data, deposits.data, snapshots.data, debts.data,
     cryptoAssets.data, cryptoLoans.data, cryptoLending.data, leveraged.data,
     cryptoOptions.data, offChainInvestors.data, prices.data,
-    lpPositions.data, hlTrades.data, aave.data,
+    lpPositions.data, hlTrades.data,
+    aave.collateralDetails, aave.borrowedAmount, aave.healthFactor, aave.borrowPowerUsed,
   ]);
 
   return { data, isLoading, isFetching, error, refetchAll, lastSyncedAt };

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import PriceHub from "@/components/PriceHub";
 import AlertsPanel from "@/components/crypto/AlertsPanel";
-import { useEntityList, useFunction } from "@/hooks/useEntityQuery";
+import { useEntityList } from "@/hooks/useEntityQuery";
+import { useAavePosition } from "@/hooks/useAavePosition";
 
 const fmt = (v, d = 0) =>
   v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
@@ -24,7 +25,10 @@ export default function CryptoDashboard() {
   const { data: lpPositions = [] } = useEntityList("LpPosition", { filter: { status: "Active" } });
   const { data: snapshots = [] } = useEntityList("PortfolioSnapshot", { sort: "-snapshot_date", limit: 20 });
   const { data: cryptoOptions = [] } = useEntityList("CryptoOptionsPosition", { filter: { status: "Open" } });
-  const { data: aaveData = {} } = useFunction("calculateAavePosition", {});
+  // Aave aggregate now derived on the client from AaveCollateral + AaveBorrow
+  // + Prices (see hooks/useAavePosition.js). Same fields as the old server
+  // function, plus instant React Query invalidation.
+  const aaveData = useAavePosition();
 
   const loading = la;
 
