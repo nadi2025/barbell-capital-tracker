@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Users, TrendingDown, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -38,6 +39,19 @@ export default function OffChainInvestorsPage() {
   const [recordTarget, setRecordTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+
+  // Deep-link from Manual Entries Panel: /offchain-investors?editId=…
+  // opens the Record Payment dialog for the matching investor.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepEditId = searchParams.get("editId");
+  useEffect(() => {
+    if (!deepEditId || !investors.length) return;
+    const inv = investors.find((i) => i.id === deepEditId);
+    if (inv) setRecordTarget(inv);
+    const next = new URLSearchParams(searchParams);
+    next.delete("editId");
+    setSearchParams(next, { replace: true });
+  }, [deepEditId, investors, searchParams, setSearchParams]);
 
   const getPayments = (investorId) => payments.filter((p) => p.investor_id === investorId);
 

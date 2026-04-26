@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Plus, Pencil, Trash2, Wallet, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -47,6 +48,25 @@ export default function WalletsPage() {
   const [editAsset, setEditAsset] = useState(null);
   const [walletForm, setWalletForm] = useState({ name: "", type: "MetaMask", network: "Ethereum", address: "", notes: "" });
   const [assetForm, setAssetForm] = useState({ token: "", amount: "", asset_category: "Spot" });
+
+  // Manual Entries Panel deep-links via ?editId=… — open the asset edit dialog
+  // automatically and select the asset's wallet when we land here from there.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const deepEditId = searchParams.get("editId");
+  useEffect(() => {
+    if (!deepEditId || !assets.length || !wallets.length) return;
+    const asset = assets.find((a) => a.id === deepEditId);
+    if (!asset) return;
+    const wallet = wallets.find((w) => w.id === asset.wallet_id);
+    if (wallet) setSelectedWallet(wallet);
+    setEditAsset(asset);
+    setAssetForm({ token: asset.token, amount: asset.amount, asset_category: asset.asset_category });
+    setAssetDialog(true);
+    // Strip the param so back/forward navigation doesn't re-trigger
+    const next = new URLSearchParams(searchParams);
+    next.delete("editId");
+    setSearchParams(next, { replace: true });
+  }, [deepEditId, assets, wallets, searchParams, setSearchParams]);
 
   // Enrich every asset with derived current_price_usd / current_value_usd
   const enrichedAssets = useMemo(

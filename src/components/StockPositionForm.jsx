@@ -45,9 +45,10 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
     setSaving(true);
     const shares = parseFloat(form.shares) || 0;
     const avgCost = parseFloat(form.average_cost) || 0;
-    const currentPrice = parseFloat(form.current_price) || 0;
-    const investedValue = shares * avgCost;
-    const currentValue = shares * currentPrice;
+    // current_price input still exists for visual feedback while typing,
+    // but it's NOT persisted on save — derived live from priceMap × shares
+    // by computeStockDerived. Same goes for invested_value / current_value /
+    // gain_loss / gain_loss_pct (single-formula land in portfolioMath).
 
     const data = {
       ticker: form.ticker.toUpperCase(),
@@ -55,11 +56,6 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
       entry_date: form.entry_date,
       shares,
       average_cost: avgCost,
-      current_price: currentPrice || undefined,
-      invested_value: investedValue,
-      current_value: currentValue,
-      gain_loss: currentPrice ? currentValue - investedValue : undefined,
-      gain_loss_pct: investedValue > 0 && currentPrice ? (currentValue - investedValue) / investedValue : undefined,
       status: form.status,
       high_52w: parseFloat(form.high_52w) || undefined,
       low_52w: parseFloat(form.low_52w) || undefined,
