@@ -71,6 +71,11 @@
     "pnl_usd": {
       "type": "number",
       "title": "PnL (USD) - override"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
     }
   },
   "required": [

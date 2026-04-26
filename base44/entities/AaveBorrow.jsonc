@@ -27,6 +27,11 @@
         "Disabled"
       ],
       "default": "Disabled"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
     }
   },
   "required": [

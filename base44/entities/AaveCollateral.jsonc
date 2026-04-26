@@ -36,6 +36,11 @@
       "type": "boolean",
       "title": "Collateral Enabled",
       "default": true
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Last Updated"
     }
   },
   "required": [

@@ -4,12 +4,6 @@
   "properties": {
     "asset": {
       "type": "string",
-      "enum": [
-        "BTC",
-        "ETH",
-        "AAVE",
-        "MSTR"
-      ],
       "title": "Asset"
     },
     "price_usd": {
