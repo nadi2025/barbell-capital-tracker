@@ -52,6 +52,19 @@ export default function WeeklyReportPage() {
   const stocksQ = useEntityList("StockPosition", { sort: "-entry_date", limit: 500 });
   const hlTradesQ = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
   const pricesQ = useEntityList("Prices");
+  // ── Extra entities calcDashboard requires that the report wasn't fetching ──
+  // calcDashboard also reads Deposit, DebtFacility, CryptoLoan, CryptoLending,
+  // LpPosition, and AccountSnapshot. Without these the totals diverge from the
+  // Dashboard. Sources of divergence the bug spec called out:
+  //   · totalDeposited (Deposit ledger) vs hardcoded $413k
+  //   · investorDebt (CryptoLoan) vs hardcoded $1.7M
+  //   · debts (DebtFacility) — was missing entirely from the report
+  const depositsQ = useEntityList("Deposit");
+  const debtsQ = useEntityList("DebtFacility");
+  const cryptoLoansQ = useEntityList("CryptoLoan");
+  const cryptoLendingQ = useEntityList("CryptoLending");
+  const lpPositionsQ = useEntityList("LpPosition");
+  const snapshotsQ = useEntityList("AccountSnapshot", { sort: "-snapshot_date", limit: 1 });
   const aave = useAavePosition();
 
   const createReport = useEntityMutation("WeeklyReport", "create");
@@ -63,28 +76,60 @@ export default function WeeklyReportPage() {
   const isLoading =
     reportsQ.isLoading || assetsQ.isLoading || leveragedQ.isLoading || aaveCollateralQ.isLoading ||
     cryptoOptionsQ.isLoading || investorsQ.isLoading || paymentsQ.isLoading || ibOptionsQ.isLoading ||
-    stocksQ.isLoading || hlTradesQ.isLoading || pricesQ.isLoading || aave.isLoading;
+    stocksQ.isLoading || hlTradesQ.isLoading || pricesQ.isLoading || aave.isLoading ||
+    depositsQ.isLoading || debtsQ.isLoading || cryptoLoansQ.isLoading ||
+    cryptoLendingQ.isLoading || lpPositionsQ.isLoading || snapshotsQ.isLoading;
 
-  // Reassemble the appData shape that ReportWizard + buildReportHTML expect.
-  const appData = useMemo(() => ({
-    assets: assetsQ.data || [],
-    leveraged: leveragedQ.data || [],
-    aaveCollateral: aaveCollateralQ.data || [],
-    cryptoOptions: cryptoOptionsQ.data || [],
-    investors: investorsQ.data || [],
-    investorPayments: paymentsQ.data || [],
-    ibOptions: ibOptionsQ.data || [],
-    stocks: stocksQ.data || [],
-    hlTrades: hlTradesQ.data || [],
-    prices: pricesQ.data || [],
-    aaveBorrowUsd: aave.borrowedAmount || 0,
-    aaveHealthFactor: aave.healthFactor || 0,
-    aaveCollateralDetails: aave.collateralDetails || [],
-  }), [
+  // Reassemble appData. Two consumers:
+  //   1. ReportWizard — uses legacy keys (assets / investors / cryptoOptions).
+  //   2. buildReportHTML, which now passes appData to calcDashboard. That
+  //      function expects Dashboard-style keys (cryptoAssets, options,
+  //      offChainInvestors, openCryptoOptions, healthFactor, borrowPowerUsed,
+  //      snapshot, deposits, debts, cryptoLoans, cryptoLending, lpPositions).
+  // We populate BOTH in the same object so both consumers work without
+  // either having to translate keys.
+  const appData = useMemo(() => {
+    const assets = assetsQ.data || [];
+    const leveraged = leveragedQ.data || [];
+    const aaveCollateral = aaveCollateralQ.data || [];
+    const cryptoOptions = cryptoOptionsQ.data || [];
+    const investors = investorsQ.data || [];
+    const investorPayments = paymentsQ.data || [];
+    const ibOptions = ibOptionsQ.data || [];
+    const stocks = stocksQ.data || [];
+    const hlTrades = hlTradesQ.data || [];
+    const prices = pricesQ.data || [];
+    const deposits = depositsQ.data || [];
+    const debts = debtsQ.data || [];
+    const cryptoLoans = cryptoLoansQ.data || [];
+    const cryptoLending = cryptoLendingQ.data || [];
+    const lpPositions = lpPositionsQ.data || [];
+    const snapshot = (snapshotsQ.data || [])[0] || null;
+
+    return {
+      // ── Legacy keys (ReportWizard + buildReportHTML's display code) ──
+      assets, leveraged, aaveCollateral, cryptoOptions, investors,
+      investorPayments, ibOptions, stocks, hlTrades, prices,
+      aaveBorrowUsd: aave.borrowedAmount || 0,
+      aaveHealthFactor: aave.healthFactor || 0,
+      aaveCollateralDetails: aave.collateralDetails || [],
+
+      // ── calcDashboard input contract — aliases + extras ──
+      cryptoAssets: assets,                  // alias: calcDashboard reads `cryptoAssets`
+      options: ibOptions,                    // alias: calcDashboard reads `options`
+      offChainInvestors: investors,          // alias
+      openCryptoOptions: cryptoOptions.filter((o) => o.status === "Open"),
+      deposits, debts, cryptoLoans, cryptoLending, lpPositions, snapshot,
+      healthFactor: aave.healthFactor || 0,
+      borrowPowerUsed: aave.borrowPowerUsed || 0,
+    };
+  }, [
     assetsQ.data, leveragedQ.data, aaveCollateralQ.data, cryptoOptionsQ.data,
     investorsQ.data, paymentsQ.data, ibOptionsQ.data, stocksQ.data,
     hlTradesQ.data, pricesQ.data,
-    aave.borrowedAmount, aave.healthFactor, aave.collateralDetails,
+    aave.borrowedAmount, aave.healthFactor, aave.collateralDetails, aave.borrowPowerUsed,
+    depositsQ.data, debtsQ.data, cryptoLoansQ.data, cryptoLendingQ.data,
+    lpPositionsQ.data, snapshotsQ.data,
   ]);
 
   const [showWizard, setShowWizard] = useState(false);
