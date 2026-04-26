@@ -176,8 +176,12 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 
   // Bar chart data
   const ryskPremium = cryptoOptions.reduce((s, o) => s + (o.income_usd || 0), 0);
-  const aaveYield = Object.values(uniqueCollaterals).reduce((s, c) => {
-    const key = c.asset_name?.toUpperCase() || "";
+  // Aave weekly yield estimate. Was previously computed off `uniqueCollaterals`,
+  // a local map that disappeared with the calc-block rewrite. The replacement
+  // walks the same per-asset breakdown calcDashboard already prepared
+  // (calculateAavePosition returns one row per collateral asset).
+  const aaveYield = collDetails.reduce((s, c) => {
+    const key = (c.asset_name || "").toUpperCase();
     const p = key.includes("BTC") ? btcP : key.includes("ETH") ? ethP : key === "AAVE" ? aaveP : 0;
     return s + ((c.supply_apy || 0) / 100) * (c.units || 0) * p / 52;
   }, 0);
