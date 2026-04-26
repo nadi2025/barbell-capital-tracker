@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,33 +9,33 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import InterestSchedule from "../components/InterestSchedule";
 import { toast } from "sonner";
 import moment from "moment";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 const empty = {
   name: "", lender: "", principal: "", outstanding_balance: "",
   interest_rate_pct: "", start_date: "", maturity_date: "",
-  interest_paid_to_date: "", payment_frequency: "Monthly", status: "Active", notes: ""
+  interest_paid_to_date: "", payment_frequency: "Monthly", status: "Active", notes: "",
 };
 
+/**
+ * DebtPage — non-investor debt facilities (banks, credit lines, etc).
+ * Migrated to React Query: DebtFacility list + mutations through hooks,
+ * Deposit list filtered for "Debt Investment" capital_source rows.
+ */
 export default function DebtPage() {
-  const [debts, setDebts] = useState([]);
-  const [debtDeposits, setDebtDeposits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const debtsQ = useEntityList("DebtFacility", { sort: "-start_date" });
+  const depositsQ = useEntityList("Deposit", { sort: "-date" });
+  const debts = debtsQ.data || [];
+  const debtDeposits = (depositsQ.data || []).filter((dep) => dep.capital_source === "Debt Investment");
+
+  const createDebt = useEntityMutation("DebtFacility", "create");
+  const updateDebt = useEntityMutation("DebtFacility", "update");
+  const deleteDebtM = useEntityMutation("DebtFacility", "delete");
+
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
-
-  const load = async () => {
-    const [dRes, depsRes] = await Promise.allSettled([
-      base44.entities.DebtFacility.list("-start_date"),
-      base44.entities.Deposit.list("-date"),
-    ]);
-    if (dRes.status === "fulfilled") setDebts(dRes.value);
-    if (depsRes.status === "fulfilled") setDebtDeposits(depsRes.value.filter(dep => dep.capital_source === "Debt Investment"));
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
 
   const openNew = () => { setForm(empty); setEditing(null); setOpen(true); };
   const openEdit = (d) => {
@@ -58,32 +57,30 @@ export default function DebtPage() {
       notes: form.notes || undefined,
     };
     if (editing) {
-      await base44.entities.DebtFacility.update(editing.id, data);
+      await updateDebt.mutateAsync({ id: editing.id, data });
       toast.success("Updated");
     } else {
-      await base44.entities.DebtFacility.create(data);
+      await createDebt.mutateAsync(data);
       toast.success("Added");
     }
     setSaving(false);
     setOpen(false);
-    load();
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.DebtFacility.delete(id);
+    await deleteDebtM.mutateAsync(id);
     toast.success("Deleted");
-    load();
   };
 
-  const totalDebt = debts.filter(d => d.status === "Active").reduce((s, d) => s + (d.outstanding_balance || 0), 0);
+  const totalDebt = debts.filter((d) => d.status === "Active").reduce((s, d) => s + (d.outstanding_balance || 0), 0);
   const totalInterestPaid = debts.reduce((s, d) => s + (d.interest_paid_to_date || 0), 0);
-  const totalExpected = debts.filter(d => d.status === "Active").reduce((s, d) => {
+  const totalExpected = debts.filter((d) => d.status === "Active").reduce((s, d) => {
     if (!d.maturity_date || !d.outstanding_balance || !d.interest_rate_pct) return s;
     const yrs = moment(d.maturity_date).diff(moment(), "days") / 365;
     return s + (yrs > 0 ? d.outstanding_balance * (d.interest_rate_pct / 100) * yrs : 0);
   }, 0);
 
-  if (loading) return <div className="flex justify-center h-64 items-center"><div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" /></div>;
+  if (debtsQ.isLoading) return <div className="flex justify-center h-64 items-center"><div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" /></div>;
 
   return (
     <div className="space-y-5">
@@ -130,7 +127,7 @@ export default function DebtPage() {
               </tr>
             </thead>
             <tbody>
-              {debtDeposits.map(d => (
+              {debtDeposits.map((d) => (
                 <tr key={d.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{d.date}</td>
                   <td className="px-4 py-3 text-xs">{d.type}</td>
@@ -157,7 +154,7 @@ export default function DebtPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
-              {["Facility", "Lender", "Principal", "Balance", "Rate", "Start", "Maturity", "Interest Paid", "Status", ""].map(h => (
+              {["Facility", "Lender", "Principal", "Balance", "Rate", "Start", "Maturity", "Interest Paid", "Status", ""].map((h) => (
                 <th key={h} className={`px-4 py-3 font-medium ${h === "" ? "" : "text-left"}`}>{h}</th>
               ))}
             </tr>
@@ -167,7 +164,7 @@ export default function DebtPage() {
               <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground text-sm">
                 No debt facilities yet. Add one to start tracking.
               </td></tr>
-            ) : debts.map(d => (
+            ) : debts.map((d) => (
               <tr key={d.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3 font-medium">{d.name}</td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{d.lender || "—"}</td>
@@ -178,11 +175,10 @@ export default function DebtPage() {
                 <td className="px-4 py-3 text-xs">{d.maturity_date || "—"}</td>
                 <td className="px-4 py-3 font-mono text-xs text-chart-3">${(d.interest_paid_to_date || 0).toLocaleString()}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                    d.status === "Active" ? "bg-profit/10 text-profit border-profit/20"
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${d.status === "Active" ? "bg-profit/10 text-profit border-profit/20"
                     : d.status === "Paid Off" ? "bg-muted text-muted-foreground border-border"
                     : "bg-loss/10 text-loss border-loss/20"
-                  }`}>{d.status}</span>
+                    }`}>{d.status}</span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-2">
@@ -203,15 +199,15 @@ export default function DebtPage() {
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="col-span-2">
               <Label className="text-xs">Facility Name</Label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Bank Hapoalim Credit Line" />
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Bank Hapoalim Credit Line" />
             </div>
             <div>
               <Label className="text-xs">Lender</Label>
-              <Input value={form.lender} onChange={e => setForm(f => ({ ...f, lender: e.target.value }))} />
+              <Input value={form.lender} onChange={(e) => setForm((f) => ({ ...f, lender: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Status</Label>
-              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
@@ -222,40 +218,40 @@ export default function DebtPage() {
             </div>
             <div>
               <Label className="text-xs">Principal Amount ($)</Label>
-              <Input type="number" value={form.principal} onChange={e => setForm(f => ({ ...f, principal: e.target.value }))} />
+              <Input type="number" value={form.principal} onChange={(e) => setForm((f) => ({ ...f, principal: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Outstanding Balance ($)</Label>
-              <Input type="number" value={form.outstanding_balance} onChange={e => setForm(f => ({ ...f, outstanding_balance: e.target.value }))} />
+              <Input type="number" value={form.outstanding_balance} onChange={(e) => setForm((f) => ({ ...f, outstanding_balance: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Annual Interest Rate (%)</Label>
-              <Input type="number" step="0.01" value={form.interest_rate_pct} onChange={e => setForm(f => ({ ...f, interest_rate_pct: e.target.value }))} />
+              <Input type="number" step="0.01" value={form.interest_rate_pct} onChange={(e) => setForm((f) => ({ ...f, interest_rate_pct: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Payment Frequency</Label>
-              <Select value={form.payment_frequency} onValueChange={v => setForm(f => ({ ...f, payment_frequency: v }))}>
+              <Select value={form.payment_frequency} onValueChange={(v) => setForm((f) => ({ ...f, payment_frequency: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["Monthly","Quarterly","Semi-Annual","Annual","Bullet"].map(x => <SelectItem key={x} value={x}>{x}</SelectItem>)}
+                  {["Monthly", "Quarterly", "Semi-Annual", "Annual", "Bullet"].map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-xs">Start Date</Label>
-              <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+              <Input type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Maturity Date</Label>
-              <Input type="date" value={form.maturity_date} onChange={e => setForm(f => ({ ...f, maturity_date: e.target.value }))} />
+              <Input type="date" value={form.maturity_date} onChange={(e) => setForm((f) => ({ ...f, maturity_date: e.target.value }))} />
             </div>
             <div className="col-span-2">
               <Label className="text-xs">Interest Paid to Date ($)</Label>
-              <Input type="number" value={form.interest_paid_to_date} onChange={e => setForm(f => ({ ...f, interest_paid_to_date: e.target.value }))} />
+              <Input type="number" value={form.interest_paid_to_date} onChange={(e) => setForm((f) => ({ ...f, interest_paid_to_date: e.target.value }))} />
             </div>
             <div className="col-span-2">
               <Label className="text-xs">Notes</Label>
-              <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+              <Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

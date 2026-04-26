@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { differenceInDays, differenceInMonths } from "date-fns";
+import { useState } from "react";
 import { Plus, Users, TrendingDown, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,6 +6,7 @@ import MonthlyInvestorCard from "@/components/offchain/MonthlyInvestorCard";
 import MaturityInvestorCard from "@/components/offchain/MaturityInvestorCard";
 import RecordPaymentDialog from "@/components/offchain/RecordPaymentDialog";
 import AddInvestorDialog from "@/components/offchain/AddInvestorDialog";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -25,26 +24,22 @@ function SummaryCard({ icon: Icon, label, value, sub, valueClass = "" }) {
 }
 
 export default function OffChainInvestorsPage() {
-  const [investors, setInvestors] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const investorsQ = useEntityList("OffChainInvestor", { sort: "-start_date" });
+  const paymentsQ = useEntityList("InvestorPayment", { sort: "-payment_date", limit: 500 });
+  const investors = investorsQ.data || [];
+  const payments = paymentsQ.data || [];
+  const loading = investorsQ.isLoading || paymentsQ.isLoading;
+
+  const createInvestor = useEntityMutation("OffChainInvestor", "create");
+  const updateInvestor = useEntityMutation("OffChainInvestor", "update");
+  const createPayment = useEntityMutation("InvestorPayment", "create");
+  const createActivityLog = useEntityMutation("CryptoActivityLog", "create");
+
   const [recordTarget, setRecordTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const load = async () => {
-    const [inv, pay] = await Promise.all([
-      base44.entities.OffChainInvestor.list("-start_date"),
-      base44.entities.InvestorPayment.list("-payment_date", 500),
-    ]);
-    setInvestors(inv);
-    setPayments(pay);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const getPayments = (investorId) => payments.filter(p => p.investor_id === investorId);
+  const getPayments = (investorId) => payments.filter((p) => p.investor_id === investorId);
 
   // KPIs
   const totalCapital = investors.reduce((s, i) => s + (i.principal_usd || 0), 0);
@@ -65,9 +60,8 @@ export default function OffChainInvestorsPage() {
   const elinorPayments = elinor ? getPayments(elinor.id).length : 0;
 
   const handleRecordPayment = async (data) => {
-    await base44.entities.InvestorPayment.create(data);
-    // Log activity
-    await base44.entities.CryptoActivityLog.create({
+    await createPayment.mutateAsync(data);
+    await createActivityLog.mutateAsync({
       date: data.payment_date,
       action_type: "Interest Payment",
       description: `Paid ${fmtUSD(data.amount)} interest to ${data.investor_name} (${data.payment_date})`,
@@ -75,21 +69,18 @@ export default function OffChainInvestorsPage() {
     });
     toast.success(`Payment of ${fmtUSD(data.amount)} recorded`);
     setRecordTarget(null);
-    load();
   };
 
   const handleAdd = async (data) => {
-    await base44.entities.OffChainInvestor.create(data);
+    await createInvestor.mutateAsync(data);
     setShowAdd(false);
     toast.success("Investor added");
-    load();
   };
 
   const handleEdit = async (data) => {
-    await base44.entities.OffChainInvestor.update(editTarget.id, data);
+    await updateInvestor.mutateAsync({ id: editTarget.id, data });
     setEditTarget(null);
     toast.success("Investor updated");
-    load();
   };
 
   if (loading) return (

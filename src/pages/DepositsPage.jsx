@@ -8,26 +8,31 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
+/**
+ * DepositsPage — capital ledger (deposits + withdrawals tagged by source).
+ *
+ * Migrated to React Query: deposit list reads via useEntityList, mutations
+ * via useEntityMutation. The Capital Structure tile on the dashboard
+ * (which separates Equity Investment / Equity Cash Flow / Debt Investment)
+ * picks up changes here automatically — no imperative reload chain.
+ */
 export default function DepositsPage() {
-  const [deposits, setDeposits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const depositsQ = useEntityList("Deposit", { sort: "-date" });
+  const deposits = depositsQ.data || [];
+  const createDeposit = useEntityMutation("Deposit", "create");
+  const updateDeposit = useEntityMutation("Deposit", "update");
+  const deleteDeposit = useEntityMutation("Deposit", "delete");
+
   const [formOpen, setFormOpen] = useState(false);
   const [editDeposit, setEditDeposit] = useState(null);
   const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
   const [user, setUser] = useState(null);
 
-  const loadData = async () => {
-    const [d, u] = await Promise.all([
-      base44.entities.Deposit.list("-date"),
-      base44.auth.me(),
-    ]);
-    setDeposits(d);
-    setUser(u);
-    setLoading(false);
-  };
-
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null));
+  }, []);
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
@@ -37,26 +42,24 @@ export default function DepositsPage() {
   const handleSave = async () => {
     const data = { date: form.date, type: form.type, amount: parseFloat(form.amount), capital_source: form.capital_source, notes: form.notes || undefined };
     if (editDeposit) {
-      await base44.entities.Deposit.update(editDeposit.id, data);
+      await updateDeposit.mutateAsync({ id: editDeposit.id, data });
       toast.success("Updated");
     } else {
-      await base44.entities.Deposit.create(data);
+      await createDeposit.mutateAsync(data);
       toast.success(`${form.type} recorded`);
     }
     setFormOpen(false);
     setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
     setEditDeposit(null);
-    loadData();
   };
 
   const handleDelete = async (dep) => {
     if (!confirm("Delete this transaction?")) return;
-    await base44.entities.Deposit.delete(dep.id);
+    await deleteDeposit.mutateAsync(dep.id);
     toast.success("Deleted");
-    loadData();
   };
 
-  if (loading) {
+  if (depositsQ.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-muted border-t-primary rounded-full animate-spin" />
@@ -64,8 +67,8 @@ export default function DepositsPage() {
     );
   }
 
-  const totalDeposits = deposits.filter(d => d.type === "Deposit").reduce((s, d) => s + d.amount, 0);
-  const totalWithdrawals = deposits.filter(d => d.type === "Withdrawal").reduce((s, d) => s + d.amount, 0);
+  const totalDeposits = deposits.filter((d) => d.type === "Deposit").reduce((s, d) => s + d.amount, 0);
+  const totalWithdrawals = deposits.filter((d) => d.type === "Withdrawal").reduce((s, d) => s + d.amount, 0);
   const net = totalDeposits - totalWithdrawals;
 
   return (
@@ -114,23 +117,22 @@ export default function DepositsPage() {
               </tr>
             </thead>
             <tbody>
-              {deposits.map(d => (
+              {deposits.map((d) => (
                 <tr key={d.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{d.date}</td>
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center gap-1.5 text-xs">
                       {d.type === "Deposit"
-                       ? <ArrowDownLeft className="w-3.5 h-3.5 text-profit" />
-                       : <ArrowUpRight className="w-3.5 h-3.5 text-loss" />}
+                        ? <ArrowDownLeft className="w-3.5 h-3.5 text-profit" />
+                        : <ArrowUpRight className="w-3.5 h-3.5 text-loss" />}
                       {d.type}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
-                      d.capital_source === "Debt Investment" ? "bg-loss/10 text-loss border-loss/20"
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${d.capital_source === "Debt Investment" ? "bg-loss/10 text-loss border-loss/20"
                       : d.capital_source === "Equity Cash Flow" ? "bg-blue-50 text-blue-700 border-blue-200"
                       : "bg-profit/10 text-profit border-profit/20"
-                    }`}>{d.capital_source || "Equity Investment"}</span>
+                      }`}>{d.capital_source || "Equity Investment"}</span>
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-medium">
                     <span className={d.type === "Deposit" ? "text-profit" : "text-loss"}>
@@ -139,16 +141,16 @@ export default function DepositsPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{d.notes || "-"}</td>
                   {!isReadOnly && (
-                   <td className="px-4 py-3 text-right">
-                     <div className="flex justify-end gap-1">
-                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(d)}>
-                         <Pencil className="w-3.5 h-3.5" />
-                       </Button>
-                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(d)}>
-                         <Trash2 className="w-3.5 h-3.5" />
-                       </Button>
-                     </div>
-                   </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(d)}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(d)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </td>
                   )}
                 </tr>
               ))}
@@ -165,11 +167,11 @@ export default function DepositsPage() {
           <div className="space-y-4 mt-4">
             <div>
               <Label className="text-xs">Date</Label>
-              <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+              <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Type</Label>
-              <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
+              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Deposit">Deposit</SelectItem>
@@ -179,7 +181,7 @@ export default function DepositsPage() {
             </div>
             <div>
               <Label className="text-xs">Capital Source</Label>
-              <Select value={form.capital_source} onValueChange={v => setForm(f => ({ ...f, capital_source: v }))}>
+              <Select value={form.capital_source} onValueChange={(v) => setForm((f) => ({ ...f, capital_source: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Equity Investment">הון עצמי – השקעה</SelectItem>
@@ -190,11 +192,11 @@ export default function DepositsPage() {
             </div>
             <div>
               <Label className="text-xs">Amount ($)</Label>
-              <Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+              <Input type="number" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs">Notes</Label>
-              <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} />
+              <Textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} />
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-4">

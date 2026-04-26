@@ -1,29 +1,26 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import PnlBadge from "../components/PnlBadge";
 import moment from "moment";
+import { useEntityList } from "@/hooks/useEntityQuery";
 
+/**
+ * ReportsPage — period-filtered options performance analytics.
+ *
+ * Migrated to React Query — all three entity reads (OptionsTrade,
+ * StockPosition, Deposit) come through useEntityList. The page only
+ * derives, never writes; new mutations elsewhere (closing a trade in
+ * OptionsPage, recording a deposit) refresh the analytics automatically.
+ */
 export default function ReportsPage() {
-  const [options, setOptions] = useState([]);
-  const [stocks, setStocks] = useState([]);
-  const [deposits, setDeposits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState("all");
+  const optionsQ = useEntityList("OptionsTrade", { sort: "-close_date" });
+  const stocksQ = useEntityList("StockPosition");
+  const depositsQ = useEntityList("Deposit");
+  const options = optionsQ.data || [];
+  const loading = optionsQ.isLoading || stocksQ.isLoading || depositsQ.isLoading;
 
-  useEffect(() => {
-    Promise.all([
-      base44.entities.OptionsTrade.list("-close_date"),
-      base44.entities.StockPosition.list(),
-      base44.entities.Deposit.list(),
-    ]).then(([o, s, d]) => {
-      setOptions(o);
-      setStocks(s);
-      setDeposits(d);
-      setLoading(false);
-    });
-  }, []);
+  const [period, setPeriod] = useState("all");
 
   if (loading) {
     return (
