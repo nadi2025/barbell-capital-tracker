@@ -13,10 +13,9 @@
         "Deposit",
         "Withdrawal",
         "Premium",
-        "Collateral Lock",
-        "Collateral Release",
         "Exercise Buy",
-        "Other"
+        "Collateral Lock",
+        "Collateral Release"
       ],
       "title": "Type"
     },
@@ -26,7 +25,7 @@
     },
     "related_position_id": {
       "type": "string",
-      "title": "Related CryptoOptionsPosition ID"
+      "title": "Related Position ID"
     },
     "notes": {
       "type": "string",

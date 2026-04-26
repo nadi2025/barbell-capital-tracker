@@ -551,10 +551,11 @@ function MaintenanceShell({ keys, headerActions = {} }) {
   ], [collateralItems, borrowItems, hlItems, aTokenItems, lpItems, investorItems]);
 
   const filtered = allSections.filter((s) => keys.includes(s.key));
-  if (filtered.every((s) => s.items.length === 0)) return null;
 
   // Sections start expanded on per-page mount; they're already focused.
   const [openMap, setOpenMap] = useState(() => Object.fromEntries(filtered.map((s) => [s.key, true])));
+
+  if (filtered.every((s) => s.items.length === 0)) return null;
 
   return (
     <div className="space-y-2">
