@@ -121,26 +121,47 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     !/usdc|usdt|dai|eth|weth|btc|wbtc|aave|mstr/i.test(a.token || "")
   ).reduce((s, a) => s + (a.current_value_usd || 0), 0);
 
-  // ── Top-line NAVs and totals — every value below comes from calc ──
+  // ── Top-line totals — MIRROR of CapitalStructureSection.jsx:25-46 ──
+  // The dashboard computes its three hero tiles locally (not from calc.totalNAV
+  // / calc.totalPnl, which are different concepts: totalNAV nets debt out,
+  // totalDeposited only counts the Deposit ledger). We replicate exactly the
+  // dashboard's local computations so the report and dashboard show identical
+  // numbers in their three hero KPIs.
+
   const ibNav = calc.ibNav;
-  const onChainNav = calc.onChainNAV;
-  const totalNav = calc.totalNAV;
+  const cryptoAssetsValue = calc.cryptoTotalAssets;   // GROSS crypto-side assets
+  const totalAssets = calc.totalAssets;               // = ibNav + cryptoAssetsValue
 
-  // totalDeposited = net flows from Deposit ledger (same basis as Dashboard)
-  const totalInvested = calc.totalDeposited;
-  const totalPnl = calc.totalNAV - calc.totalDeposited;
-  const totalPnlPct = calc.totalDeposited > 0 ? (totalPnl / calc.totalDeposited) * 100 : 0;
+  // Capital sources — exact 4-way breakdown the dashboard's "מקורות הון" tile shows.
+  const ownEquity = calc.ownEquity;
+  const offChainDebt = calc.totalOffChainDebt;        // OffChainInvestor + DebtFacility
+  const onChainDebt = calc.investorDebt;              // CryptoLoan (S&T)
+  const aaveLeverage = calc.aaveBorrowUsd;
+  const totalCapital = ownEquity + offChainDebt + onChainDebt + aaveLeverage;
 
-  // Baseline used for the IB drawdown risk line and the off-chain table —
-  // own equity is the right basis (debt-funded transfers are not "ours" to
-  // measure return against). Falls back to totalDeposited if no Deposit
-  // rows are tagged Equity Investment / Cash Flow yet.
+  // P&L — same Off/On split the dashboard shows, summed.
+  const offChainCapital = ownEquity + offChainDebt;
+  const onChainCapital = onChainDebt + aaveLeverage;
+  const offChainPnl = ibNav - offChainCapital;
+  const onChainPnl = cryptoAssetsValue - onChainCapital;
+  const totalPnl = offChainPnl + onChainPnl;          // == totalAssets - totalCapital
+  const totalPnlPct = totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0;
+
+  // Baseline for the IB drawdown risk line and the off-chain summary table —
+  // own equity is the right basis (debt-funded transfers aren't "ours" to
+  // measure return against). Falls back to totalDeposited if no Deposit rows
+  // are tagged Equity Investment / Cash Flow yet.
   const ibBaseline = calc.ownEquity || calc.totalDeposited;
 
+  // Week-over-week change. prevReport stored ib_nav + wizard_on_chain_nav;
+  // going forward we save cryptoAssetsValue into wizard_on_chain_nav so the
+  // sum is comparable to totalAssets. Older reports (before this fix) stored
+  // 0 there, so for the first comparison weekChange will look skewed —
+  // acceptable, the first report after this fix is the new baseline.
   const prevTotal = prevReport
     ? (prevReport.ib_nav || 0) + (prevReport.wizard_on_chain_nav || 0)
     : null;
-  const weekChange = prevTotal != null ? totalNav - prevTotal : null;
+  const weekChange = prevTotal != null ? totalAssets - prevTotal : null;
 
   // Pie slices
   const hlByAsset = {};
@@ -520,20 +541,21 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 <!-- Row 1: KPIs -->
 <div class="kpi-row">
   <div class="kpi">
-    <div class="label">שווי כולל</div>
-    <div class="big ${clr(totalNav)}">${$(totalNav)}</div>
-    <div class="sub">Off: ${$(ibNav)} · On: ${$(onChainNav)}</div>
+    <div class="label">שווי נכסים</div>
+    <div class="big">${$(totalAssets)}</div>
+    <div class="sub">Off-Chain (IB): ${$(ibNav)} · On-Chain (DeFi): ${$(cryptoAssetsValue)}</div>
     <div class="change ${clr(weekChange || 0)}">${weekChange != null ? `vs שבוע: ${$(weekChange)} (${pct((weekChange / Math.abs(prevTotal || 1)) * 100)})` : "דוח ראשון"}</div>
   </div>
   <div class="kpi">
-    <div class="label">הושקע סה"כ (הפקדות נטו)</div>
-    <div class="big">${$(totalInvested)}</div>
-    <div class="sub">Off: ${$(ibNav)} · On: ${$(onChainNav)}</div>
+    <div class="label">מקורות הון</div>
+    <div class="big">${$(totalCapital)}</div>
+    <div class="sub">הון עצמי: ${$(ownEquity)} · חוב Off: ${$(offChainDebt)} · S&T: ${$(onChainDebt)} · Aave: ${$(aaveLeverage)}</div>
   </div>
   <div class="kpi" style="${totalPnl < 0 ? "background:#fff1f2;border-color:#fecdd3" : "background:#f0fdf4;border-color:#bbf7d0"}">
     <div class="label">P&L כולל</div>
     <div class="big ${clr(totalPnl)}">${$(totalPnl)}</div>
     <div class="change ${clr(totalPnlPct)}">${pct(totalPnlPct)} מההשקעה</div>
+    <div class="sub">Off-Chain: ${$(offChainPnl)} · On-Chain: ${$(onChainPnl)}</div>
   </div>
 </div>
 

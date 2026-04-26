@@ -8,6 +8,7 @@ import ReportWizard from "@/components/weeklyreport/ReportWizard";
 import { buildReportHTML } from "@/components/weeklyreport/buildReportHTML";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { useAavePosition } from "@/hooks/useAavePosition";
+import { calcDashboard } from "@/components/dashboard2/dashboardCalcs.jsx";
 
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -156,6 +157,18 @@ export default function WeeklyReportPage() {
       const html = buildReportHTML({ answers, appData, prevReport });
       openHtmlInTab(html);
 
+      // Snapshot the cryptoTotalAssets for next week's "vs week" comparison.
+      // Mirrors what buildReportHTML uses as `cryptoAssetsValue` so the
+      // stored value is comparable to the report's gross totalAssets metric.
+      // calcDashboard is pure — calling it twice (here and in buildReportHTML)
+      // is harmless and avoids threading the value back out of the HTML.
+      const calcForSave = calcDashboard({
+        ...appData,
+        snapshot: answers.ib_nav
+          ? { ...(appData.snapshot || {}), nav: parseFloat(answers.ib_nav) || 0, cash: null }
+          : appData.snapshot,
+      });
+
       await createReport.mutateAsync({
         report_date: today,
         period_start: format(new Date(new Date().setDate(new Date().getDate() - 7)), "yyyy-MM-dd"),
@@ -171,7 +184,10 @@ export default function WeeklyReportPage() {
         wizard_eth_price: answers.eth_price,
         wizard_aave_price: answers.aave_price,
         wizard_mstr_price: answers.mstr_price,
-        wizard_on_chain_nav: 0,
+        // Used by NEXT week's "vs week" change indicator (prevTotal = ib_nav
+        // + wizard_on_chain_nav). Storing cryptoTotalAssets makes prevTotal
+        // comparable to totalAssets in the new KPI row.
+        wizard_on_chain_nav: calcForSave.cryptoTotalAssets || 0,
       });
 
       toast.success("הדוח נפתח בלשונית חדשה — לחץ Ctrl+P לשמירה כ-PDF");
