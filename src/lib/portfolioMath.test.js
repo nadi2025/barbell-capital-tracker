@@ -174,4 +174,4 @@ console.log("\n=== Constants sanity ===");
 }
 
 console.log(`\n${failures === 0 ? "✓ All smoke checks passed" : `✗ ${failures} check(s) failed`}\n`);
-if (failures > 0) process.exit(1);
+if (failures > 0) throw new Error(`${failures} test(s) failed`);
