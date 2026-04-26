@@ -23,7 +23,9 @@ Deno.serve(async (req) => {
     const oldAmount = borrows[0].borrowed_amount;
     await base44.entities.AaveBorrow.update(borrows[0].id, {
       borrowed_amount: newAmount,
-      borrow_apy: newApy !== undefined ? newApy : borrows[0].borrow_apy
+      borrow_apy: newApy !== undefined ? newApy : borrows[0].borrow_apy,
+      // Stamp every save so ManualEntriesPanel staleness check works.
+      last_updated: new Date().toISOString()
     });
 
     const description = `Aave: הלוואה עדכנה מ-$${oldAmount} ל-$${newAmount}`;

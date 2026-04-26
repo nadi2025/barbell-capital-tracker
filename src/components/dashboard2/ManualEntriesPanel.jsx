@@ -1,12 +1,24 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, ChevronRight, AlertTriangle, ArrowUpRight, Settings } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowUpRight, Settings, Zap } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEntityList } from "@/hooks/useEntityQuery";
 import { usePrices } from "@/hooks/usePrices";
 import {
   computeAaveCollateralDerived,
   TOKEN_ALIAS_TO_BASE,
 } from "@/lib/portfolioMath";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+const HL_WALLET_KEY = "hl_wallet_address";
+function getStoredHLWallet() {
+  try { return localStorage.getItem(HL_WALLET_KEY) || ""; } catch { return ""; }
+}
+function setStoredHLWallet(addr) {
+  try { localStorage.setItem(HL_WALLET_KEY, addr); } catch { /* ignore */ }
+}
 
 const fmt = (v) =>
   v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -47,14 +59,11 @@ function DaysBadge({ days, status }) {
   return <span className={`text-[11px] ${STATUS_CLASSES[status].text}`}>לפני {days} ימים</span>;
 }
 
-function SectionCard({ title, count, threshold, items, renderItem, emptyMessage, expanded, onToggle, hasRed }) {
+function SectionCard({ title, count, threshold, items, renderItem, emptyMessage, expanded, onToggle, hasRed, headerAction }) {
   return (
     <div className={`bg-card border rounded-xl overflow-hidden ${hasRed ? "border-red-500/30" : "border-border"}`}>
-      <button
-        onClick={onToggle}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors">
+        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-right">
           {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           <span className="text-sm font-semibold">{title}</span>
           <span className="text-[10px] text-muted-foreground">({count} · סף {threshold} ימים)</span>
@@ -63,8 +72,9 @@ function SectionCard({ title, count, threshold, items, renderItem, emptyMessage,
               דורש עדכון
             </span>
           )}
-        </div>
-      </button>
+        </button>
+        {headerAction && <div onClick={(e) => e.stopPropagation()}>{headerAction}</div>}
+      </div>
       {expanded && (
         <div className="border-t border-border/40 divide-y divide-border/30">
           {items.length === 0 ? (
@@ -73,6 +83,53 @@ function SectionCard({ title, count, threshold, items, renderItem, emptyMessage,
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Inline Sync-HL button. Stores the user's HL wallet address in localStorage
+ * the first time it's needed, then reuses it. Hits the syncHL Deno function
+ * which pulls live position state from api.hyperliquid.xyz/info and
+ * reconciles the LeveragedPosition entity.
+ */
+function HLSyncButton() {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const handleClick = async () => {
+    let wallet = getStoredHLWallet();
+    if (!wallet) {
+      // eslint-disable-next-line no-alert
+      const entered = window.prompt("הזן את כתובת ה-HyperLiquid שלך (0x...)\nהיא תישמר מקומית לפעמים הבאות:");
+      if (!entered) return;
+      if (!/^0x[a-fA-F0-9]{40}$/.test(entered.trim())) {
+        toast.error("כתובת לא תקינה");
+        return;
+      }
+      wallet = entered.trim();
+      setStoredHLWallet(wallet);
+    }
+
+    setBusy(true);
+    try {
+      const res = await base44.functions.invoke("syncHL", { wallet });
+      const data = res?.data || res;
+      if (data?.error) throw new Error(data.error);
+      queryClient.invalidateQueries({ queryKey: ["entity", "LeveragedPosition"] });
+      const summary = `עודכן: ${data?.updated || 0} · נפתחו: ${data?.created || 0} · נסגרו: ${data?.closed || 0}`;
+      toast.success(`HL סונכרן · ${summary}`);
+    } catch (e) {
+      toast.error(`שגיאה ב-HL sync: ${e.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleClick} disabled={busy} className="h-7 gap-1.5 text-xs">
+      <Zap className={`w-3 h-3 ${busy ? "animate-pulse" : ""}`} />
+      {busy ? "מסנכרן..." : "Sync HL"}
+    </Button>
   );
 }
 
@@ -109,18 +166,23 @@ export default function ManualEntriesPanel() {
   // ── Build each section's enriched item list ──
 
   const collateralItems = useMemo(() => {
-    return (collateralsQ.data || []).map((c) => {
-      const days = daysSince(c.last_updated || c.updated_date || c.created_date);
-      const status = statusFor(days, 14);
-      const derived = computeAaveCollateralDerived(c, priceMap);
-      return {
-        id: c.id,
-        primary: `${c.asset_name} · ${(c.units || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })} units`,
-        secondary: `שווי נגזר: ${fmt(derived.value_usd)}`,
-        days, status,
-        editHref: `/crypto/aave?editId=${c.id}&type=collateral`,
-      };
-    });
+    return (collateralsQ.data || [])
+      // Defensive: skip orphan rows where the asset hasn't been set. These
+      // tend to come from older data or aborted edits, and they confuse the
+      // user with "undefined · X units · $0" rows.
+      .filter((c) => c.asset_name && (c.price_key || c.asset_name))
+      .map((c) => {
+        const days = daysSince(c.last_updated || c.updated_date || c.created_date);
+        const status = statusFor(days, 14);
+        const derived = computeAaveCollateralDerived(c, priceMap);
+        return {
+          id: c.id,
+          primary: `${c.asset_name} · ${(c.units || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })} units`,
+          secondary: `שווי נגזר: ${fmt(derived.value_usd)}`,
+          days, status,
+          editHref: `/crypto/aave?editId=${c.id}&type=collateral`,
+        };
+      });
   }, [collateralsQ.data, priceMap]);
 
   const borrowItems = useMemo(() => {
@@ -292,6 +354,8 @@ export default function ManualEntriesPanel() {
         <div className="border-t border-border/40 p-3 space-y-2">
           {allSections.map((sec) => {
             const hasRed = sec.items.some((it) => it.status === "red");
+            // HL has a public read-only API — give the section a one-click sync.
+            const headerAction = sec.key === "hl" ? <HLSyncButton /> : null;
             return (
               <SectionCard
                 key={sec.key}
@@ -303,6 +367,7 @@ export default function ManualEntriesPanel() {
                 expanded={!!sectionOpen[sec.key]}
                 onToggle={() => setSectionOpen((p) => ({ ...p, [sec.key]: !p[sec.key] }))}
                 emptyMessage={sec.emptyMessage}
+                headerAction={headerAction}
                 renderItem={(item) => (
                   <Link
                     key={item.id}

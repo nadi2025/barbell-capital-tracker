@@ -121,6 +121,9 @@ export default function OpenPositionsTab({ positions, onRefresh }) {
       liquidation_price: parseFloat(form.liquidation_price) || null,
       entry_price: parseFloat(form.entry_price) || null,
       mark_price: parseFloat(form.mark_price) || null,
+      // Stamp every save so ManualEntriesPanel knows when this position was
+      // last touched (drives the staleness traffic light).
+      last_updated: new Date().toISOString(),
     };
     if (editPos) await base44.entities.LeveragedPosition.update(editPos.id, data);
     else await base44.entities.LeveragedPosition.create(data);

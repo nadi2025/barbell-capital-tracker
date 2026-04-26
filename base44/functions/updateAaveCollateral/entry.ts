@@ -23,7 +23,10 @@ Deno.serve(async (req) => {
     const oldUnits = existing[0].units;
     await base44.entities.AaveCollateral.update(existing[0].id, {
       units: newUnits,
-      supply_apy: newApy !== undefined ? newApy : existing[0].supply_apy
+      supply_apy: newApy !== undefined ? newApy : existing[0].supply_apy,
+      // Stamp every save so ManualEntriesPanel knows when this row was
+      // last touched (drives the staleness traffic light).
+      last_updated: new Date().toISOString()
     });
 
     const description = `Aave: ${assetName} תוקן מ-${oldUnits} ל-${newUnits}`;
