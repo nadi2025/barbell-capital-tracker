@@ -6,6 +6,7 @@ import OpenPositionCard from "@/components/crypto/options/OpenPositionCard";
 import ClosedPositionCard from "@/components/crypto/options/ClosedPositionCard";
 import SettleDialog from "@/components/crypto/options/SettleDialog";
 import AddEditPositionDialog from "@/components/crypto/options/AddEditPositionDialog";
+import RyskWalletCard from "@/components/crypto/options/RyskWalletCard";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { usePrices } from "@/hooks/usePrices";
 
@@ -185,6 +186,9 @@ export default function OptionsPage() {
           <Plus className="w-4 h-4" /> הוסף פוזיציה
         </Button>
       </div>
+
+      {/* Rysk wallet card — cash, locked collateral, free, deposits/withdraws */}
+      <RyskWalletCard />
 
       {/* Settlement alert */}
       {needsSettlement.length > 0 && (
