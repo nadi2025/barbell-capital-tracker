@@ -1,0 +1,41 @@
+{
+  "name": "CryptoCashFlow",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "title": "Date"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Deposit",
+        "Withdrawal",
+        "Premium",
+        "Collateral Lock",
+        "Collateral Release",
+        "Exercise Buy",
+        "Other"
+      ],
+      "title": "Type"
+    },
+    "amount_usd": {
+      "type": "number",
+      "title": "Amount (USD, signed)"
+    },
+    "related_position_id": {
+      "type": "string",
+      "title": "Related CryptoOptionsPosition ID"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "date",
+    "type",
+    "amount_usd"
+  ]
+}

@@ -1,13 +1,16 @@
 import { useState, useMemo } from "react";
-import { Plus, AlertTriangle, TrendingUp, DollarSign, Award, BarChart2 } from "lucide-react";
+import { Plus, AlertTriangle, TrendingUp, DollarSign, Award, BarChart2, Wallet, Lock, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import OpenPositionCard from "@/components/crypto/options/OpenPositionCard";
 import ClosedPositionCard from "@/components/crypto/options/ClosedPositionCard";
 import SettleDialog from "@/components/crypto/options/SettleDialog";
 import AddEditPositionDialog from "@/components/crypto/options/AddEditPositionDialog";
+import CashFlowDialog from "@/components/crypto/options/CashFlowDialog";
+import AssignAssetDialog from "@/components/crypto/options/AssignAssetDialog";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { usePrices } from "@/hooks/usePrices";
+import { useCryptoOptionsCash } from "@/hooks/useCryptoOptionsCash";
 
 const fmt = (v, d = 0) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -106,11 +109,16 @@ export default function OptionsPage() {
   const updatePosition = useEntityMutation("CryptoOptionsPosition", "update");
   const createPosition = useEntityMutation("CryptoOptionsPosition", "create");
   const createActivityLog = useEntityMutation("CryptoActivityLog", "create");
+  const createCashFlow = useEntityMutation("CryptoCashFlow", "create");
+  const cash = useCryptoOptionsCash();
 
   const [tab, setTab] = useState("Open");
   const [settlePos, setSettlePos] = useState(null);
   const [editPos, setEditPos] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [cashDialog, setCashDialog] = useState({ open: false, type: "Deposit" });
+  // After Settle marks a position Exercised, prompt for asset assignment
+  const [assignTarget, setAssignTarget] = useState(null);
 
   // Detect expired-but-still-open positions
   const today = useMemo(() => {
@@ -142,16 +150,75 @@ export default function OptionsPage() {
   const handleSettle = async (id, data) => {
     await updatePosition.mutateAsync({ id, data });
     const pos = positions.find((p) => p.id === id);
-    if (pos) {
-      await createActivityLog.mutateAsync({
-        date: new Date().toISOString().split("T")[0],
-        action_type: "Other",
-        description: `Option settled: ${pos.asset} ${pos.option_type} ${pos.strike_price ? "$" + pos.strike_price : ""} ${data.status === "Expired OTM" ? "expired OTM" : "expired ITM"}, ${data.settlement_result}`,
-        amount_usd: data.net_pnl || 0,
-      });
+    if (!pos) {
+      toast.success("Position settled");
+      setSettlePos(null);
+      return;
     }
-    toast.success("Position settled");
-    setSettlePos(null);
+
+    // Activity log (legacy crumb for the activity feed)
+    await createActivityLog.mutateAsync({
+      date: new Date().toISOString().split("T")[0],
+      action_type: "Other",
+      description: `Option settled: ${pos.asset} ${pos.option_type} ${pos.strike_price ? "$" + pos.strike_price : ""} ${data.status === "Expired OTM" ? "expired OTM" : "expired ITM"}, ${data.settlement_result}`,
+      amount_usd: data.net_pnl || 0,
+    });
+
+    // Cash impact of the settle. The cash ledger uses signed amounts, so
+    // we just record what happened and the hook's reduce() picks up the
+    // delta on the next render.
+    const today = new Date().toISOString().slice(0, 10);
+    const isShortPut = pos.option_type === "Put" && (pos.direction || "Sell") === "Sell";
+
+    if (data.status === "Expired OTM") {
+      // OTM win — premium previously stored as income_usd is realized now;
+      // record it as a Premium credit. The Sell Put's collateral was never
+      // actually moved out of cash, so there's no "release" entry needed.
+      if (pos.income_usd > 0) {
+        await createCashFlow.mutateAsync({
+          date: today,
+          type: "Premium",
+          amount_usd: pos.income_usd,
+          related_position_id: pos.id,
+          notes: `OTM win · ${pos.asset} ${pos.option_type} $${pos.strike_price}`,
+        });
+      }
+      toast.success(`Position settled · +${pos.income_usd?.toFixed(0) || 0}$ premium`);
+      setSettlePos(null);
+    } else if (data.status === "Exercised" && isShortPut) {
+      // Short Put exercised → buy underlying at strike. Cash leaves the
+      // ledger; underlying enters via the asset assignment modal that opens
+      // next.
+      const buyCost = (pos.strike_price || 0) * (pos.size || 0) * 100;
+      if (buyCost > 0) {
+        await createCashFlow.mutateAsync({
+          date: today,
+          type: "Exercise Buy",
+          amount_usd: -buyCost,
+          related_position_id: pos.id,
+          notes: `Exercised short put · ${pos.asset} ${pos.size}×${pos.strike_price}`,
+        });
+      }
+      // Premium still gets credited (we received it when opening)
+      if (pos.income_usd > 0) {
+        await createCashFlow.mutateAsync({
+          date: today,
+          type: "Premium",
+          amount_usd: pos.income_usd,
+          related_position_id: pos.id,
+          notes: `Premium retained on exercise · ${pos.asset}`,
+        });
+      }
+      // Open the assign-asset modal so the user lands the underlying in a
+      // wallet of their choice.
+      setAssignTarget(pos);
+      toast.success("Position exercised — please assign the underlying");
+      setSettlePos(null);
+    } else {
+      // Other settle paths (Expired ITM but no exercise, etc.) — just close.
+      toast.success("Position settled");
+      setSettlePos(null);
+    }
   };
 
   const handleAdd = async (data) => {
@@ -190,6 +257,60 @@ export default function OptionsPage() {
         <Button onClick={() => setShowAdd(true)} className="gap-2">
           <Plus className="w-4 h-4" /> הוסף פוזיציה
         </Button>
+      </div>
+
+      {/* Cash Card — Available + Locked + Free balance derived from
+          CryptoCashFlow ledger. The breakdown lives at the top of the page
+          so the user can always see "how much cash do I have here?". */}
+      <div className="bg-gradient-to-br from-card to-muted/20 border border-border rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-primary" />
+            <h2 className="text-sm font-semibold">ארנק קריפטו · מזומן ובטוחות</h2>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setCashDialog({ open: true, type: "Deposit" })}
+            >
+              <ArrowDownToLine className="w-3.5 h-3.5 text-profit" /> הפקדה
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-xs"
+              onClick={() => setCashDialog({ open: true, type: "Withdrawal" })}
+            >
+              <ArrowUpFromLine className="w-3.5 h-3.5 text-loss" /> משיכה
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">סך מזומן בארנק</p>
+            <p className={`text-xl font-bold font-mono ${cash.available >= 0 ? "" : "text-loss"}`}>{fmt(cash.available)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">סכום הפקדות נטו + פרמיות</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <Lock className="w-3 h-3" /> נעול בבטוחות
+            </p>
+            <p className="text-xl font-bold font-mono text-amber-500">{fmt(cash.locked)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">strike × חוזים × 100</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">פנוי לשימוש</p>
+            <p className={`text-xl font-bold font-mono ${cash.free >= 0 ? "text-profit" : "text-loss"}`}>{fmt(cash.free)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">מזומן − נעול</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">פרמיה ממתינה</p>
+            <p className="text-xl font-bold font-mono text-emerald-500">{fmt(cash.premiumPending, 2)}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">מפוזיציות פתוחות</p>
+          </div>
+        </div>
       </div>
 
       {/* Settlement alert */}
@@ -272,6 +393,20 @@ export default function OptionsPage() {
         onClose={() => setEditPos(null)}
         onSave={handleEdit}
         globalPrices={priceMap}
+      />
+
+      {/* Cash deposit / withdrawal */}
+      <CashFlowDialog
+        open={cashDialog.open}
+        defaultType={cashDialog.type}
+        onClose={() => setCashDialog({ open: false, type: "Deposit" })}
+      />
+
+      {/* Asset assignment after Sell-Put exercise */}
+      <AssignAssetDialog
+        open={!!assignTarget}
+        position={assignTarget}
+        onClose={() => setAssignTarget(null)}
       />
     </div>
   );
