@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { FileText, Plus, Trash2, Send, RefreshCw, Eye } from "lucide-react";
+import { FileText, Plus, Trash2, Send, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import ReportWizard from "@/components/weeklyreport/ReportWizard";
 import { buildReportHTML } from "@/components/weeklyreport/buildReportHTML";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { useAavePosition } from "@/hooks/useAavePosition";
 
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -15,7 +16,6 @@ function openHtmlInTab(html) {
   const url = URL.createObjectURL(blob);
   const newWin = window.open(url, "_blank");
   if (!newWin || newWin.closed || typeof newWin.closed === "undefined") {
-    // Popup was blocked — fallback: download as file
     const a = document.createElement("a");
     a.href = url;
     a.download = `weekly-report-${new Date().toISOString().slice(0, 10)}.html`;
@@ -25,58 +25,70 @@ function openHtmlInTab(html) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+/**
+ * WeeklyReportPage — generate / view / archive weekly investor reports.
+ *
+ * Migrated from a 12-entity Promise.all + calculateAavePosition Deno round-
+ * trip to React Query: each entity gets its own useEntityList, the Aave
+ * aggregate comes from useAavePosition (client-derived). The appData
+ * payload passed to ReportWizard and buildReportHTML keeps the same shape,
+ * so the report generator is unchanged — only the data plumbing is.
+ *
+ * The "עדכן מחירים" button (which called the deleted dailyFullUpdate) was
+ * removed; Phase 4 routes that interaction through the top-bar PriceHub.
+ * appData stays fresh automatically because every consumed entity is a
+ * React Query subscription — opening PriceHub and changing a price flows
+ * through here without an explicit refresh call.
+ */
 export default function WeeklyReportPage() {
+  const reportsQ = useEntityList("WeeklyReport", { sort: "-report_date", limit: 50 });
+  const assetsQ = useEntityList("CryptoAsset", { sort: "-last_updated", limit: 100 });
+  const leveragedQ = useEntityList("LeveragedPosition", { filter: { status: "Open" } });
+  const aaveCollateralQ = useEntityList("AaveCollateral");
+  const cryptoOptionsQ = useEntityList("CryptoOptionsPosition", { sort: "-opened_date", limit: 100 });
+  const investorsQ = useEntityList("OffChainInvestor");
+  const paymentsQ = useEntityList("InvestorPayment", { sort: "-payment_date", limit: 200 });
+  const ibOptionsQ = useEntityList("OptionsTrade", { sort: "-open_date", limit: 200 });
+  const stocksQ = useEntityList("StockPosition", { sort: "-entry_date", limit: 500 });
+  const hlTradesQ = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
+  const pricesQ = useEntityList("Prices");
+  const aave = useAavePosition();
+
+  const createReport = useEntityMutation("WeeklyReport", "create");
+  const updateReport = useEntityMutation("WeeklyReport", "update");
+  const deleteReportM = useEntityMutation("WeeklyReport", "delete");
+
+  const reports = reportsQ.data || [];
+
+  const isLoading =
+    reportsQ.isLoading || assetsQ.isLoading || leveragedQ.isLoading || aaveCollateralQ.isLoading ||
+    cryptoOptionsQ.isLoading || investorsQ.isLoading || paymentsQ.isLoading || ibOptionsQ.isLoading ||
+    stocksQ.isLoading || hlTradesQ.isLoading || pricesQ.isLoading || aave.isLoading;
+
+  // Reassemble the appData shape that ReportWizard + buildReportHTML expect.
+  const appData = useMemo(() => ({
+    assets: assetsQ.data || [],
+    leveraged: leveragedQ.data || [],
+    aaveCollateral: aaveCollateralQ.data || [],
+    cryptoOptions: cryptoOptionsQ.data || [],
+    investors: investorsQ.data || [],
+    investorPayments: paymentsQ.data || [],
+    ibOptions: ibOptionsQ.data || [],
+    stocks: stocksQ.data || [],
+    hlTrades: hlTradesQ.data || [],
+    prices: pricesQ.data || [],
+    aaveBorrowUsd: aave.borrowedAmount || 0,
+    aaveHealthFactor: aave.healthFactor || 0,
+    aaveCollateralDetails: aave.collateralDetails || [],
+  }), [
+    assetsQ.data, leveragedQ.data, aaveCollateralQ.data, cryptoOptionsQ.data,
+    investorsQ.data, paymentsQ.data, ibOptionsQ.data, stocksQ.data,
+    hlTradesQ.data, pricesQ.data,
+    aave.borrowedAmount, aave.healthFactor, aave.collateralDetails,
+  ]);
+
   const [showWizard, setShowWizard] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [reports, setReports] = useState([]);
-  const [appData, setAppData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const load = async () => {
-    const [
-      reportsList, assets, leveraged, aaveCollateral,
-      cryptoOptions, investors, payments, ibOptions, stocks, hlTrades,
-      prices, aaveRes
-    ] = await Promise.all([
-      base44.entities.WeeklyReport.list("-report_date", 50),
-      base44.entities.CryptoAsset.list("-last_updated", 100),
-      base44.entities.LeveragedPosition.filter({ status: "Open" }),
-      base44.entities.AaveCollateral.list(),
-      base44.entities.CryptoOptionsPosition.list("-opened_date", 100),
-      base44.entities.OffChainInvestor.list(),
-      base44.entities.InvestorPayment.list("-payment_date", 200),
-      base44.entities.OptionsTrade.list("-open_date", 200),
-      base44.entities.StockPosition.list("-entry_date", 500),
-      base44.entities.HLTrade.list("-trade_date", 500),
-      base44.entities.Prices.list(),
-      base44.functions.invoke("calculateAavePosition", {}),
-    ]);
-    const aave = aaveRes?.data || {};
-    setReports(reportsList);
-    setAppData({
-      assets, leveraged, aaveCollateral, cryptoOptions, investors,
-      investorPayments: payments, ibOptions, stocks, hlTrades, prices,
-      aaveBorrowUsd: aave.borrowedAmount || 0,
-      aaveHealthFactor: aave.healthFactor || 0,
-      aaveCollateralDetails: aave.collateralDetails || [],
-    });
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleRefreshPrices = async () => {
-    setRefreshing(true);
-    try {
-      await base44.functions.invoke("dailyFullUpdate", {});
-      toast.success("מחירים עודכנו");
-      load();
-    } catch (e) {
-      toast.error("שגיאה בעדכון מחירים: " + e.message);
-    }
-    setRefreshing(false);
-  };
 
   const handleWizardComplete = async (answers) => {
     setShowWizard(false);
@@ -85,14 +97,11 @@ export default function WeeklyReportPage() {
       const today = format(new Date(), "yyyy-MM-dd");
       const lastReport = reports[0];
 
-      // Soft warnings — never block the report. Missing data just shows as "—" in the PDF.
       const warnings = [];
       if (!answers.btc_price && !answers.eth_price) warnings.push("מחירי קריפטו חסרים — חלק מהטבלאות יהיה ריק");
       const aaveTotal = (appData.aaveCollateral || []).reduce((s, c) => s + (c.units || 0), 0);
       if (aaveTotal === 0) warnings.push("נתוני Aave חסרים — קטע Aave יופיע ריק");
-      if (warnings.length > 0) {
-        toast.warning(warnings.join(" · "));
-      }
+      if (warnings.length > 0) toast.warning(warnings.join(" · "));
 
       const prevReport = lastReport ? {
         ib_nav: lastReport.ib_nav,
@@ -102,13 +111,12 @@ export default function WeeklyReportPage() {
       const html = buildReportHTML({ answers, appData, prevReport });
       openHtmlInTab(html);
 
-      // Save report record
-      await base44.entities.WeeklyReport.create({
+      await createReport.mutateAsync({
         report_date: today,
         period_start: format(new Date(new Date().setDate(new Date().getDate() - 7)), "yyyy-MM-dd"),
         period_end: today,
         ib_nav: answers.ib_nav,
-        nav_at_report: answers.ib_nav, // simplified
+        nav_at_report: answers.ib_nav,
         notes: answers.notes,
         status: "Draft",
         wizard_ib_options_pnl: answers.ib_options_pnl,
@@ -118,11 +126,10 @@ export default function WeeklyReportPage() {
         wizard_eth_price: answers.eth_price,
         wizard_aave_price: answers.aave_price,
         wizard_mstr_price: answers.mstr_price,
-        wizard_on_chain_nav: 0, // calculated inside buildReportHTML
+        wizard_on_chain_nav: 0,
       });
 
       toast.success("הדוח נפתח בלשונית חדשה — לחץ Ctrl+P לשמירה כ-PDF");
-      load();
     } catch (e) {
       toast.error("שגיאה: " + e.message);
     }
@@ -147,18 +154,16 @@ export default function WeeklyReportPage() {
   };
 
   const handleMarkSent = async (id) => {
-    await base44.entities.WeeklyReport.update(id, { status: "Sent" });
+    await updateReport.mutateAsync({ id, data: { status: "Sent" } });
     toast.success("סומן כנשלח");
-    load();
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.WeeklyReport.delete(id);
+    await deleteReportM.mutateAsync(id);
     toast.success("נמחק");
-    load();
   };
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
     </div>
@@ -173,10 +178,6 @@ export default function WeeklyReportPage() {
           <p className="text-xs text-muted-foreground mt-0.5">Weekly Investment Management Report</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshing} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-            {refreshing ? "מעדכן..." : "עדכן מחירים"}
-          </Button>
           <Button onClick={() => setShowWizard(true)} disabled={generating} className="gap-2">
             <Plus className="w-4 h-4" /> הפק דוח שבועי
           </Button>

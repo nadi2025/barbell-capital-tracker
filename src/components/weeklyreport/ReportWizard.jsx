@@ -62,17 +62,20 @@ export default function ReportWizard({ appData, lastReport, onComplete, onCancel
   const handleRefreshPrices = async () => {
     setRefreshingPrices(true);
     try {
-      await base44.functions.invoke("dailyFullUpdate", {});
-      // Reload prices from DB
+      // dailyFullUpdate has been removed; this wizard now calls syncPrices
+      // (the single price-fetch path). Phase 4 will route this through the
+      // top-bar PriceHub instead so there's only one button in the app, but
+      // for now keep the inline button working with the new function name.
+      await base44.functions.invoke("syncPrices", {});
       const updatedPrices = await base44.entities.Prices.list();
       const pm = {};
-      updatedPrices.forEach(p => { pm[p.asset?.toUpperCase()] = p.price_usd; });
+      updatedPrices.forEach((p) => { pm[p.asset?.toUpperCase()] = p.price_usd; });
       if (pm.BTC) set("btc_price", String(pm.BTC));
       if (pm.ETH) set("eth_price", String(pm.ETH));
       if (pm.AAVE) set("aave_price", String(pm.AAVE));
       if (pm.MSTR) set("mstr_price", String(pm.MSTR));
     } catch (e) {
-      // ignore, user can type manually
+      // ignore — user can type manually
     }
     setRefreshingPrices(false);
   };
