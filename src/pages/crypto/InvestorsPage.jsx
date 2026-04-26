@@ -1,39 +1,69 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { useState } from "react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { usePrices } from "@/hooks/usePrices";
 
 const fmt = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const COLORS = ["#f7931a", "#627eea", "#b6509e"];
 
 const emptyForm = { name: "", initial_investment_usd: "", wallet: "", btc_amount: "", eth_amount: "", aave_amount: "", current_total_value_usd: "", notes: "" };
 
+/**
+ * crypto/InvestorsPage — on-chain crypto investors.
+ *
+ * Migrated to React Query (useEntityList / useEntityMutation). Hardcoded
+ * BTC/ETH/AAVE prices replaced with the live priceMap from usePrices, so
+ * the per-investor Current Value column updates automatically when prices
+ * refresh through PriceHub.
+ *
+ * If a row has an explicit current_total_value_usd override (manually
+ * entered), we honor it. Otherwise we compute total = (btc × BTC) +
+ * (eth × ETH) + (aave × AAVE) using the live priceMap.
+ */
 export default function InvestorsPage() {
-  const [investors, setInvestors] = useState([]);
+  const investorsQ = useEntityList("CryptoInvestor");
+  const investors = investorsQ.data || [];
+  const { priceMap } = usePrices();
+
+  const createInvestor = useEntityMutation("CryptoInvestor", "create");
+  const updateInvestor = useEntityMutation("CryptoInvestor", "update");
+  const deleteInvestor = useEntityMutation("CryptoInvestor", "delete");
+
   const [dialog, setDialog] = useState(false);
   const [editInv, setEditInv] = useState(null);
   const [form, setForm] = useState(emptyForm);
 
-  const load = async () => setInvestors(await base44.entities.CryptoInvestor.list());
-  useEffect(() => { load(); }, []);
-
   const save = async () => {
-    const data = { ...form, initial_investment_usd: parseFloat(form.initial_investment_usd) || null, btc_amount: parseFloat(form.btc_amount) || null, eth_amount: parseFloat(form.eth_amount) || null, aave_amount: parseFloat(form.aave_amount) || null, current_total_value_usd: parseFloat(form.current_total_value_usd) || null, last_updated: new Date().toISOString().split("T")[0] };
-    if (editInv) await base44.entities.CryptoInvestor.update(editInv.id, data);
-    else await base44.entities.CryptoInvestor.create(data);
-    toast.success("Investor saved"); setDialog(false); load();
+    const data = {
+      ...form,
+      initial_investment_usd: parseFloat(form.initial_investment_usd) || null,
+      btc_amount: parseFloat(form.btc_amount) || null,
+      eth_amount: parseFloat(form.eth_amount) || null,
+      aave_amount: parseFloat(form.aave_amount) || null,
+      current_total_value_usd: parseFloat(form.current_total_value_usd) || null,
+      last_updated: new Date().toISOString().split("T")[0],
+    };
+    if (editInv) await updateInvestor.mutateAsync({ id: editInv.id, data });
+    else await createInvestor.mutateAsync(data);
+    toast.success("Investor saved");
+    setDialog(false);
   };
 
   const del = async (id) => {
     if (!confirm("Delete this investor?")) return;
-    await base44.entities.CryptoInvestor.delete(id);
-    toast.success("Deleted"); load();
+    await deleteInvestor.mutateAsync(id);
+    toast.success("Deleted");
   };
+
+  const btcPrice = priceMap.BTC || 0;
+  const ethPrice = priceMap.ETH || 0;
+  const aavePrice = priceMap.AAVE || 0;
 
   return (
     <div className="space-y-5">
@@ -48,10 +78,10 @@ export default function InvestorsPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {investors.map(inv => {
-          const btcVal = (inv.btc_amount || 0) * 70794;
-          const ethVal = (inv.eth_amount || 0) * 2165;
-          const aaveVal = (inv.aave_amount || 0) * 177;
+        {investors.map((inv) => {
+          const btcVal = (inv.btc_amount || 0) * btcPrice;
+          const ethVal = (inv.eth_amount || 0) * ethPrice;
+          const aaveVal = (inv.aave_amount || 0) * aavePrice;
           const total = inv.current_total_value_usd || (btcVal + ethVal + aaveVal);
           const initial = inv.initial_investment_usd || 0;
           const pnl = total - initial;
@@ -61,7 +91,7 @@ export default function InvestorsPage() {
             { name: "BTC", value: btcVal },
             { name: "ETH", value: ethVal },
             { name: "AAVE", value: aaveVal },
-          ].filter(d => d.value > 0);
+          ].filter((d) => d.value > 0);
 
           return (
             <div key={inv.id} className="bg-card border border-border rounded-xl p-5">
@@ -109,11 +139,11 @@ export default function InvestorsPage() {
                       <Pie data={pieData} cx="50%" cy="50%" innerRadius={20} outerRadius={35} dataKey="value">
                         {pieData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
                       </Pie>
-                      <Tooltip formatter={v => fmt(v)} />
+                      <Tooltip formatter={(v) => fmt(v)} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="space-y-1">
-                    {[{ name: "BTC", amount: inv.btc_amount }, { name: "ETH", amount: inv.eth_amount }, { name: "AAVE", amount: inv.aave_amount }].filter(t => t.amount).map((t, i) => (
+                    {[{ name: "BTC", amount: inv.btc_amount }, { name: "ETH", amount: inv.eth_amount }, { name: "AAVE", amount: inv.aave_amount }].filter((t) => t.amount).map((t, i) => (
                       <div key={t.name} className="flex items-center gap-1.5 text-xs">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }} />
                         <span className="text-muted-foreground">{t.name}</span>
@@ -133,10 +163,10 @@ export default function InvestorsPage() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editInv ? "Edit Investor" : "New Investor"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {[{ label: "Name", key: "name" }, { label: "Initial Investment ($)", key: "initial_investment_usd", type: "number" }, { label: "Wallet", key: "wallet" }, { label: "BTC Amount", key: "btc_amount", type: "number" }, { label: "ETH Amount", key: "eth_amount", type: "number" }, { label: "AAVE Amount", key: "aave_amount", type: "number" }, { label: "Current Value ($)", key: "current_total_value_usd", type: "number" }, { label: "Notes", key: "notes" }].map(f => (
+            {[{ label: "Name", key: "name" }, { label: "Initial Investment ($)", key: "initial_investment_usd", type: "number" }, { label: "Wallet", key: "wallet" }, { label: "BTC Amount", key: "btc_amount", type: "number" }, { label: "ETH Amount", key: "eth_amount", type: "number" }, { label: "AAVE Amount", key: "aave_amount", type: "number" }, { label: "Current Value ($)", key: "current_total_value_usd", type: "number" }, { label: "Notes", key: "notes" }].map((f) => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
-                <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                <Input type={f.type || "text"} value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
           </div>

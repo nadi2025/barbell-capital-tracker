@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Plus, Pencil, CheckCircle, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -8,13 +7,33 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import moment from "moment";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 const fmt = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+/**
+ * crypto/CryptoDebtPage — on-chain loans (received), interest payments,
+ * and lending (given). All three tables migrated to React Query: each
+ * entity reads via useEntityList and writes via useEntityMutation, so
+ * mutations propagate to the dashboard without an imperative reload.
+ */
 export default function CryptoDebtPage() {
-  const [loans, setLoans] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [lending, setLending] = useState([]);
+  const loansQ = useEntityList("CryptoLoan");
+  const paymentsQ = useEntityList("InterestPayment", { sort: "-payment_date" });
+  const lendingQ = useEntityList("CryptoLending");
+
+  const loans = loansQ.data || [];
+  const payments = paymentsQ.data || [];
+  const lending = lendingQ.data || [];
+
+  const createLoan = useEntityMutation("CryptoLoan", "create");
+  const updateLoan = useEntityMutation("CryptoLoan", "update");
+  const createPayment = useEntityMutation("InterestPayment", "create");
+  const updatePayment = useEntityMutation("InterestPayment", "update");
+  const deletePayment = useEntityMutation("InterestPayment", "delete");
+  const createLending = useEntityMutation("CryptoLending", "create");
+  const updateLending = useEntityMutation("CryptoLending", "update");
+
   const [loanDialog, setLoanDialog] = useState(false);
   const [editLoan, setEditLoan] = useState(null);
   const [loanForm, setLoanForm] = useState({ lender: "", principal_usd: "", annual_interest_rate: "", next_payment_date: "", collateral_description: "", platform: "", borrow_power_used: "", status: "Active" });
@@ -25,50 +44,47 @@ export default function CryptoDebtPage() {
   const [editLending, setEditLending] = useState(null);
   const [lendingForm, setLendingForm] = useState({ borrower: "", amount_usd: "", interest_rate: "", maturity_date: "", notes: "", status: "Active" });
 
-  const load = async () => {
-    const [lo, pa, le] = await Promise.all([
-      base44.entities.CryptoLoan.list(),
-      base44.entities.InterestPayment.list("-payment_date"),
-      base44.entities.CryptoLending.list(),
-    ]);
-    setLoans(lo); setPayments(pa); setLending(le);
-  };
-  useEffect(() => { load(); }, []);
-
   const saveLoan = async () => {
-    const data = { ...loanForm, principal_usd: parseFloat(loanForm.principal_usd) || 0, annual_interest_rate: parseFloat(loanForm.annual_interest_rate) || 0, borrow_power_used: parseFloat(loanForm.borrow_power_used) || 0 };
-    if (editLoan) await base44.entities.CryptoLoan.update(editLoan.id, data);
-    else await base44.entities.CryptoLoan.create(data);
-    toast.success("Loan saved"); setLoanDialog(false); load();
+    const data = {
+      ...loanForm,
+      principal_usd: parseFloat(loanForm.principal_usd) || 0,
+      annual_interest_rate: parseFloat(loanForm.annual_interest_rate) || 0,
+      borrow_power_used: parseFloat(loanForm.borrow_power_used) || 0,
+    };
+    if (editLoan) await updateLoan.mutateAsync({ id: editLoan.id, data });
+    else await createLoan.mutateAsync(data);
+    toast.success("Loan saved");
+    setLoanDialog(false);
   };
 
   const savePay = async () => {
     const data = { ...payForm, amount_usd: parseFloat(payForm.amount_usd) || 0, loan_id: loans[0]?.id || "" };
-    if (editPayment) await base44.entities.InterestPayment.update(editPayment.id, data);
-    else await base44.entities.InterestPayment.create(data);
-    toast.success(editPayment ? "Payment updated" : "Payment recorded"); setPayDialog(false); load();
+    if (editPayment) await updatePayment.mutateAsync({ id: editPayment.id, data });
+    else await createPayment.mutateAsync(data);
+    toast.success(editPayment ? "Payment updated" : "Payment recorded");
+    setPayDialog(false);
   };
 
   const delPayment = async (id) => {
     if (!confirm("Delete this payment?")) return;
-    await base44.entities.InterestPayment.delete(id);
-    toast.success("Deleted"); load();
-  };
-
-  const markPaid = async (pay) => {
-    await base44.entities.InterestPayment.update(pay.id, { status: "Paid" });
-    toast.success("Marked as paid"); load();
+    await deletePayment.mutateAsync(id);
+    toast.success("Deleted");
   };
 
   const saveLending = async () => {
-    const data = { ...lendingForm, amount_usd: parseFloat(lendingForm.amount_usd) || 0, interest_rate: parseFloat(lendingForm.interest_rate) || null };
-    if (editLending) await base44.entities.CryptoLending.update(editLending.id, data);
-    else await base44.entities.CryptoLending.create(data);
-    toast.success("Saved"); setLendingDialog(false); load();
+    const data = {
+      ...lendingForm,
+      amount_usd: parseFloat(lendingForm.amount_usd) || 0,
+      interest_rate: parseFloat(lendingForm.interest_rate) || null,
+    };
+    if (editLending) await updateLending.mutateAsync({ id: editLending.id, data });
+    else await createLending.mutateAsync(data);
+    toast.success("Saved");
+    setLendingDialog(false);
   };
 
-  const totalDebt = loans.filter(l => l.status === "Active").reduce((s, l) => s + (l.principal_usd || 0), 0);
-  const totalLent = lending.filter(l => l.status === "Active").reduce((s, l) => s + (l.amount_usd || 0), 0);
+  const totalDebt = loans.filter((l) => l.status === "Active").reduce((s, l) => s + (l.principal_usd || 0), 0);
+  const totalLent = lending.filter((l) => l.status === "Active").reduce((s, l) => s + (l.amount_usd || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -97,7 +113,7 @@ export default function CryptoDebtPage() {
           </Button>
         </div>
         <div className="space-y-3">
-          {loans.map(loan => (
+          {loans.map((loan) => (
             <div key={loan.id} className="border border-border rounded-xl p-4">
               <div className="flex items-start justify-between">
                 <div>
@@ -141,7 +157,7 @@ export default function CryptoDebtPage() {
       <div className="bg-card border border-border rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold">Interest Payments</h2>
-          <Button size="sm" onClick={() => { setPayForm({ payment_date: "", amount_usd: "", quarter: "", status: "Scheduled", notes: "" }); setPayDialog(true); }} className="gap-1.5">
+          <Button size="sm" onClick={() => { setEditPayment(null); setPayForm({ payment_date: "", amount_usd: "", quarter: "", status: "Scheduled", notes: "" }); setPayDialog(true); }} className="gap-1.5">
             <Plus className="w-3.5 h-3.5" /> Add Payment
           </Button>
         </div>
@@ -157,7 +173,7 @@ export default function CryptoDebtPage() {
               </tr>
             </thead>
             <tbody>
-              {payments.map(p => (
+              {payments.map((p) => (
                 <tr key={p.id} className="border-b border-border/40">
                   <td className="py-2 font-mono">{p.payment_date}</td>
                   <td className="py-2 text-xs">{p.quarter}</td>
@@ -204,7 +220,7 @@ export default function CryptoDebtPage() {
               </tr>
             </thead>
             <tbody>
-              {lending.map(l => (
+              {lending.map((l) => (
                 <tr key={l.id} className="border-b border-border/40">
                   <td className="py-2 font-semibold">{l.borrower}</td>
                   <td className="py-2 font-mono">{fmt(l.amount_usd)}</td>
@@ -230,15 +246,15 @@ export default function CryptoDebtPage() {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editLoan ? "Edit Loan" : "New Loan"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            {[{ label: "Lender", key: "lender" }, { label: "Principal ($)", key: "principal_usd", type: "number" }, { label: "Annual Rate (0.08=8%)", key: "annual_interest_rate", type: "number" }, { label: "Next Payment Date", key: "next_payment_date", type: "date" }, { label: "Platform", key: "platform" }, { label: "Collateral", key: "collateral_description" }, { label: "Borrow Power Used (0-1)", key: "borrow_power_used", type: "number" }].map(f => (
+            {[{ label: "Lender", key: "lender" }, { label: "Principal ($)", key: "principal_usd", type: "number" }, { label: "Annual Rate (0.08=8%)", key: "annual_interest_rate", type: "number" }, { label: "Next Payment Date", key: "next_payment_date", type: "date" }, { label: "Platform", key: "platform" }, { label: "Collateral", key: "collateral_description" }, { label: "Borrow Power Used (0-1)", key: "borrow_power_used", type: "number" }].map((f) => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
-                <Input type={f.type || "text"} value={loanForm[f.key]} onChange={e => setLoanForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                <Input type={f.type || "text"} value={loanForm[f.key]} onChange={(e) => setLoanForm((p) => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
             <div>
               <Label className="text-xs mb-1 block">Status</Label>
-              <Select value={loanForm.status} onValueChange={v => setLoanForm(p => ({ ...p, status: v }))}>
+              <Select value={loanForm.status} onValueChange={(v) => setLoanForm((p) => ({ ...p, status: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Active">Active</SelectItem>
@@ -256,13 +272,13 @@ export default function CryptoDebtPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editPayment ? "Edit Payment" : "Add Interest Payment"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            {[{ label: "Date", key: "payment_date", type: "date" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Quarter (e.g. Q1 2026)", key: "quarter" }, { label: "Notes", key: "notes" }].map(f => (
+            {[{ label: "Date", key: "payment_date", type: "date" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Quarter (e.g. Q1 2026)", key: "quarter" }, { label: "Notes", key: "notes" }].map((f) => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
-                <Input type={f.type || "text"} value={payForm[f.key]} onChange={e => setPayForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                <Input type={f.type || "text"} value={payForm[f.key]} onChange={(e) => setPayForm((p) => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
-            <Select value={payForm.status} onValueChange={v => setPayForm(p => ({ ...p, status: v }))}>
+            <Select value={payForm.status} onValueChange={(v) => setPayForm((p) => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Scheduled">Scheduled</SelectItem>
@@ -280,13 +296,13 @@ export default function CryptoDebtPage() {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>{editLending ? "Edit" : "New Loan Given"}</DialogTitle></DialogHeader>
           <div className="space-y-3 pt-2">
-            {[{ label: "Borrower", key: "borrower" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Interest Rate", key: "interest_rate", type: "number" }, { label: "Maturity Date", key: "maturity_date", type: "date" }, { label: "Notes", key: "notes" }].map(f => (
+            {[{ label: "Borrower", key: "borrower" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Interest Rate", key: "interest_rate", type: "number" }, { label: "Maturity Date", key: "maturity_date", type: "date" }, { label: "Notes", key: "notes" }].map((f) => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
-                <Input type={f.type || "text"} value={lendingForm[f.key]} onChange={e => setLendingForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                <Input type={f.type || "text"} value={lendingForm[f.key]} onChange={(e) => setLendingForm((p) => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
-            <Select value={lendingForm.status} onValueChange={v => setLendingForm(p => ({ ...p, status: v }))}>
+            <Select value={lendingForm.status} onValueChange={(v) => setLendingForm((p) => ({ ...p, status: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Active">Active</SelectItem>

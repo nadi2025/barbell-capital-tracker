@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 const fmt = (v) => v == null ? "" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const ACTION_TYPES = ["Deposit", "Withdrawal", "Rebalance", "Interest Payment", "Trade", "Collateral Adjustment", "Other"];
@@ -14,28 +14,34 @@ const ACTION_LABELS = { Deposit: "Deposit", Withdrawal: "Withdrawal", Rebalance:
 
 const emptyForm = { date: new Date().toISOString().split("T")[0], action_type: "Other", description: "", amount_usd: "", related_entity: "" };
 
+/**
+ * crypto/ActivityPage — running ledger of on-chain activity (deposits,
+ * withdrawals, rebalances, etc.). Migrated to React Query for read + writes.
+ */
 export default function ActivityPage() {
-  const [logs, setLogs] = useState([]);
+  const logsQ = useEntityList("CryptoActivityLog", { sort: "-date" });
+  const logs = logsQ.data || [];
+  const createLog = useEntityMutation("CryptoActivityLog", "create");
+  const deleteLog = useEntityMutation("CryptoActivityLog", "delete");
+
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [filterType, setFilterType] = useState("all");
 
-  const load = async () => setLogs(await base44.entities.CryptoActivityLog.list("-date"));
-  useEffect(() => { load(); }, []);
-
   const save = async () => {
-    await base44.entities.CryptoActivityLog.create({ ...form, amount_usd: parseFloat(form.amount_usd) || null });
-    toast.success("Activity recorded"); setDialog(false); load();
+    await createLog.mutateAsync({ ...form, amount_usd: parseFloat(form.amount_usd) || null });
+    toast.success("Activity recorded");
+    setDialog(false);
   };
 
   const del = async (id) => {
     if (!confirm("Delete?")) return;
-    await base44.entities.CryptoActivityLog.delete(id);
-    toast.success("Deleted"); load();
+    await deleteLog.mutateAsync(id);
+    toast.success("Deleted");
   };
 
   const typeColor = { Deposit: "text-profit", Withdrawal: "text-loss", Trade: "text-chart-3", "LP Open": "text-chart-2", "LP Close": "text-muted-foreground", "Interest Payment": "text-amber-500" };
-  const filtered = filterType === "all" ? logs : logs.filter(l => l.action_type === filterType);
+  const filtered = filterType === "all" ? logs : logs.filter((l) => l.action_type === filterType);
 
   return (
     <div className="space-y-5">
@@ -51,7 +57,7 @@ export default function ActivityPage() {
 
       <div className="flex flex-wrap gap-2">
         <Button variant={filterType === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterType("all")}>All</Button>
-        {ACTION_TYPES.map(t => (
+        {ACTION_TYPES.map((t) => (
           <Button key={t} variant={filterType === t ? "default" : "outline"} size="sm" onClick={() => setFilterType(t)}>
             {ACTION_LABELS[t]}
           </Button>
@@ -72,7 +78,7 @@ export default function ActivityPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(l => (
+              {filtered.map((l) => (
                 <tr key={l.id} className="border-b border-border/40 hover:bg-muted/20">
                   <td className="px-4 py-3 font-mono text-xs">{l.date}</td>
                   <td className="px-4 py-3">
@@ -102,21 +108,21 @@ export default function ActivityPage() {
           <div className="space-y-3 pt-2">
             <div>
               <Label className="text-xs mb-1 block">Date</Label>
-              <Input type="date" value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} />
+              <Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
             </div>
             <div>
               <Label className="text-xs mb-1 block">Action Type</Label>
-              <Select value={form.action_type} onValueChange={v => setForm(p => ({ ...p, action_type: v }))}>
+              <Select value={form.action_type} onValueChange={(v) => setForm((p) => ({ ...p, action_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {ACTION_TYPES.map(t => <SelectItem key={t} value={t}>{ACTION_LABELS[t]}</SelectItem>)}
+                  {ACTION_TYPES.map((t) => <SelectItem key={t} value={t}>{ACTION_LABELS[t]}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            {[{ label: "Description", key: "description" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Related To", key: "related_entity" }].map(f => (
+            {[{ label: "Description", key: "description" }, { label: "Amount ($)", key: "amount_usd", type: "number" }, { label: "Related To", key: "related_entity" }].map((f) => (
               <div key={f.key}>
                 <Label className="text-xs mb-1 block">{f.label}</Label>
-                <Input type={f.type || "text"} value={form[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                <Input type={f.type || "text"} value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
               </div>
             ))}
             <Button className="w-full" onClick={save}>Save</Button>
