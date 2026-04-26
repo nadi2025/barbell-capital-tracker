@@ -126,18 +126,10 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const onChainNav = calc.onChainNAV;
   const totalNav = calc.totalNAV;
 
-  // "מקורות הון" — exactly the Dashboard's CapitalStructureSection formula:
-  //   ownEquity (Deposit ledger filtered to Equity Investment / Cash Flow)
-  //   + totalOffChainDebt (OffChainInvestor + DebtFacility)
-  //   + investorDebt (CryptoLoan = S&T)
-  //   + aaveBorrowUsd (live from calculateAavePosition)
-  // Replaces the old hardcoded `413000 + 1700000`.
-  const totalInvested = calc.ownEquity
-    + calc.totalOffChainDebt
-    + calc.investorDebt
-    + calc.aaveBorrowUsd;
-  const totalPnl = totalNav - totalInvested;
-  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+  // totalDeposited = net flows from Deposit ledger (same basis as Dashboard)
+  const totalInvested = calc.totalDeposited;
+  const totalPnl = calc.totalNAV - calc.totalDeposited;
+  const totalPnlPct = calc.totalDeposited > 0 ? (totalPnl / calc.totalDeposited) * 100 : 0;
 
   // Baseline used for the IB drawdown risk line and the off-chain table —
   // own equity is the right basis (debt-funded transfers are not "ours" to
@@ -534,9 +526,9 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     <div class="change ${clr(weekChange || 0)}">${weekChange != null ? `vs שבוע: ${$(weekChange)} (${pct((weekChange / Math.abs(prevTotal || 1)) * 100)})` : "דוח ראשון"}</div>
   </div>
   <div class="kpi">
-    <div class="label">הושקע סה"כ</div>
+    <div class="label">הושקע סה"כ (הפקדות נטו)</div>
     <div class="big">${$(totalInvested)}</div>
-    <div class="sub">Off: $413K · On: $1,700K</div>
+    <div class="sub">Off: ${$(ibNav)} · On: ${$(onChainNav)}</div>
   </div>
   <div class="kpi" style="${totalPnl < 0 ? "background:#fff1f2;border-color:#fecdd3" : "background:#f0fdf4;border-color:#bbf7d0"}">
     <div class="label">P&L כולל</div>
