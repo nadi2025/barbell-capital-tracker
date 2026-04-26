@@ -26,6 +26,10 @@
       "type": "number",
       "title": "Current Value (USD)"
     },
+    "average_cost_usd": {
+      "type": "number",
+      "title": "Average Cost (USD)"
+    },
     "asset_category": {
       "type": "string",
       "enum": [

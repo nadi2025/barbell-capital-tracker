@@ -28,6 +28,10 @@
       ],
       "title": "Capital Source"
     },
+    "platform": {
+      "type": "string",
+      "title": "Platform"
+    },
     "notes": {
       "type": "string",
       "title": "Notes"
