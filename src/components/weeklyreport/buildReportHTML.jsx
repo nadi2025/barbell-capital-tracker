@@ -1,4 +1,5 @@
 import { format, differenceInDays } from "date-fns";
+import { calcDashboard } from "@/components/dashboard2/dashboardCalcs.jsx";
 
 const $ = (v, d = 0) => {
   if (v == null || isNaN(v)) return "—";
@@ -32,26 +33,40 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const periodStart = format(new Date(new Date().setDate(today.getDate() - 7)), "d.M.yy");
   const periodEnd = format(today, "d.M.yy");
 
-  const { assets, aaveCollateral, leveraged, investors, investorPayments, cryptoOptions, ibOptions, stocks = [], hlTrades = [], prices = [], aaveBorrowUsd = 0, aaveHealthFactor = 0 } = appData;
+  // ── Source of truth: same function the Dashboard uses ──
+  // Previously the report reimplemented capital/NAV from scratch with
+  // hardcoded constants ($413,000 deposits, $1,700,000 S&T debt, etc).
+  // Now we delegate everything to calcDashboard so the two views can't drift.
+  // The wizard's IB NAV input wins over whatever calcDashboard would derive
+  // from a stale snapshot — we override by feeding a synthetic snapshot.
+  const calc = calcDashboard({
+    ...appData,
+    snapshot: answers.ib_nav
+      ? { ...(appData.snapshot || {}), nav: parseFloat(answers.ib_nav) || 0, cash: null }
+      : appData.snapshot,
+  });
+
+  // Pull legacy display-side names from appData / calc, with the same names
+  // the rest of this file (HTML rendering below) expects.
+  const {
+    assets = [], aaveCollateral = [], leveraged = [], investors = [],
+    investorPayments = [], cryptoOptions = [], ibOptions = [],
+    stocks = [], hlTrades = [], aaveBorrowUsd = 0, aaveHealthFactor = 0,
+  } = appData;
 
   // Color helpers — defined early, used throughout
   const clr = (v) => v >= 0 ? "positive" : "negative";
   const riskDot = { red: "🔴", yellow: "🟡", green: "🟢" };
 
-  // Auto-calculate IB stocks P&L from StockPosition entity
-  const ibStocksPnl = stocks.reduce((s, st) => s + (st.gain_loss || 0), 0);
+  // Stocks unrealized P&L (same as Dashboard's "Off-Chain unrealized" line)
+  const ibStocksPnl = calc.unrealizedPnl;
 
-  // Prices — prefer wizard override, then Prices entity, then CryptoAsset fallback
-  const priceEntityMap = {};
-  prices.forEach(p => { priceEntityMap[p.asset?.toUpperCase()] = p.price_usd; });
+  // Prices: calc.priceMap is canonical, wizard inputs override.
   const getPrice = (tokens, override) => {
     if (override && parseFloat(override) > 0) return parseFloat(override);
     for (const t of tokens) {
-      if (priceEntityMap[t.toUpperCase()] > 0) return priceEntityMap[t.toUpperCase()];
-    }
-    for (const t of tokens) {
-      const a = assets.find(x => x.token?.toUpperCase() === t.toUpperCase());
-      if (a?.current_price_usd > 0) return a.current_price_usd;
+      const p = calc.priceMap[t.toUpperCase()];
+      if (p > 0) return p;
     }
     return 0;
   };
@@ -60,69 +75,79 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   const aaveP = getPrice(["AAVE"], answers.aave_price);
   const mstrP = getPrice(["MSTR"], answers.mstr_price);
 
-  // Aave collateral values — uses asset_name field (not token)
-  // Deduplicate by asset_name, keep latest
-  const uniqueCollaterals = {};
-  aaveCollateral.forEach(c => {
-    const key = c.asset_name?.toUpperCase();
-    if (!key) return;
-    if (!uniqueCollaterals[key] || new Date(c.updated_date || c.created_date) > new Date(uniqueCollaterals[key].updated_date || uniqueCollaterals[key].created_date)) {
-      uniqueCollaterals[key] = c;
-    }
-  });
-  const getCollUnit = (keys) => {
-    for (const k of keys) {
-      const c = uniqueCollaterals[k.toUpperCase()];
-      if (c) return c.units || 0;
-    }
-    return 0;
-  };
-  const ethUnits = getCollUnit(["ETH", "WETH"]);
-  const btcUnits = getCollUnit(["BTC", "WBTC"]);
-  const aaveTokenUnits = getCollUnit(["AAVE"]);
-  const ethCollVal = ethUnits * ethP;
-  const btcCollVal = btcUnits * btcP;
-  const aaveCollValUSD = aaveTokenUnits * aaveP;
-  const totalCollateral = ethCollVal + btcCollVal + aaveCollValUSD;
-  // Use live-calculated Aave data (from calculateAavePosition function)
-  const aaveBorrow = aaveBorrowUsd;
-  const aaveHF = aaveHealthFactor > 0 ? aaveHealthFactor : null;
+  // Aave collateral display — keep the per-asset breakdown for the report
+  // tables, but value each row from calc (so it matches the dashboard).
+  const collDetails = appData.aaveCollateralDetails || [];
+  const findColl = (names) => collDetails.find((c) =>
+    names.includes((c.asset_name || "").toUpperCase())
+  ) || {};
+  const ethCollRow = findColl(["ETH", "WETH"]);
+  const btcCollRow = findColl(["BTC", "WBTC"]);
+  const aaveCollRow = findColl(["AAVE"]);
+  const ethUnits = ethCollRow.units || 0;
+  const btcUnits = btcCollRow.units || 0;
+  const aaveTokenUnits = aaveCollRow.units || 0;
+  const ethCollVal = ethCollRow.value_usd || 0;
+  const btcCollVal = btcCollRow.value_usd || 0;
+  const aaveCollValUSD = aaveCollRow.value_usd || 0;
+  const totalCollateral = calc.aaveCollateralValue;
+  const aaveBorrow = calc.aaveBorrowUsd;
+  const aaveHF = calc.healthFactor > 0 ? calc.healthFactor : null;
 
-  // HL positions
-  const openLev = leveraged.filter(l => l.status === "Open").map(l => {
-    const price = l.asset?.toUpperCase() === "BTC" ? btcP : l.asset?.toUpperCase() === "ETH" ? ethP
-      : l.asset?.toUpperCase() === "AAVE" ? aaveP : l.asset?.toUpperCase() === "MSTR" ? mstrP : l.mark_price || 0;
-    const posVal = price && l.size ? price * l.size : l.position_value_usd || 0;
+  // HL positions — keep per-position view for the report tables; values
+  // sourced from calc.priceMap so they match what the Dashboard shows.
+  const openLev = leveraged.filter((l) => l.status === "Open").map((l) => {
+    const k = (l.asset || "").toUpperCase();
+    const price = calc.priceMap[k] || l.mark_price || 0;
+    const posVal = price && l.size ? price * l.size : (l.position_value_usd || 0);
     const pnlCalc = price && l.entry_price && l.size
-      ? (price - l.entry_price) * l.size * (l.direction === "Short" ? -1 : 1) : l.pnl_usd || 0;
+      ? (price - l.entry_price) * l.size * (l.direction === "Short" ? -1 : 1)
+      : (l.pnl_usd || 0);
     const roe = pnlCalc && l.margin_usd ? (pnlCalc / l.margin_usd) * 100 : null;
-    const distLiq = price && l.liquidation_price ? Math.abs((price - l.liquidation_price) / price * 100) : null;
+    const distLiq = price && l.liquidation_price
+      ? Math.abs((price - l.liquidation_price) / price * 100)
+      : null;
     return { ...l, posVal, pnlCalc, roe, distLiq };
   });
-  const hlPnl = openLev.reduce((s, l) => s + l.pnlCalc, 0);
-  // HL realized P&L from trade history
+  const hlPnl = calc.hlUnrealizedPnl;
   const hlRealizedPnl = hlTrades
-    .filter(t => t.direction?.toLowerCase().includes("close"))
+    .filter((t) => /close/i.test(t.direction || ""))
     .reduce((s, t) => s + (t.closed_pnl || 0), 0);
   const hlTotalPnl = hlPnl + hlRealizedPnl;
 
-  // On-chain NAV (same formula as Crypto Dashboard: Aave net + stablecoins + lending)
-  const stablecoins = assets.filter(a => /usdc|usdt|dai/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const otherAssets = assets.filter(a => !/usdc|usdt|dai|eth|weth|btc|wbtc|aave|mstr/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const cryptoInvestorDebt = 1700000; // S&T debt — fixed
-  const aaveNetWorth = totalCollateral - aaveBorrow;
-  const lentValue = 0; // No active lending positions
-  // Sum of HL open positions margin
-  const hlMargin = leveraged.filter(l => l.status === "Open").reduce((s, l) => s + (l.margin_usd || 0), 0);
-  const onChainNav = aaveNetWorth + stablecoins + otherAssets + lentValue + hlMargin;
+  // Other / stablecoins still used by chart / table consumers below
+  const stablecoins = calc.stablecoinsValue;
+  const otherAssets = (appData.cryptoAssets || []).filter((a) =>
+    !/usdc|usdt|dai|eth|weth|btc|wbtc|aave|mstr/i.test(a.token || "")
+  ).reduce((s, a) => s + (a.current_value_usd || 0), 0);
 
-  // Total NAV
-  const ibNav = answers.ib_nav;
-  const totalNav = ibNav + onChainNav;
-  const totalInvested = 413000 + cryptoInvestorDebt;
+  // ── Top-line NAVs and totals — every value below comes from calc ──
+  const ibNav = calc.ibNav;
+  const onChainNav = calc.onChainNAV;
+  const totalNav = calc.totalNAV;
+
+  // "מקורות הון" — exactly the Dashboard's CapitalStructureSection formula:
+  //   ownEquity (Deposit ledger filtered to Equity Investment / Cash Flow)
+  //   + totalOffChainDebt (OffChainInvestor + DebtFacility)
+  //   + investorDebt (CryptoLoan = S&T)
+  //   + aaveBorrowUsd (live from calculateAavePosition)
+  // Replaces the old hardcoded `413000 + 1700000`.
+  const totalInvested = calc.ownEquity
+    + calc.totalOffChainDebt
+    + calc.investorDebt
+    + calc.aaveBorrowUsd;
   const totalPnl = totalNav - totalInvested;
-  const totalPnlPct = (totalPnl / totalInvested) * 100;
-  const prevTotal = prevReport ? (prevReport.ib_nav || 0) + (prevReport.wizard_on_chain_nav || 0) : null;
+  const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+  // Baseline used for the IB drawdown risk line and the off-chain table —
+  // own equity is the right basis (debt-funded transfers are not "ours" to
+  // measure return against). Falls back to totalDeposited if no Deposit
+  // rows are tagged Equity Investment / Cash Flow yet.
+  const ibBaseline = calc.ownEquity || calc.totalDeposited;
+
+  const prevTotal = prevReport
+    ? (prevReport.ib_nav || 0) + (prevReport.wizard_on_chain_nav || 0)
+    : null;
   const weekChange = prevTotal != null ? totalNav - prevTotal : null;
 
   // Pie slices
@@ -206,8 +231,10 @@ export function buildReportHTML({ answers, appData, prevReport }) {
     else if (aaveHF < 2.0) risks.push({ level: "yellow", text: `Aave HF: ${aaveHF.toFixed(2)} — שמור על מרחק` });
     else risks.push({ level: "green", text: `Aave HF: ${aaveHF.toFixed(2)} — בטוח` });
   }
-  const ibPnlTotal = ibNav - 413000;
-  if (ibPnlTotal / 413000 < -0.25) risks.push({ level: "yellow", text: `תיק IB ירד ${Math.abs((ibPnlTotal / 413000) * 100).toFixed(1)}% מהשקעה מקורית` });
+  const ibPnlTotal = ibNav - ibBaseline;
+  if (ibBaseline > 0 && ibPnlTotal / ibBaseline < -0.25) {
+    risks.push({ level: "yellow", text: `תיק IB ירד ${Math.abs((ibPnlTotal / ibBaseline) * 100).toFixed(1)}% מהשקעה מקורית` });
+  }
   const expiringSoon = [...openCryptoOpts, ...openIbOpts].filter(o => {
     const d = differenceInDays(new Date(o.expiration_date || o.maturity_date), today);
     return d >= 0 && d <= 7;
@@ -261,7 +288,10 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 
   // Stock transactions: closed this week
   const stocksClosed = stocks
-    .filter((s) => s.status === "Closed" && inPeriod(s.close_date || s.last_updated))
+    // Same status taxonomy the rest of the app uses for "closed" stocks —
+    // not just "Closed" but also assignments and expirations.
+    .filter((s) => ["Closed", "Expired", "Assigned", "Expired OTM"].includes(s.status)
+      && inPeriod(s.close_date || s.last_updated))
     .map((s) => ({
       type: "Close",
       category: "Stock",
@@ -552,8 +582,8 @@ ${answers.notes ? `<div class="notes-box">📝 ${answers.notes.replace(/\n/g, "<
     <table>
       <tr><th>מדד</th><th>ערך</th></tr>
       <tr><td>NAV</td><td class="positive"><strong>${$(ibNav)}</strong></td></tr>
-      <tr><td>הופקד</td><td>$413,000</td></tr>
-      <tr><td>P&L</td><td class="${clr(ibNav - 413000)}">${$(ibNav - 413000)} (${pct(((ibNav - 413000) / 413000) * 100)})</td></tr>
+      <tr><td>הופקד</td><td>${$(ibBaseline)}</td></tr>
+      <tr><td>P&L</td><td class="${clr(ibPnlTotal)}">${$(ibPnlTotal)} (${ibBaseline > 0 ? pct((ibPnlTotal / ibBaseline) * 100) : "—"})</td></tr>
       <tr><td>P&L אופציות</td><td class="${clr(answers.ib_options_pnl)}">${$(answers.ib_options_pnl)}</td></tr>
       <tr><td>Win Rate IB</td><td>${answers.ib_win_rate || "—"}%</td></tr>
       <tr><td>P&L מניות (unrealized)</td><td class="${clr(ibStocksPnl)}">${$(ibStocksPnl)}</td></tr>
