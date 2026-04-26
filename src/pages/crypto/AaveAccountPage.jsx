@@ -5,10 +5,36 @@ import AaveBorrowsTable from '../../components/aave/AaveBorrowsTable';
 import AaveStressTest from '../../components/aave/AaveStressTest';
 import AaveActivityLog from '../../components/aave/AaveActivityLog';
 
+/**
+ * AaveAccountPage — Aave dashboard page.
+ *
+ * Migrated to use the new useAavePosition shape (top-level aggregate fields).
+ * Underneath, the hook reads AaveCollateral, AaveBorrow, and Prices via
+ * React Query and runs them through computeAaveAggregate from portfolioMath,
+ * so any mutation on those entities reflects on screen instantly without
+ * round-tripping a Deno function.
+ */
 export default function AaveAccountPage() {
-  const { position, loading, error, refresh } = useAavePosition();
+  const {
+    netWorth,
+    netApy,
+    healthFactor,
+    borrowPowerUsed,
+    collateralDetails,
+    totalCollateral,
+    supplyApy,
+    borrowedAmount,
+    borrowApy,
+    availableToBorrow,
+    maxBorrowCapacity,
+    eMode,
+    lastUpdated,
+    isLoading,
+    error,
+    refetch,
+  } = useAavePosition();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -16,7 +42,7 @@ export default function AaveAccountPage() {
     );
   }
 
-  if (error || !position) {
+  if (error) {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 text-sm">שגיאה בטעינת נתונים: {error?.message}</p>
@@ -32,26 +58,26 @@ export default function AaveAccountPage() {
       </div>
 
       <AaveSummaryBar
-        netWorth={position.netWorth}
-        netApy={position.netApy}
-        healthFactor={position.healthFactor}
-        borrowPowerUsed={position.borrowPowerUsed}
+        netWorth={netWorth}
+        netApy={netApy}
+        healthFactor={healthFactor}
+        borrowPowerUsed={borrowPowerUsed}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AaveSuppliesTable
-          collateralDetails={position.collateralDetails}
-          totalCollateral={position.totalCollateral}
-          supplyApy={position.supplyApy}
-          onEdit={refresh}
+          collateralDetails={collateralDetails}
+          totalCollateral={totalCollateral}
+          supplyApy={supplyApy}
+          onEdit={refetch}
         />
         <AaveBorrowsTable
-          borrowedAmount={position.borrowedAmount}
-          borrowApy={position.borrowApy}
-          availableToBorrow={position.availableToBorrow}
-          maxBorrowCapacity={position.maxBorrowCapacity}
-          eMode={position.eMode}
-          onEdit={refresh}
+          borrowedAmount={borrowedAmount}
+          borrowApy={borrowApy}
+          availableToBorrow={availableToBorrow}
+          maxBorrowCapacity={maxBorrowCapacity}
+          eMode={eMode}
+          onEdit={refetch}
         />
       </div>
 
@@ -60,9 +86,9 @@ export default function AaveAccountPage() {
         <AaveActivityLog />
       </div>
 
-      {position.lastUpdated && (
+      {lastUpdated && (
         <div className="text-xs text-muted-foreground text-center py-4">
-          Updated: {new Date(position.lastUpdated).toLocaleString('he-IL')}
+          Updated: {new Date(lastUpdated).toLocaleString('he-IL')}
         </div>
       )}
     </div>

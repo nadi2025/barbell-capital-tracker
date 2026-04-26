@@ -20,7 +20,6 @@ import LeveragedPage from './pages/crypto/LeveragedPage';
 import CryptoDebtPage from './pages/crypto/CryptoDebtPage';
 import InvestorsPage from './pages/crypto/InvestorsPage';
 import ActivityPage from './pages/crypto/ActivityPage';
-import AavePage from './pages/crypto/AavePage';
 import AaveAccountPage from './pages/crypto/AaveAccountPage';
 import CryptoOptionsPage from './pages/crypto/OptionsPage';
 import OffChainInvestorsPage from './pages/OffChainInvestorsPage';
