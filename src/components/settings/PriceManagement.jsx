@@ -1,32 +1,39 @@
-import { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
-import { Plus, Edit2, Trash2, RefreshCw, Check, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { format, differenceInHours } from "date-fns";
+import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 
 const fmt = (v) => v ? `$${parseFloat(v).toLocaleString()}` : "—";
 
+/**
+ * PriceManagement — manual editor over the canonical Prices entity.
+ *
+ * Migrated to React Query: each individual mutation invalidates the Prices
+ * cache, which automatically cascades to every consumer (dashboard hooks,
+ * usePrices, useAavePosition, etc.) without a separate "save all" step.
+ *
+ * The "שמור ועדכן הכל" button was removed (Phase 4 plan): it called the
+ * deleted recalculateAllPrices Deno function, which is unnecessary now
+ * that derived values are computed on-the-fly. Bulk price updates go
+ * through PriceHub at the top of the app.
+ */
 export default function PriceManagement() {
-  const [prices, setPrices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const pricesQ = useEntityList("Prices", { sort: "-last_updated", limit: 100 });
+  const prices = pricesQ.data || [];
+  const createPrice = useEntityMutation("Prices", "create");
+  const updatePrice = useEntityMutation("Prices", "update");
+  const deletePriceM = useEntityMutation("Prices", "delete");
+
   const [dialog, setDialog] = useState(false);
   const [editPrice, setEditPrice] = useState(null);
   const [form, setForm] = useState({ asset: "", price_usd: "" });
-  const [saving, setSaving] = useState(false);
 
-  const load = async () => {
-    const data = await base44.entities.Prices.list("-last_updated", 100);
-    setPrices(data);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const openAdd = () => { setEditPrice(null); setForm({ asset: "", price_usd: "" }); setDialog(true); };
   const openEdit = (p) => {
@@ -38,42 +45,26 @@ export default function PriceManagement() {
   const handleSave = async () => {
     if (!form.asset) { toast.error("נכס חובה"); return; }
     if (!form.price_usd) { toast.error("מחיר חובה"); return; }
-    
+
     const data = {
       asset: form.asset.toUpperCase().trim(),
       price_usd: parseFloat(form.price_usd),
-      last_updated: new Date().toISOString()
+      last_updated: new Date().toISOString(),
     };
-    
+
     if (editPrice) {
-      await base44.entities.Prices.update(editPrice.id, data);
+      await updatePrice.mutateAsync({ id: editPrice.id, data });
       toast.success("מחיר עודכן");
     } else {
-      await base44.entities.Prices.create(data);
+      await createPrice.mutateAsync(data);
       toast.success("מחיר נוסף");
     }
     setDialog(false);
-    load();
   };
 
   const handleDelete = async (id) => {
-    await base44.entities.Prices.delete(id);
+    await deletePriceM.mutateAsync(id);
     toast.success("מחיר נמחק");
-    load();
-  };
-
-  const handleSaveAll = async () => {
-    setSaving(true);
-    try {
-      // Trigger recalculation across all pages
-      await base44.functions.invoke("recalculateAllPrices", {});
-      toast.success("✓ מחירים עודכנו בהצלחה. כל הנתונים חושבו מחדש.");
-      load();
-    } catch (e) {
-      toast.error("שגיאה: " + e.message);
-    } finally {
-      setSaving(false);
-    }
   };
 
   const getStaleIndicator = (lastUpdated) => {
@@ -84,7 +75,7 @@ export default function PriceManagement() {
     return { color: "text-loss", icon: "🔴", label: "עודכן זה מכבר" };
   };
 
-  if (loading) return (
+  if (pricesQ.isLoading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
     </div>
@@ -105,7 +96,7 @@ export default function PriceManagement() {
 
       {/* Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-        <strong>מחירים מרכזיים:</strong> כל הדפים באפליקציה (Aave, HyperLiquid, Options, וכו') קוראים את המחירים מכאן. עדכן כאן וכל הנתונים יחושבו מחדש.
+        <strong>מחירים מרכזיים:</strong> כל הדפים באפליקציה (Aave, HyperLiquid, Options, וכו') קוראים את המחירים מכאן. עדכון של רשומה גורם לכל הדפים להתעדכן מיד.
       </div>
 
       {/* Prices Table */}
@@ -149,21 +140,6 @@ export default function PriceManagement() {
         </table>
       </div>
 
-      {/* Save All Button */}
-      <Button onClick={handleSaveAll} disabled={saving} className="w-full gap-2 bg-profit hover:bg-profit/90">
-        {saving ? (
-          <>
-            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            משדכן...
-          </>
-        ) : (
-          <>
-            <Check className="w-4 h-4" />
-            שמור ועדכן הכל
-          </>
-        )}
-      </Button>
-
       {/* Add/Edit Dialog */}
       <Dialog open={dialog} onOpenChange={setDialog}>
         <DialogContent>
@@ -173,23 +149,23 @@ export default function PriceManagement() {
           <div className="space-y-3 pt-1">
             <div>
               <Label>נכס (סימול)</Label>
-              <Input 
-                value={form.asset} 
-                onChange={e => set("asset", e.target.value.toUpperCase())} 
+              <Input
+                value={form.asset}
+                onChange={(e) => set("asset", e.target.value.toUpperCase())}
                 placeholder="BTC, ETH, AAVE, MSTR..."
                 disabled={!!editPrice}
-                className="font-mono" 
+                className="font-mono"
               />
             </div>
             <div>
               <Label>מחיר (USD)</Label>
-              <Input 
-                type="number" 
-                value={form.price_usd} 
-                onChange={e => set("price_usd", e.target.value)} 
+              <Input
+                type="number"
+                value={form.price_usd}
+                onChange={(e) => set("price_usd", e.target.value)}
                 placeholder="0"
                 step="0.01"
-                className="font-mono" 
+                className="font-mono"
               />
             </div>
             <Button onClick={handleSave} className="w-full">{editPrice ? "עדכן" : "הוסף"}</Button>
