@@ -16,11 +16,14 @@ export const CATEGORIES = [
   "long_put",
 ];
 
+// Labels include both the formal name (e.g. "Call Debit Spread") and the
+// trader-vernacular alias (e.g. "Bull Call") so people who think in either
+// vocabulary can find the right strategy in the dropdown.
 export const CATEGORY_LABELS = {
-  call_debit_spread: "Call Debit Spread",
-  call_credit_spread: "Call Credit Spread",
-  put_debit_spread: "Put Debit Spread",
-  put_credit_spread: "Put Credit Spread",
+  call_debit_spread: "Call Debit Spread (Bull Call)",
+  call_credit_spread: "Call Credit Spread (Bear Call)",
+  put_debit_spread: "Put Debit Spread (Bear Put)",
+  put_credit_spread: "Put Credit Spread (Bull Put)",
   naked_call: "Naked Call",
   naked_put: "Naked Put",
   covered_call: "Covered Call",
@@ -122,13 +125,13 @@ export function validateStrikes(category, longStrike, shortStrike) {
   //   put_credit_spread:  long_strike < short_strike
   switch (category) {
     case "call_debit_spread":
-      return L < S ? null : `For a ${CATEGORY_LABELS[category]}, long strike must be < short strike.`;
+      return L < S ? null : `${CATEGORY_LABELS[category]}: long strike must be < short strike. If you meant a Bear Call, switch to Call Credit Spread.`;
     case "call_credit_spread":
-      return L > S ? null : `For a ${CATEGORY_LABELS[category]}, long strike must be > short strike.`;
+      return L > S ? null : `${CATEGORY_LABELS[category]}: long strike must be > short strike. If you meant a Bull Call, switch to Call Debit Spread.`;
     case "put_debit_spread":
-      return L > S ? null : `For a ${CATEGORY_LABELS[category]}, long strike must be > short strike.`;
+      return L > S ? null : `${CATEGORY_LABELS[category]}: long strike must be > short strike. If you meant a Bull Put, switch to Put Credit Spread.`;
     case "put_credit_spread":
-      return L < S ? null : `For a ${CATEGORY_LABELS[category]}, long strike must be < short strike.`;
+      return L < S ? null : `${CATEGORY_LABELS[category]}: long strike must be < short strike. If you meant a Bear Put, switch to Put Debit Spread.`;
     default:
       return null;
   }

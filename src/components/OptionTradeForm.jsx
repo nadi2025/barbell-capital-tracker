@@ -302,8 +302,11 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
               onChange={e => setForm(f => ({ ...f, fee: e.target.value }))} />
           </div>
           <div className="col-span-2 flex items-center justify-between text-xs bg-muted/40 rounded px-3 py-2">
-            <span className="text-muted-foreground">Collateral (auto-calculated)</span>
-            <span className="font-mono font-semibold">{fmtUSD(collateralPreview)}</span>
+            <span className="text-muted-foreground">
+              Collateral (auto-calculated)
+              {strikeError && <span className="ml-2 text-destructive/80">— fix strike error first</span>}
+            </span>
+            <span className="font-mono font-semibold">{strikeError ? "—" : fmtUSD(collateralPreview)}</span>
           </div>
           <div className="col-span-2">
             <Label className="text-xs">Notes</Label>
