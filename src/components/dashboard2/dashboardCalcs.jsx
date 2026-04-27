@@ -1,6 +1,7 @@
 // Central calculations shared across all dashboard sub-components
 
 import { computeLeveragedDerived } from "@/lib/portfolioMath";
+import { isCredit } from "@/lib/optionsHelpers";
 
 export const fmt = (v, d = 0) => {
   if (v == null || isNaN(v)) return "$0";
@@ -90,7 +91,7 @@ export function calcDashboard(data) {
   const winRate = closedOptions.length > 0
     ? closedOptions.filter(o => (o.pnl || 0) > 0).length / closedOptions.length
     : 0;
-  const premiumCollected = options.filter(o => o.type === "Sell")
+  const premiumCollected = options.filter(isCredit)
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
   const unrealizedPnl = holdingStocks.reduce((s, x) => s + (x.gain_loss || 0), 0);

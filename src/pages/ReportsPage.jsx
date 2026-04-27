@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 import PnlBadge from "../components/PnlBadge";
 import moment from "moment";
 import { useEntityList } from "@/hooks/useEntityQuery";
+import { isCredit } from "@/lib/optionsHelpers";
 
 /**
  * ReportsPage — period-filtered options performance analytics.
@@ -47,7 +48,7 @@ export default function ReportsPage() {
   );
 
   const optionsPnl = closedOptions.reduce((s, o) => s + (o.pnl || 0), 0);
-  const premiumCollected = filterByPeriod(options.filter(o => o.type === "Sell"), "open_date")
+  const premiumCollected = filterByPeriod(options.filter(isCredit), "open_date")
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
   // P&L by ticker

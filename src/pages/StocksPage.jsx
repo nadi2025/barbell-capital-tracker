@@ -12,6 +12,10 @@ import StockPositionForm from "../components/StockPositionForm";
 import { toast } from "sonner";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { differenceInDays } from "date-fns";
+import {
+  getStrategyDisplay, isCoveredCall, isProtectivePut, isCashSecuredPut,
+  computeRealizedPL,
+} from "@/lib/optionsHelpers";
 
 const fmt = (v) =>
   v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -20,13 +24,11 @@ const fmt2 = (v) =>
 
 /** Classify an option trade relative to a stock holding. */
 function classifyOption(opt) {
-  if (opt.type === "Sell" && opt.category === "Call") return { label: "Covered Call", tone: "profit" };
-  if (opt.type === "Sell" && opt.category === "Put") return { label: "Cash-Secured Put", tone: "profit" };
-  if (opt.type === "Buy" && opt.category === "Call") return { label: "Long Call", tone: "primary" };
-  if (opt.type === "Buy" && opt.category === "Put") return { label: "Protective Put", tone: "primary" };
-  if (opt.category === "PCS") return { label: "Put Credit Spread", tone: "profit" };
-  if (opt.category === "CCS") return { label: "Call Credit Spread", tone: "profit" };
-  return { label: `${opt.type} ${opt.category}`, tone: "muted" };
+  // Use the canonical strategy display from optionsHelpers — handles both new
+  // schema and legacy { type, category } combos.
+  const strat = getStrategyDisplay(opt);
+  if (strat) return strat;
+  return { label: `${opt.type || ""} ${opt.category || ""}`.trim() || "—", tone: "muted" };
 }
 
 function toneClass(tone) {
@@ -64,10 +66,14 @@ function StockCard({ stock, optionsForTicker, totalValue, onEdit, onDelete, isRe
 
   const open = optionsForTicker.filter((o) => o.status === "Open");
   const closed = optionsForTicker.filter((o) => ["Closed", "Expired", "Assigned", "Expired OTM"].includes(o.status));
-  const coveredCalls = open.filter((o) => o.type === "Sell" && o.category === "Call");
-  const protectivePuts = open.filter((o) => o.type === "Buy" && o.category === "Put");
-  const optionsPremiumRealized = closed.reduce((s, o) => s + (o.pnl || 0), 0);
-  const optionsPremiumUnrealized = open.reduce((s, o) => s + (o.pnl || 0), 0);
+  const coveredCalls = open.filter(isCoveredCall);
+  const protectivePuts = open.filter(isProtectivePut);
+  const optionsPremiumRealized = closed.reduce((s, o) => {
+    const pl = computeRealizedPL(o);
+    return s + (pl != null ? pl : (o.pnl || 0));
+  }, 0);
+  // Open-position P&L is no longer computed (per spec — only on close).
+  const optionsPremiumUnrealized = 0;
 
   const weight = totalValue > 0 ? ((stock.current_value || 0) / totalValue * 100) : 0;
   const hasCoveredCalls = coveredCalls.length > 0;
@@ -360,12 +366,18 @@ export default function StocksPage() {
     // Premium-related from ALL options (irrespective of whether we still hold the stock)
     const openOptions = allOptions.filter((o) => o.status === "Open");
     const closedOptions = allOptions.filter((o) => ["Closed", "Expired", "Assigned", "Expired OTM"].includes(o.status));
-    const netPremiumRealized = closedOptions.reduce((s, o) => s + (o.pnl || 0), 0);
+    const netPremiumRealized = closedOptions.reduce((s, o) => {
+      const pl = computeRealizedPL(o);
+      return s + (pl != null ? pl : (o.pnl || 0));
+    }, 0);
 
-    // Collateral tied up by open short puts the user has on any ticker
+    // Collateral tied up by open short puts (CSP / naked put) on any ticker.
+    // Trust each trade's stored `collateral` (computed at save) rather than
+    // re-deriving from strike — that way credit spreads et al. show their
+    // proper net-risk collateral instead of the full short-strike value.
     const collateralLocked = openOptions
-      .filter((o) => o.type === "Sell" && o.category === "Put")
-      .reduce((s, o) => s + ((o.strike || 0) * (o.quantity || 0) * 100), 0);
+      .filter(isCashSecuredPut)
+      .reduce((s, o) => s + (o.collateral || 0), 0);
 
     return { totalValue, totalCost, unrealizedPnl, netPremiumRealized, collateralLocked, holdingCount: holding.length };
   }, [stocks, allOptions]);

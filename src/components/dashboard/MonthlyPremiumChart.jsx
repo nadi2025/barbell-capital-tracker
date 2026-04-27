@@ -1,8 +1,9 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import moment from "moment";
+import { isCredit } from "@/lib/optionsHelpers";
 
 export default function MonthlyPremiumChart({ options }) {
-  const sellTrades = options.filter(o => o.type === "Sell" && o.open_date);
+  const sellTrades = options.filter(o => isCredit(o) && o.open_date);
 
   const monthly = {};
   sellTrades.forEach(o => {

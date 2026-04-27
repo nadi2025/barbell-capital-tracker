@@ -1,5 +1,6 @@
 import { Clock, AlertTriangle } from "lucide-react";
 import moment from "moment";
+import { getStrategyDisplay, formatStrike } from "@/lib/optionsHelpers";
 
 export default function ExpiringOptionsPanel({ options }) {
   const today = moment();
@@ -49,7 +50,7 @@ export default function ExpiringOptionsPanel({ options }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-semibold text-sm">{t.ticker}</span>
-                      <span className="text-xs text-muted-foreground">{t.category} ${t.strike}</span>
+                      <span className="text-xs text-muted-foreground">{getStrategyDisplay(t)?.label || t.category} {formatStrike(t)}</span>
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">{t.expiration_date} · Premium: <span className="text-profit font-medium">${premium.toLocaleString()}</span></div>
                   </div>
