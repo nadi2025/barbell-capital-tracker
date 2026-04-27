@@ -285,6 +285,26 @@ function StockCard({ stock, optionsForTicker, totalValue, onEdit, onDelete, isRe
 export default function StocksPage() {
   const { data: stocks = [], isLoading } = useEntityList("StockPosition", { sort: "-entry_date" });
   const { data: allOptions = [] } = useEntityList("OptionsTrade");
+  const { data: pricesData = [] } = useEntityList("Prices");
+
+  // Build live price map from Prices entity (same source as Dashboard/calcDashboard)
+  const priceMap = useMemo(() => {
+    const m = {};
+    pricesData.forEach((p) => { if (p.asset) m[p.asset.toUpperCase()] = p.price_usd; });
+    return m;
+  }, [pricesData]);
+
+  // Enrich each stock with live price from Prices entity (falls back to stored value)
+  const enrichedStocks = useMemo(() => {
+    return stocks.map((s) => {
+      const livePrice = priceMap[(s.ticker || "").toUpperCase()];
+      if (!livePrice) return s;
+      const currentValue = (s.shares || 0) * livePrice;
+      const gainLoss = currentValue - (s.invested_value || 0);
+      const gainLossPct = s.invested_value > 0 ? (gainLoss / s.invested_value) * 100 : 0;
+      return { ...s, current_price: livePrice, current_value: currentValue, gain_loss: gainLoss, gain_loss_pct: gainLossPct };
+    });
+  }, [stocks, priceMap]);
   const deleteStock = useEntityMutation("StockPosition", "delete");
 
   const [formOpen, setFormOpen] = useState(false);
@@ -298,6 +318,9 @@ export default function StocksPage() {
   }, []);
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
+
+  // Use enriched stocks everywhere (live prices from Prices entity)
+  const allStocks = enrichedStocks;
 
   // Index options by ticker so each card can render its own slice instantly
   const optionsByTicker = useMemo(() => {
@@ -327,9 +350,9 @@ export default function StocksPage() {
     setFormOpen(true);
   };
 
-  // Aggregations for the KPI strip — computed on raw stocks + options
+  // Aggregations for the KPI strip — computed on live-enriched stocks + options
   const kpis = useMemo(() => {
-    const holding = stocks.filter((s) => s.status !== "Closed");
+    const holding = allStocks.filter((s) => s.status !== "Closed");
     const totalValue = holding.reduce((s, x) => s + (x.current_value || 0), 0);
     const totalCost = holding.reduce((s, x) => s + (x.invested_value || 0), 0);
     const unrealizedPnl = holding.reduce((s, x) => s + (x.gain_loss || 0), 0);
@@ -355,8 +378,8 @@ export default function StocksPage() {
     );
   }
 
-  const visibleStocks = stocks.filter((s) => s.status !== "Closed");
-  const closedStocks = stocks.filter((s) => s.status === "Closed");
+  const visibleStocks = allStocks.filter((s) => s.status !== "Closed");
+  const closedStocks = allStocks.filter((s) => s.status === "Closed");
 
   return (
     <div className="space-y-5">
