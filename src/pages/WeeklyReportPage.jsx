@@ -8,6 +8,7 @@ import ReportWizard from "@/components/weeklyreport/ReportWizard";
 import { buildReportHTML } from "@/components/weeklyreport/buildReportHTML";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { useAavePosition } from "@/hooks/useAavePosition";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
@@ -53,6 +54,7 @@ export default function WeeklyReportPage() {
   const hlTradesQ = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
   const pricesQ = useEntityList("Prices");
   const aave = useAavePosition();
+  const dashboard = useDashboardData();
 
   const createReport = useEntityMutation("WeeklyReport", "create");
   const updateReport = useEntityMutation("WeeklyReport", "update");
@@ -63,7 +65,7 @@ export default function WeeklyReportPage() {
   const isLoading =
     reportsQ.isLoading || assetsQ.isLoading || leveragedQ.isLoading || aaveCollateralQ.isLoading ||
     cryptoOptionsQ.isLoading || investorsQ.isLoading || paymentsQ.isLoading || ibOptionsQ.isLoading ||
-    stocksQ.isLoading || hlTradesQ.isLoading || pricesQ.isLoading || aave.isLoading;
+    stocksQ.isLoading || hlTradesQ.isLoading || pricesQ.isLoading || aave.isLoading || dashboard.isLoading;
 
   // Reassemble the appData shape that ReportWizard + buildReportHTML expect.
   const appData = useMemo(() => ({
@@ -80,11 +82,15 @@ export default function WeeklyReportPage() {
     aaveBorrowUsd: aave.borrowedAmount || 0,
     aaveHealthFactor: aave.healthFactor || 0,
     aaveCollateralDetails: aave.collateralDetails || [],
+    // Full dashboard payload — calcDashboard(appData.dashboardData) inside
+    // buildReportHTML produces the same KPI values shown on the dashboard.
+    dashboardData: dashboard.data,
   }), [
     assetsQ.data, leveragedQ.data, aaveCollateralQ.data, cryptoOptionsQ.data,
     investorsQ.data, paymentsQ.data, ibOptionsQ.data, stocksQ.data,
     hlTradesQ.data, pricesQ.data,
     aave.borrowedAmount, aave.healthFactor, aave.collateralDetails,
+    dashboard.data,
   ]);
 
   const [showWizard, setShowWizard] = useState(false);
