@@ -1,5 +1,4 @@
 import { format, differenceInDays } from "date-fns";
-import { calcDashboard } from "../dashboard2/dashboardCalcs";
 
 const $ = (v, d = 0) => {
   if (v == null || isNaN(v)) return "—";
@@ -110,27 +109,21 @@ export function buildReportHTML({ answers, appData, prevReport }) {
   // On-chain NAV (same formula as Crypto Dashboard: Aave net + stablecoins + lending)
   const stablecoins = assets.filter(a => /usdc|usdt|dai/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const otherAssets = assets.filter(a => !/usdc|usdt|dai|eth|weth|btc|wbtc|aave|mstr/i.test(a.token)).reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const cryptoInvestorDebt = 1700000; // S&T debt — fixed
   const aaveNetWorth = totalCollateral - aaveBorrow;
   const lentValue = 0; // No active lending positions
   // Sum of HL open positions margin
   const hlMargin = leveraged.filter(l => l.status === "Open").reduce((s, l) => s + (l.margin_usd || 0), 0);
+  const onChainNav = aaveNetWorth + stablecoins + otherAssets + lentValue + hlMargin;
 
-  // KPI tiles — match dashboard exactly via shared calcDashboard().
-  const calc = calcDashboard(appData.dashboardData || {});
-  const ibNav = calc.ibNav;
-  const cryptoAssetsValue = calc.cryptoTotalAssets;
-  const totalAssets = calc.totalAssets;
-  const ownEquity = calc.ownEquity;
-  const offChainDebt = calc.totalOffChainDebt;
-  const onChainDebt = calc.investorDebt;
-  const aaveLeverage = calc.aaveBorrowUsd;
-  const totalCapital = ownEquity + offChainDebt + onChainDebt + aaveLeverage;
-  const offChainPnl = ibNav - (ownEquity + offChainDebt);
-  const onChainPnl = cryptoAssetsValue - (onChainDebt + aaveLeverage);
-  const totalPnl = offChainPnl + onChainPnl;
-  const totalPnlPct = totalCapital > 0 ? (totalPnl / totalCapital) * 100 : 0;
+  // Total NAV
+  const ibNav = answers.ib_nav;
+  const totalNav = ibNav + onChainNav;
+  const totalInvested = 413000 + cryptoInvestorDebt;
+  const totalPnl = totalNav - totalInvested;
+  const totalPnlPct = (totalPnl / totalInvested) * 100;
   const prevTotal = prevReport ? (prevReport.ib_nav || 0) + (prevReport.wizard_on_chain_nav || 0) : null;
-  const weekChange = prevTotal != null ? totalAssets - prevTotal : null;
+  const weekChange = prevTotal != null ? totalNav - prevTotal : null;
 
   // Pie slices
   const hlByAsset = {};
@@ -501,21 +494,20 @@ export function buildReportHTML({ answers, appData, prevReport }) {
 <!-- Row 1: KPIs -->
 <div class="kpi-row">
   <div class="kpi">
-    <div class="label">שווי נכסים</div>
-    <div class="big">${$(totalAssets)}</div>
-    <div class="sub">Off-Chain (IB): ${$(ibNav)} · On-Chain (DeFi): ${$(cryptoAssetsValue)}</div>
+    <div class="label">שווי כולל</div>
+    <div class="big ${clr(totalNav)}">${$(totalNav)}</div>
+    <div class="sub">Off: ${$(ibNav)} · On: ${$(onChainNav)}</div>
     <div class="change ${clr(weekChange || 0)}">${weekChange != null ? `vs שבוע: ${$(weekChange)} (${pct((weekChange / Math.abs(prevTotal || 1)) * 100)})` : "דוח ראשון"}</div>
   </div>
   <div class="kpi">
-    <div class="label">מקורות הון</div>
-    <div class="big">${$(totalCapital)}</div>
-    <div class="sub">הון עצמי: ${$(ownEquity)} · חוב Off: ${$(offChainDebt)} · S&T: ${$(onChainDebt)} · Aave: ${$(aaveLeverage)}</div>
+    <div class="label">הושקע סה"כ</div>
+    <div class="big">${$(totalInvested)}</div>
+    <div class="sub">Off: $413K · On: $1,700K</div>
   </div>
   <div class="kpi" style="${totalPnl < 0 ? "background:#fff1f2;border-color:#fecdd3" : "background:#f0fdf4;border-color:#bbf7d0"}">
     <div class="label">P&L כולל</div>
     <div class="big ${clr(totalPnl)}">${$(totalPnl)}</div>
     <div class="change ${clr(totalPnlPct)}">${pct(totalPnlPct)} מההשקעה</div>
-    <div class="sub">Off-Chain: ${$(offChainPnl)} · On-Chain: ${$(onChainPnl)}</div>
   </div>
 </div>
 
