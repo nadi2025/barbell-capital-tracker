@@ -9,7 +9,6 @@ import ReportWizard from "@/components/weeklyreport/ReportWizard";
 import { buildReportHTML } from "@/components/weeklyreport/buildReportHTML";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { useAavePosition } from "@/hooks/useAavePosition";
-import { calcDashboard } from "@/components/dashboard2/dashboardCalcs.jsx";
 
 const fmtUSD = (v) => v == null ? "—" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
