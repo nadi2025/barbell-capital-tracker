@@ -1,5 +1,7 @@
 // Central calculations shared across all dashboard sub-components
 
+import { computeLeveragedDerived } from "@/lib/portfolioMath";
+
 export const fmt = (v, d = 0) => {
   if (v == null || isNaN(v)) return "$0";
   return v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
@@ -116,13 +118,12 @@ export function calcDashboard(data) {
   const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
 
   const walletValue = cryptoAssets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const totalMargin = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
-  const hlUnrealizedPnl = leveraged.reduce((s, l) => {
-    if (!l.mark_price || !l.entry_price || !l.size) return s;
-    return s + (l.direction === "Long"
-      ? (l.mark_price - l.entry_price) * l.size
-      : (l.entry_price - l.mark_price) * l.size);
-  }, 0);
+  // Enrich each HL position with live-price-derived values (mark_price, pnl_usd,
+  // position_value_usd) instead of trusting the stored fields, which go stale
+  // until the user clicks "Update Mark Prices". Same pattern OpenPositionsTab uses.
+  const enrichedLev = leveraged.map(l => ({ ...l, ...computeLeveragedDerived(l, priceMap) }));
+  const totalMargin = enrichedLev.reduce((s, l) => s + (l.margin_usd || 0), 0);
+  const hlUnrealizedPnl = enrichedLev.reduce((s, l) => s + (l.pnl_usd || 0), 0);
   const hlEquity = totalMargin + hlUnrealizedPnl;
 
   const cryptoTotalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + loansGivenValue + activeNotional;
@@ -141,9 +142,9 @@ export function calcDashboard(data) {
   const aaveCollVal = (aaveCollateral.find(c => c.asset_name === "AAVE")?.value_usd || 0);
 
   const hlByAsset = {};
-  leveraged.forEach(l => {
+  enrichedLev.forEach(l => {
     const k = l.asset?.toUpperCase();
-    const val = l.position_value_usd || (l.size * (priceMap[k] || 0)) || 0;
+    const val = l.position_value_usd || 0;
     hlByAsset[k] = (hlByAsset[k] || 0) + Math.abs(val);
   });
 
