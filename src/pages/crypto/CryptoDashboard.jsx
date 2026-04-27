@@ -24,6 +24,7 @@ export default function CryptoDashboard() {
   const { data: lpPositions = [] } = useEntityList("LpPosition", { filter: { status: "Active" } });
   const { data: snapshots = [] } = useEntityList("PortfolioSnapshot", { sort: "-snapshot_date", limit: 20 });
   const { data: cryptoOptions = [] } = useEntityList("CryptoOptionsPosition", { filter: { status: "Open" } });
+  const { data: pricesData = [] } = useEntityList("Prices");
   // Aave aggregate now derived on the client from AaveCollateral + AaveBorrow
   // + Prices (see hooks/useAavePosition.js). Same fields as the old server
   // function, plus instant React Query invalidation.
@@ -44,6 +45,10 @@ export default function CryptoDashboard() {
   const aaveHF = aaveData.healthFactor || 0;
   const borrowPowerUsed = aaveData.borrowPowerUsed ? aaveData.borrowPowerUsed / 100 : 0;
 
+  // Live price map — same source as calcDashboard uses
+  const priceMap = {};
+  pricesData.forEach((p) => { if (p.asset) priceMap[p.asset.toUpperCase()] = p.price_usd; });
+
   // Categorized asset values
   const aaveCollateralValue = assets
     .filter((a) => a.asset_category === "Collateral on Aave")
@@ -60,8 +65,9 @@ export default function CryptoDashboard() {
   const activeNotional = cryptoOptions.reduce((s, o) => s + (o.notional_usd || 0), 0);
   const totalMarginFromPositions = leveraged.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const hlUnrealizedPnl = leveraged.reduce((s, l) => {
-    if (!l.mark_price || !l.entry_price || !l.size) return s;
-    return s + (l.direction === "Long" ? (l.mark_price - l.entry_price) * l.size : (l.entry_price - l.mark_price) * l.size);
+    const livePrice = priceMap[(l.asset || "").toUpperCase()] || l.mark_price || 0;
+    if (!livePrice || !l.entry_price || !l.size) return s;
+    return s + (l.direction === "Long" ? (livePrice - l.entry_price) * l.size : (l.entry_price - livePrice) * l.size);
   }, 0);
   const hlEquity = totalMarginFromPositions + hlUnrealizedPnl;
 
@@ -82,7 +88,11 @@ export default function CryptoDashboard() {
 
   // Effective leverage = Total exposure / Equity
   const exposureFromWallets = walletValue - stablecoinsValue; // non-stable crypto exposure
-  const exposureFromHL = leveraged.reduce((s, l) => s + Math.abs(l.position_value_usd || 0), 0);
+  const exposureFromHL = leveraged.reduce((s, l) => {
+    const livePrice = priceMap[(l.asset || "").toUpperCase()] || l.mark_price || 0;
+    const val = livePrice && l.size ? livePrice * l.size : (l.position_value_usd || 0);
+    return s + Math.abs(val);
+  }, 0);
   const totalExposure = exposureFromWallets + exposureFromHL + vaultValue;
   const equity = nav > 0 ? nav : Math.max(1, totalAssets - totalDebt);
   const leverageRatio = equity > 0 ? totalExposure / equity : 0;
@@ -109,7 +119,11 @@ export default function CryptoDashboard() {
   const byToken = (tokens) =>
     assets.filter((a) => tokens.includes((a.token || "").toUpperCase())).reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const byHLAsset = (asset) =>
-    leveraged.filter((l) => (l.asset || "").toUpperCase() === asset).reduce((s, l) => s + Math.abs(l.position_value_usd || 0), 0);
+    leveraged.filter((l) => (l.asset || "").toUpperCase() === asset).reduce((s, l) => {
+      const livePrice = priceMap[asset] || l.mark_price || 0;
+      const val = livePrice && l.size ? livePrice * l.size : (l.position_value_usd || 0);
+      return s + Math.abs(val);
+    }, 0);
 
   const btcExposure = byToken(["AWBTC", "WBTC", "BTC"]) + byHLAsset("BTC");
   const ethExposure = byToken(["AETH", "WETH", "ETH"]) + byHLAsset("ETH");

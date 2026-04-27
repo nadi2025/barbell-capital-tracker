@@ -2,16 +2,30 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { fmt } from "./dashboardCalcs";
 
-const calcLivePnl = (p) => {
-  if (!p.mark_price || !p.entry_price || !p.size) return null;
-  return p.direction === "Long"
-    ? (p.mark_price - p.entry_price) * p.size
-    : (p.entry_price - p.mark_price) * p.size;
+// Use live price from priceMap if available, fall back to stored mark_price
+const getLivePrice = (p, priceMap) => {
+  const key = (p.asset || "").toUpperCase();
+  return priceMap[key] || p.mark_price || 0;
 };
 
-const distToLiq = (p) => {
-  if (!p.liquidation_price || !p.mark_price) return null;
-  return Math.abs((p.mark_price - p.liquidation_price) / p.mark_price) * 100;
+const calcLivePnl = (p, priceMap) => {
+  const livePrice = getLivePrice(p, priceMap);
+  if (!livePrice || !p.entry_price || !p.size) return null;
+  return p.direction === "Long"
+    ? (livePrice - p.entry_price) * p.size
+    : (p.entry_price - livePrice) * p.size;
+};
+
+const calcPositionValue = (p, priceMap) => {
+  const livePrice = getLivePrice(p, priceMap);
+  return livePrice && p.size ? livePrice * p.size : (p.position_value_usd || 0);
+};
+
+const distToLiq = (p, priceMap) => {
+  if (!p.liquidation_price) return null;
+  const livePrice = getLivePrice(p, priceMap);
+  if (!livePrice) return null;
+  return Math.abs((livePrice - p.liquidation_price) / livePrice) * 100;
 };
 
 function distColor(d) {
@@ -35,20 +49,22 @@ function rowBg(d) {
  */
 export default function HLPositionsSection({ data }) {
   const positions = (data.leveraged || []).filter((p) => p.status !== "Closed");
+  const priceMap = {};
+  (data.prices || []).forEach((p) => { priceMap[p.asset?.toUpperCase()] = p.price_usd; });
 
   if (!positions.length) {
     return null;
   }
 
   const totalMargin = positions.reduce((s, p) => s + (p.margin_usd || 0), 0);
-  const totalNotional = positions.reduce((s, p) => s + (p.position_value_usd || 0), 0);
-  const totalLivePnl = positions.reduce((s, p) => s + (calcLivePnl(p) || 0), 0);
+  const totalNotional = positions.reduce((s, p) => s + calcPositionValue(p, priceMap), 0);
+  const totalLivePnl = positions.reduce((s, p) => s + (calcLivePnl(p, priceMap) || 0), 0);
   const accountEquity = totalMargin + totalLivePnl;
 
   // Sort by distance to liquidation (most risky first)
   const sorted = [...positions].sort((a, b) => {
-    const da = distToLiq(a);
-    const db = distToLiq(b);
+    const da = distToLiq(a, priceMap);
+    const db = distToLiq(b, priceMap);
     if (da == null) return 1;
     if (db == null) return -1;
     return da - db;
@@ -112,8 +128,10 @@ export default function HLPositionsSection({ data }) {
           </thead>
           <tbody>
             {sorted.map((p) => {
-              const pnl = calcLivePnl(p);
-              const dist = distToLiq(p);
+              const livePrice = getLivePrice(p, priceMap);
+              const pnl = calcLivePnl(p, priceMap);
+              const posVal = calcPositionValue(p, priceMap);
+              const dist = distToLiq(p, priceMap);
               return (
                 <tr key={p.id} className={`border-t border-border/40 ${rowBg(dist)} hover:bg-muted/20 transition-colors`}>
                   <td className="px-4 py-2.5">
@@ -133,7 +151,7 @@ export default function HLPositionsSection({ data }) {
                     </span>
                   </td>
                   <td className="px-4 py-2.5 font-mono text-right">
-                    {p.mark_price ? `$${p.mark_price.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
+                    {livePrice ? `$${livePrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-right text-muted-foreground">
                     ${(p.entry_price || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -148,7 +166,7 @@ export default function HLPositionsSection({ data }) {
                     )}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-right text-xs">
-                    {fmt(p.position_value_usd, 0)}
+                    {fmt(posVal, 0)}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-right text-xs text-muted-foreground">
                     {fmt(p.margin_usd, 0)}
