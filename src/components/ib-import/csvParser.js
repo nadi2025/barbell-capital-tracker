@@ -5,6 +5,7 @@
  * care about Transaction History rows for now. The option symbol is OCC-
  * encoded: "BMNR  270115P00045000" = BMNR, 2027-01-15, Put, strike $45.000.
  */
+import { isCredit } from "@/lib/optionsHelpers";
 
 // Robust CSV line splitter that respects double-quoted fields
 function splitCsvLine(line) {
@@ -166,7 +167,8 @@ export function decideActions(transactions, openTrades) {
       const fill = matched.fill_price || 0;
       const close = tx.price || 0;
       const feeTotal = (matched.fee || 0) + Math.abs(tx.commission || 0);
-      const pnl = matched.type === "Sell"
+      // Credit positions: P&L = (fill - close) * qty * 100; debit: opposite.
+      const pnl = isCredit(matched)
         ? (fill - close) * qty * 100 - feeTotal
         : (close - fill) * qty * 100 - feeTotal;
       decided.push({

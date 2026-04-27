@@ -2,6 +2,8 @@
   "name": "OptionsTrade",
   "type": "object",
   "properties": {
+    // Legacy field — kept for backwards compat with old trades. New trades
+    // derive credit/debit semantics from `category` + `net_direction`.
     "type": {
       "type": "string",
       "enum": [
@@ -9,17 +11,49 @@
         "Buy",
         "Ass"
       ],
-      "title": "Type"
+      "title": "Type (legacy)"
     },
     "category": {
       "type": "string",
       "enum": [
+        // Legacy values — preserved so existing trades continue to load.
         "Put",
         "Call",
         "PCS",
-        "CCS"
+        "CCS",
+        // New schema (10 strategies).
+        "call_debit_spread",
+        "call_credit_spread",
+        "put_debit_spread",
+        "put_credit_spread",
+        "naked_call",
+        "naked_put",
+        "covered_call",
+        "cash_secured_put",
+        "long_call",
+        "long_put"
       ],
       "title": "Category"
+    },
+    "net_direction": {
+      "type": "string",
+      "enum": [
+        "debit",
+        "credit"
+      ],
+      "title": "Net Direction"
+    },
+    "long_strike": {
+      "type": "number",
+      "title": "Long Strike"
+    },
+    "short_strike": {
+      "type": "number",
+      "title": "Short Strike"
+    },
+    "realized_pl": {
+      "type": "number",
+      "title": "Realized P&L ($)"
     },
     "open_date": {
       "type": "string",
@@ -108,11 +142,9 @@
     }
   },
   "required": [
-    "type",
     "category",
     "open_date",
     "ticker",
-    "strike",
     "quantity",
     "fill_price",
     "status"

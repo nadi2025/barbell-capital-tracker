@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown } from "lucide-react";
+import { isCredit, getLongStrike, getShortStrike } from "@/lib/optionsHelpers";
 
 function fmt(v, dec = 0) {
   if (v == null || isNaN(v)) return "—";
@@ -14,8 +15,8 @@ export default function AssignmentAnalysis({ trades, stocks }) {
 
   // Group by ticker — for each assigned trade, find the matching stock position
   const rows = assigned.map(t => {
-    // Premium collected (for Sell trades)
-    const premiumCollected = t.type === "Sell"
+    // Premium collected (positive for credit positions, negative for debit).
+    const premiumCollected = isCredit(t)
       ? (t.fill_price || 0) * (t.quantity || 0) * 100
       : -(t.fill_price || 0) * (t.quantity || 0) * 100;
 
@@ -25,11 +26,13 @@ export default function AssignmentAnalysis({ trades, stocks }) {
       (t.status === "Assigned" && s.ticker === t.ticker && s.source === "Assignment")
     );
 
-    const strikeValue = (t.strike || 0) * (t.quantity || 0) * 100;
+    // Assignment uses the SHORT strike (the leg that was exercised against).
+    // For legacy single-leg trades, getShortStrike falls back to t.strike.
+    const assignStrike = getShortStrike(t) ?? getLongStrike(t);
     const currentStockPrice = linkedStock?.current_price;
     const shares = linkedStock?.shares || (t.quantity || 0) * 100;
     const currentValue = currentStockPrice ? currentStockPrice * shares : null;
-    const costBasis = t.strike ? t.strike * shares : null;
+    const costBasis = assignStrike ? assignStrike * shares : null;
     const unrealizedFromStock = currentValue != null && costBasis != null ? currentValue - costBasis : null;
 
     // True total: premium + stock unrealized
@@ -47,7 +50,7 @@ export default function AssignmentAnalysis({ trades, stocks }) {
     ));
 
   const expiredRows = expiredWithStock.map(t => {
-    const premiumCollected = t.type === "Sell"
+    const premiumCollected = isCredit(t)
       ? (t.fill_price || 0) * (t.quantity || 0) * 100
       : -(t.fill_price || 0) * (t.quantity || 0) * 100;
     const linkedStock = stocks.find(s =>
@@ -56,7 +59,7 @@ export default function AssignmentAnalysis({ trades, stocks }) {
     );
     const shares = linkedStock?.shares || (t.quantity || 0) * 100;
     const currentStockPrice = linkedStock?.current_price;
-    const avgCost = linkedStock?.average_cost || t.strike;
+    const avgCost = linkedStock?.average_cost || getShortStrike(t) || getLongStrike(t);
     const currentValue = currentStockPrice ? currentStockPrice * shares : null;
     const costBasis = avgCost ? avgCost * shares : null;
     const unrealizedFromStock = currentValue != null && costBasis != null ? currentValue - costBasis : null;
@@ -131,7 +134,7 @@ export default function AssignmentAnalysis({ trades, stocks }) {
                       {t.ticker}
                       {isExpiredAnalysis && <span className="ml-1.5 text-[10px] bg-orange-100 text-orange-700 px-1 py-0.5 rounded">Expired+Stock</span>}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-xs">${t.strike}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">${getShortStrike(t) ?? getLongStrike(t) ?? "—"}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">{t.quantity}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">${t.fill_price}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs text-profit font-semibold">{fmt(premiumCollected)}</td>

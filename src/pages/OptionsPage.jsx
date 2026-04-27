@@ -11,6 +11,12 @@ import PnlBadge from "../components/PnlBadge";
 import OptionTradeForm from "../components/OptionTradeForm";
 import { toast } from "sonner";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import {
+  getCanonicalCategory, getDirection, isCredit,
+  getLongStrike, getShortStrike,
+  computeRealizedPL, formatStrike,
+  CATEGORY_LABELS,
+} from "@/lib/optionsHelpers";
 
 const fmt = (v) =>
   v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -25,9 +31,12 @@ const fmt = (v) =>
 function consolidateTrades(trades) {
   const buckets = new Map();
   for (const t of trades) {
+    const cat = getCanonicalCategory(t) || t.category;
+    const long = getLongStrike(t);
+    const short = getShortStrike(t);
     const key = [
-      t.ticker, t.category, t.strike, t.strike_2 || "",
-      t.expiration_date, t.open_date, t.type, t.status,
+      t.ticker, cat, long ?? "", short ?? "",
+      t.expiration_date, t.open_date, getDirection(t) || "", t.status,
     ].join("|");
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key).push(t);
@@ -38,31 +47,32 @@ function consolidateTrades(trades) {
       result.push(group[0]);
       continue;
     }
-    // Weighted average fill price, summed quantity / fees / pnl
     const totalQty = group.reduce((s, t) => s + (t.quantity || 0), 0);
     const weightedFill = totalQty > 0
       ? group.reduce((s, t) => s + (t.fill_price || 0) * (t.quantity || 0), 0) / totalQty
       : 0;
-    const totalPnl = group.every((t) => t.pnl == null) ? null : group.reduce((s, t) => s + (t.pnl || 0), 0);
+    // Realized P&L only summed for closed groups; open groups are null.
+    const realized = group.map((t) => computeRealizedPL(t));
+    const totalRealized = realized.every((v) => v == null) ? null : realized.reduce((s, v) => s + (v || 0), 0);
     const totalFee = group.reduce((s, t) => s + (t.fee || 0), 0);
     const totalCollateral = group.reduce((s, t) => s + (t.collateral || 0), 0);
     const closePrices = group.map((t) => t.close_price).filter((v) => v != null);
     const avgClose = closePrices.length > 0 ? closePrices.reduce((s, v) => s + v, 0) / closePrices.length : null;
     result.push({
       ...group[0],
-      id: group[0].id, // keep first id as stable key; edit/delete on a consolidated row disables below
+      id: group[0].id,
       _consolidated: true,
       _groupSize: group.length,
       _groupIds: group.map((t) => t.id),
       quantity: totalQty,
       fill_price: weightedFill,
       close_price: avgClose,
-      pnl: totalPnl,
+      realized_pl: totalRealized,
+      pnl: totalRealized, // legacy mirror
       fee: totalFee,
       collateral: totalCollateral,
     });
   }
-  // Preserve original sort order (by open_date desc)
   return result.sort((a, b) => new Date(b.open_date) - new Date(a.open_date));
 }
 
@@ -116,32 +126,37 @@ export default function OptionsPage() {
 
   const handleDelete = async (trade) => {
     // For consolidated rows, delete ALL underlying trades in the group
+    const cat = getCanonicalCategory(trade);
+    const catLabel = CATEGORY_LABELS[cat] || trade.category;
+    const strikeStr = formatStrike(trade);
     if (trade._consolidated && trade._groupIds?.length > 1) {
       const n = trade._groupIds.length;
-      if (!confirm(`למחוק את כל ${n} העסקאות המאוחדות של ${trade.ticker} ${trade.category} $${trade.strike}?\nהפעולה הזו תמחק ${n} רשומות מה-DB.`)) return;
+      if (!confirm(`למחוק את כל ${n} העסקאות המאוחדות של ${trade.ticker} ${catLabel} ${strikeStr}?\nהפעולה הזו תמחק ${n} רשומות מה-DB.`)) return;
       for (const id of trade._groupIds) {
         await deleteTrade.mutateAsync(id);
       }
       toast.success(`${n} עסקאות נמחקו`);
       return;
     }
-    if (!confirm(`Delete ${trade.ticker} ${trade.category} trade?`)) return;
+    if (!confirm(`Delete ${trade.ticker} ${catLabel} trade?`)) return;
     await deleteTrade.mutateAsync(trade.id);
     toast.success("Trade deleted");
   };
 
   // ── KPI summary (always computed from raw trades, not consolidated) ──
+  // P&L is only realized — open positions show no P&L per the new spec.
   const kpis = useMemo(() => {
     const open = trades.filter((t) => t.status === "Open");
     const closed = trades.filter((t) => ["Closed", "Expired", "Assigned"].includes(t.status));
-    const realizedPnl = closed.reduce((s, t) => s + (t.pnl || 0), 0);
-    const unrealizedPnl = open.reduce((s, t) => s + (t.pnl || 0), 0);
-    const totalPnl = realizedPnl + unrealizedPnl;
+    const realizedPnl = closed.reduce((s, t) => {
+      const pl = computeRealizedPL(t);
+      return s + (pl != null ? pl : (t.pnl || 0));
+    }, 0);
     const premiumCollected = trades
-      .filter((t) => t.type === "Sell")
+      .filter((t) => isCredit(t))
       .reduce((s, t) => s + (t.fill_price || 0) * (t.quantity || 0) * 100, 0);
     const premiumPaid = trades
-      .filter((t) => t.type === "Buy")
+      .filter((t) => getDirection(t) === "debit")
       .reduce((s, t) => s + (t.fill_price || 0) * (t.quantity || 0) * 100, 0);
     const netPremium = premiumCollected - premiumPaid;
     const collateralOpen = open.reduce((s, t) => s + (t.collateral || 0), 0);
@@ -149,8 +164,6 @@ export default function OptionsPage() {
       open: open.length,
       closed: closed.length,
       realizedPnl,
-      unrealizedPnl,
-      totalPnl,
       premiumCollected,
       premiumPaid,
       netPremium,
@@ -201,26 +214,13 @@ export default function OptionsPage() {
       </div>
 
       {/* Mini-dashboard KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiTile
-          label="P&L כולל"
-          value={fmt(kpis.totalPnl)}
-          sub={`ממומש ${fmt(kpis.realizedPnl)}`}
-          accent={kpis.totalPnl >= 0 ? "text-profit" : "text-loss"}
-          icon={kpis.totalPnl >= 0 ? TrendingUp : TrendingDown}
-        />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiTile
           label="P&L ממומש"
           value={fmt(kpis.realizedPnl)}
           sub={`${kpis.closed} עסקאות סגורות`}
           accent={kpis.realizedPnl >= 0 ? "text-profit" : "text-loss"}
-          icon={Target}
-        />
-        <KpiTile
-          label="P&L לא ממומש"
-          value={fmt(kpis.unrealizedPnl)}
-          sub={`${kpis.open} פוזיציות פתוחות`}
-          accent={kpis.unrealizedPnl >= 0 ? "text-profit" : "text-loss"}
+          icon={kpis.realizedPnl >= 0 ? TrendingUp : TrendingDown}
         />
         <KpiTile
           label="פרמיה נטו"
@@ -233,6 +233,12 @@ export default function OptionsPage() {
           label="Collateral פתוח"
           value={fmt(kpis.collateralOpen)}
           sub="אחוד בפוזיציות פתוחות"
+          icon={Target}
+        />
+        <KpiTile
+          label="פוזיציות פתוחות"
+          value={`${kpis.open}`}
+          sub="P&L יוצג בעת סגירה"
         />
         <KpiTile
           label="סך עסקאות"
@@ -297,7 +303,7 @@ export default function OptionsPage() {
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="text-left px-4 py-3 font-medium">Open Date</th>
                 <th className="text-left px-4 py-3 font-medium">Expiry</th>
-                <th className="text-left px-4 py-3 font-medium">Type</th>
+                <th className="text-left px-4 py-3 font-medium">Direction</th>
                 <th className="text-left px-4 py-3 font-medium">Ticker</th>
                 <th className="text-left px-4 py-3 font-medium">Category</th>
                 <th className="text-right px-4 py-3 font-medium">Strike</th>
@@ -311,7 +317,13 @@ export default function OptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredTrades.map((t) => (
+              {filteredTrades.map((t) => {
+                const dir = getDirection(t);
+                const cat = getCanonicalCategory(t);
+                const catLabel = CATEGORY_LABELS[cat] || t.category || "—";
+                const isOpen = t.status === "Open";
+                const realized = computeRealizedPL(t);
+                return (
                 <tr key={t.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs">{t.open_date}</td>
                   <td className="px-4 py-3 font-mono text-xs">
@@ -323,7 +335,17 @@ export default function OptionsPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs">{t.type}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {dir ? (
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        dir === "credit" ? "bg-emerald-500/15 text-emerald-600" : "bg-blue-500/15 text-blue-600"
+                      }`}>
+                        {dir === "credit" ? "Credit" : "Debit"}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 font-mono font-medium">
                     {t.ticker}
                     {t._consolidated && (
@@ -332,20 +354,21 @@ export default function OptionsPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs">{t.category}</td>
-                  <td className="px-4 py-3 text-right font-mono">
-                    ${t.strike}{t.strike_2 ? `/$${t.strike_2}` : ""}
+                  <td className="px-4 py-3 text-xs">{catLabel}</td>
+                  <td className="px-4 py-3 text-right font-mono text-xs">
+                    {formatStrike(t)}
                   </td>
                   <td className="px-4 py-3 text-right font-mono">{t.quantity}</td>
                   <td className="px-4 py-3 text-right font-mono">${t.fill_price?.toFixed(2) ?? t.fill_price}</td>
                   <td className="px-4 py-3 text-right font-mono">
-                    {t.close_price != null ? `$${t.close_price.toFixed(2)}` : "-"}
+                    {t.close_price != null ? `$${t.close_price.toFixed(2)}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-muted-foreground">
-                    ${(t.collateral || 0).toLocaleString()}
+                    {isOpen ? `$${(t.collateral || 0).toLocaleString()}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {t.pnl != null ? <PnlBadge value={t.pnl} /> : "-"}
+                    {isOpen ? <span className="text-muted-foreground">—</span>
+                      : (realized != null ? <PnlBadge value={realized} /> : (t.pnl != null ? <PnlBadge value={t.pnl} /> : "—"))}
                   </td>
                   <td className="px-4 py-3 text-center"><StatusBadge status={t.status} /></td>
                   {!isReadOnly && (
@@ -374,7 +397,7 @@ export default function OptionsPage() {
                     </td>
                   )}
                 </tr>
-              ))}
+              );})}
               {filteredTrades.length === 0 && (
                 <tr>
                   <td colSpan={13} className="text-center py-8 text-muted-foreground text-sm">אין עסקאות</td>

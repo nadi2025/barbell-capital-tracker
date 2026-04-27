@@ -2,6 +2,7 @@ import moment from "moment";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import PnlBadge from "../PnlBadge";
+import { isCredit, getStrategyDisplay, formatStrike } from "@/lib/optionsHelpers";
 
 function getDteColor(dte) {
   if (dte <= 14) return "text-loss font-semibold";
@@ -18,7 +19,7 @@ export default function OpenOptionsTable({ options }) {
 
   const totalCollateral = options.reduce((s, o) => s + (o.collateral || 0), 0);
   const totalPremium = options
-    .filter(o => o.type === "Sell")
+    .filter(isCredit)
     .reduce((s, o) => s + (o.fill_price || 0) * (o.quantity || 0) * 100, 0);
 
   return (
@@ -55,17 +56,19 @@ export default function OpenOptionsTable({ options }) {
             ) : sorted.map((opt) => {
               const dte = opt.expiration_date ? moment(opt.expiration_date).diff(moment(), "days") : null;
               const premium = (opt.fill_price || 0) * (opt.quantity || 0) * 100;
-              const stratLabel = `${opt.type} ${opt.category}`;
+              const strat = getStrategyDisplay(opt);
+              const stratLabel = strat?.label || opt.category || "—";
+              const credit = isCredit(opt);
               return (
                 <tr key={opt.id} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
                   <td className="px-4 py-2.5 font-mono font-semibold text-sm">{opt.ticker}</td>
                   <td className="px-4 py-2.5 text-xs">
-                    <span className={`px-1.5 py-0.5 rounded text-xs ${opt.type === 'Sell' ? 'bg-profit/10 text-profit' : 'bg-chart-2/10 text-chart-2'}`}>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${credit ? 'bg-profit/10 text-profit' : 'bg-chart-2/10 text-chart-2'}`}>
                       {stratLabel}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">
-                    ${opt.strike}{opt.strike_2 ? `/$${opt.strike_2}` : ""}
+                    {formatStrike(opt)}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">{opt.quantity}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-profit">${premium.toLocaleString()}</td>
@@ -89,19 +92,21 @@ export default function OpenOptionsTable({ options }) {
         ) : sorted.map((opt) => {
           const dte = opt.expiration_date ? moment(opt.expiration_date).diff(moment(), "days") : null;
           const premium = (opt.fill_price || 0) * (opt.quantity || 0) * 100;
-          const stratLabel = `${opt.type} ${opt.category}`;
+          const strat = getStrategyDisplay(opt);
+          const stratLabel = strat?.label || opt.category || "—";
+          const credit = isCredit(opt);
           return (
             <div key={opt.id} className="px-4 py-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono font-bold text-base">{opt.ticker}</span>
-                <span className={`px-2 py-0.5 rounded text-xs ${opt.type === 'Sell' ? 'bg-profit/10 text-profit' : 'bg-chart-2/10 text-chart-2'}`}>
+                <span className={`px-2 py-0.5 rounded text-xs ${credit ? 'bg-profit/10 text-profit' : 'bg-chart-2/10 text-chart-2'}`}>
                   {stratLabel}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
                   <p className="text-muted-foreground">Strike</p>
-                  <p className="font-mono">${opt.strike}{opt.strike_2 ? `/$${opt.strike_2}` : ""}</p>
+                  <p className="font-mono">{formatStrike(opt)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Qty</p>

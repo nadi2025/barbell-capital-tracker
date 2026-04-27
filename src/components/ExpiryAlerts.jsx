@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { AlertTriangle, CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import moment from "moment";
+import { getCanonicalCategory, getLongStrike, getShortStrike, formatStrike, CATEGORY_LABELS } from "@/lib/optionsHelpers";
 
 const STORAGE_KEY = "option_expiry_decisions";
 
@@ -22,13 +23,23 @@ function saveDecision(id, decision) {
 function groupExpiring(list) {
   const map = new Map();
   for (const t of list) {
-    const key = `${t.ticker}|${t.category}|${t.strike}|${t.expiration_date}`;
+    const cat = getCanonicalCategory(t) || t.category;
+    // For assignment-cost purposes, the relevant strike is the SHORT one
+    // (the leg that gets exercised against). For long-only positions, fall
+    // back to the long strike so display still shows something sensible.
+    const assignStrike = getShortStrike(t) ?? getLongStrike(t);
+    const longStr = getLongStrike(t);
+    const shortStr = getShortStrike(t);
+    const key = `${t.ticker}|${cat}|${longStr ?? ""}|${shortStr ?? ""}|${t.expiration_date}`;
     if (!map.has(key)) {
       map.set(key, {
         key,
         ticker: t.ticker,
-        category: t.category,
-        strike: t.strike,
+        category: cat,
+        categoryLabel: CATEGORY_LABELS[cat] || cat,
+        strikeStr: formatStrike(t),
+        // The first trade in the group; used by formatStrike-equivalent callers.
+        sample: t,
         expiration_date: t.expiration_date,
         daysLeft: t.daysLeft,
         qty: 0,
@@ -40,7 +51,7 @@ function groupExpiring(list) {
     const g = map.get(key);
     g.qty += (t.quantity || 0);
     g.premium += (t.fill_price || 0) * (t.quantity || 0) * 100;
-    g.stockCost += (t.strike || 0) * (t.quantity || 0) * 100;
+    g.stockCost += (assignStrike || 0) * (t.quantity || 0) * 100;
     g.tradeIds.push(t.id);
   }
   return Array.from(map.values()).sort((a, b) => a.daysLeft - b.daysLeft);
@@ -113,7 +124,7 @@ export default function ExpiryAlerts({ trades }) {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm font-mono">{g.ticker}</span>
                         <span className="text-xs text-muted-foreground">
-                          {g.category} · Strike ${g.strike} · Qty {g.qty}
+                          {g.categoryLabel} · {g.strikeStr} · Qty {g.qty}
                           {fillCount > 1 && <span className="mr-1 text-[10px] opacity-80"> ({fillCount} fills)</span>}
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${u.badge}`}>
@@ -200,7 +211,8 @@ export default function ExpiryAlerts({ trades }) {
                 <tbody>
                   {assignments.map((t) => {
                     const shares = (t.quantity || 0) * 100;
-                    const gross = -(t.strike || 0) * shares;
+                    const assignStrike = getShortStrike(t) ?? getLongStrike(t) ?? 0;
+                    const gross = -assignStrike * shares;
                     const premium = (t.fill_price || 0) * (t.quantity || 0) * 100;
                     const net = gross + premium;
                     return (
@@ -214,7 +226,7 @@ export default function ExpiryAlerts({ trades }) {
                         </td>
                         <td className="px-4 py-2.5 font-mono font-semibold text-sm">{t.ticker}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs">{shares.toLocaleString()}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-xs">{t.strike?.toFixed(4)} USD</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-xs">{assignStrike?.toFixed(4)} USD</td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs text-loss">${Math.abs(gross).toLocaleString()}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs text-profit">+${premium.toLocaleString()}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-xs font-semibold">
