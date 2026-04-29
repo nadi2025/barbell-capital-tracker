@@ -7,8 +7,8 @@ import { useEntityList } from "@/hooks/useEntityQuery";
 import { useAavePosition } from "@/hooks/useAavePosition";
 
 const fmt = (v, d = 0) =>
-  v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
-const pct = (v) => (v == null ? "0%" : `${(v * 100).toFixed(1)}%`);
+v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: d, maximumFractionDigits: d });
+const pct = (v) => v == null ? "0%" : `${(v * 100).toFixed(1)}%`;
 
 const COLORS = ["#f7931a", "#627eea", "#b6509e", "#2775ca", "#16c784", "#6c757d", "#94a3b8"];
 
@@ -36,8 +36,8 @@ export default function CryptoDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+      </div>);
+
   }
 
   // ── Derived values (ALL dynamic — no magic numbers) ──
@@ -47,18 +47,18 @@ export default function CryptoDashboard() {
 
   // Live price map — same source as calcDashboard uses
   const priceMap = {};
-  pricesData.forEach((p) => { if (p.asset) priceMap[p.asset.toUpperCase()] = p.price_usd; });
+  pricesData.forEach((p) => {if (p.asset) priceMap[p.asset.toUpperCase()] = p.price_usd;});
 
   // Categorized asset values
-  const aaveCollateralValue = assets
-    .filter((a) => a.asset_category === "Collateral on Aave")
-    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const stablecoinsValue = assets
-    .filter((a) => a.asset_category === "Stablecoin")
-    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const spotValue = assets
-    .filter((a) => a.asset_category === "Spot")
-    .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const aaveCollateralValue = assets.
+  filter((a) => a.asset_category === "Collateral on Aave").
+  reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const stablecoinsValue = assets.
+  filter((a) => a.asset_category === "Stablecoin").
+  reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  const spotValue = assets.
+  filter((a) => a.asset_category === "Spot").
+  reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const walletValue = assets.reduce((s, a) => s + (a.current_value_usd || 0), 0);
 
   const aaveNetWorth = aaveCollateralValue - aaveBorrow;
@@ -84,13 +84,13 @@ export default function CryptoDashboard() {
 
   // Performance = NAV vs invested capital (investor debt is the capital we work with)
   const investedCapital = investorDebt > 0 ? investorDebt : 1;
-  const perfPct = investedCapital > 0 ? ((nav - investedCapital) / investedCapital) * 100 : 0;
+  const perfPct = investedCapital > 0 ? (nav - investedCapital) / investedCapital * 100 : 0;
 
   // Effective leverage = Total exposure / Equity
   const exposureFromWallets = walletValue - stablecoinsValue; // non-stable crypto exposure
   const exposureFromHL = leveraged.reduce((s, l) => {
     const livePrice = priceMap[(l.asset || "").toUpperCase()] || l.mark_price || 0;
-    const val = livePrice && l.size ? livePrice * l.size : (l.position_value_usd || 0);
+    const val = livePrice && l.size ? livePrice * l.size : l.position_value_usd || 0;
     return s + Math.abs(val);
   }, 0);
   const totalExposure = exposureFromWallets + exposureFromHL + vaultValue;
@@ -100,7 +100,7 @@ export default function CryptoDashboard() {
   const chartData = [...snapshots].reverse().map((s) => ({
     date: s.snapshot_date,
     nav: s.net_value_usd,
-    assets: s.total_assets_usd,
+    assets: s.total_assets_usd
   }));
 
   // Alerts
@@ -117,13 +117,13 @@ export default function CryptoDashboard() {
 
   // Allocation pie — underlying exposure
   const byToken = (tokens) =>
-    assets.filter((a) => tokens.includes((a.token || "").toUpperCase())).reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  assets.filter((a) => tokens.includes((a.token || "").toUpperCase())).reduce((s, a) => s + (a.current_value_usd || 0), 0);
   const byHLAsset = (asset) =>
-    leveraged.filter((l) => (l.asset || "").toUpperCase() === asset).reduce((s, l) => {
-      const livePrice = priceMap[asset] || l.mark_price || 0;
-      const val = livePrice && l.size ? livePrice * l.size : (l.position_value_usd || 0);
-      return s + Math.abs(val);
-    }, 0);
+  leveraged.filter((l) => (l.asset || "").toUpperCase() === asset).reduce((s, l) => {
+    const livePrice = priceMap[asset] || l.mark_price || 0;
+    const val = livePrice && l.size ? livePrice * l.size : l.position_value_usd || 0;
+    return s + Math.abs(val);
+  }, 0);
 
   const btcExposure = byToken(["AWBTC", "WBTC", "BTC"]) + byHLAsset("BTC");
   const ethExposure = byToken(["AETH", "WETH", "ETH"]) + byHLAsset("ETH");
@@ -132,25 +132,25 @@ export default function CryptoDashboard() {
   const stableExposure = stablecoinsValue;
   const optionsExposure = activeNotional;
   const otherExposure =
-    assets
-      .filter((a) => {
-        const t = (a.token || "").toUpperCase();
-        const known = ["AWBTC", "WBTC", "BTC", "AETH", "WETH", "ETH", "AAAVE", "AAVE"].includes(t);
-        return !known && a.asset_category !== "Stablecoin";
-      })
-      .reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
+  assets.
+  filter((a) => {
+    const t = (a.token || "").toUpperCase();
+    const known = ["AWBTC", "WBTC", "BTC", "AETH", "WETH", "ETH", "AAAVE", "AAVE"].includes(t);
+    return !known && a.asset_category !== "Stablecoin";
+  }).
+  reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
 
   const totalExposureForPie = btcExposure + ethExposure + aaveExposure + mstrExposure + stableExposure + optionsExposure + otherExposure || 1;
 
   const pieData = [
-    { name: "BTC", value: btcExposure },
-    { name: "ETH", value: ethExposure },
-    { name: "AAVE", value: aaveExposure },
-    { name: "MSTR", value: mstrExposure },
-    { name: "Stablecoins", value: stableExposure },
-    { name: "Options", value: optionsExposure },
-    { name: "Other", value: otherExposure },
-  ].filter((d) => d.value > 0);
+  { name: "BTC", value: btcExposure },
+  { name: "ETH", value: ethExposure },
+  { name: "AAVE", value: aaveExposure },
+  { name: "MSTR", value: mstrExposure },
+  { name: "Stablecoins", value: stableExposure },
+  { name: "Options", value: optionsExposure },
+  { name: "Other", value: otherExposure }].
+  filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -175,8 +175,8 @@ export default function CryptoDashboard() {
         borrowPowerUsed={borrowPowerUsed}
         liquidationAlerts={liquidationAlerts}
         staleAssets={staleAssets}
-        loans={loans}
-      />
+        loans={loans} />
+      
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -206,7 +206,7 @@ export default function CryptoDashboard() {
             <p>Aave Borrow: {fmt(aaveBorrow)}</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
+        <div className="bg-card border border-border rounded-xl p-4 hidden">
           <p className="text-xs text-muted-foreground mb-1">Effective Leverage</p>
           <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
           <p className="text-xs text-muted-foreground mt-1">Exposure {fmt(totalExposure)} / Equity</p>
@@ -229,8 +229,8 @@ export default function CryptoDashboard() {
           <div className="w-full bg-muted rounded-full h-1.5 mt-2">
             <div
               className={`h-1.5 rounded-full ${borrowPowerUsed > 0.7 ? "bg-loss" : borrowPowerUsed > 0.5 ? "bg-amber-400" : "bg-profit"}`}
-              style={{ width: `${Math.min(100, borrowPowerUsed * 100)}%` }}
-            />
+              style={{ width: `${Math.min(100, borrowPowerUsed * 100)}%` }} />
+            
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
@@ -253,8 +253,8 @@ export default function CryptoDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-card border border-border rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-4">NAV History</h3>
-          {chartData.length > 1 ? (
-            <ResponsiveContainer width="100%" height={200}>
+          {chartData.length > 1 ?
+          <ResponsiveContainer width="100%" height={200}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 14% 88%)" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} />
@@ -262,64 +262,64 @@ export default function CryptoDashboard() {
                 <Tooltip formatter={(v) => fmt(v)} />
                 <Line type="monotone" dataKey="nav" stroke="hsl(158 72% 38%)" strokeWidth={2} dot={false} name="NAV" />
               </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+            </ResponsiveContainer> :
+
+          <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
               No historical data yet — update prices to start tracking
             </div>
-          )}
+          }
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
           <h3 className="text-sm font-semibold mb-4">Portfolio Allocation (Exposure)</h3>
-          {pieData.length > 0 ? (
-            <div className="flex items-center gap-4">
+          {pieData.length > 0 ?
+          <div className="flex items-center gap-4">
               <ResponsiveContainer width="50%" height={180}>
                 <PieChart>
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value">
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
+                    {pieData.map((_, i) =>
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  )}
                   </Pie>
                   <Tooltip formatter={(v) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-1.5">
-                {pieData.map((d, i) => (
-                  <div key={d.name} className="flex items-center justify-between text-xs">
+                {pieData.map((d, i) =>
+              <div key={d.name} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
                       <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }} />
                       <span className="text-muted-foreground">{d.name}</span>
                     </div>
-                    <span className="font-mono font-medium">{((d.value / totalExposureForPie) * 100).toFixed(0)}%</span>
+                    <span className="font-mono font-medium">{(d.value / totalExposureForPie * 100).toFixed(0)}%</span>
                   </div>
-                ))}
+              )}
               </div>
-            </div>
-          ) : (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No asset data</div>
-          )}
+            </div> :
+
+          <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No asset data</div>
+          }
         </div>
       </div>
 
       {/* Quick Links */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {[
-          { label: "Wallets & Assets", path: "/crypto/wallets", icon: Wallet, color: "text-chart-2" },
-          { label: "Leveraged Positions", path: "/crypto/leveraged", icon: TrendingUp, color: "text-chart-3" },
-          { label: "Activity Log", path: "/crypto/activity", icon: Activity, color: "text-chart-4" },
-        ].map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors flex items-center justify-between"
-          >
+        { label: "Wallets & Assets", path: "/crypto/wallets", icon: Wallet, color: "text-chart-2" },
+        { label: "Leveraged Positions", path: "/crypto/leveraged", icon: TrendingUp, color: "text-chart-3" },
+        { label: "Activity Log", path: "/crypto/activity", icon: Activity, color: "text-chart-4" }].
+        map((item) =>
+        <Link
+          key={item.path}
+          to={item.path}
+          className="bg-card border border-border rounded-xl p-4 hover:bg-muted/50 transition-colors flex items-center justify-between">
+          
             <p className="text-xs text-muted-foreground">{item.label}</p>
             <item.icon className={`w-5 h-5 ${item.color}`} />
           </Link>
-        ))}
+        )}
       </div>
 
-    </div>
-  );
+    </div>);
+
 }
