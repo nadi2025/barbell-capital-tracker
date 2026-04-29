@@ -237,6 +237,7 @@ export default function OptionsPage() {
             <OpenPositionCard
               key={pos.id}
               pos={pos}
+              priceMap={priceMap}
               onEdit={setEditPos}
               onSettle={setSettlePos}
             />

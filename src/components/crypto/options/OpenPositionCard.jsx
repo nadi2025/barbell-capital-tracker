@@ -10,7 +10,16 @@ const STRATEGY_NAMES = {
   "Naked call": "Naked Call",
 };
 
-export default function OpenPositionCard({ pos, onEdit, onSettle }) {
+// Map asset names (UETH, UBTC etc.) to price keys
+function resolvePriceKey(asset) {
+  const a = (asset || "").toUpperCase();
+  if (a.includes("BTC") || a === "UBTC") return "BTC";
+  if (a.includes("ETH") || a === "UETH") return "ETH";
+  if (a.includes("AAVE")) return "AAVE";
+  return a;
+}
+
+export default function OpenPositionCard({ pos, priceMap = {}, onEdit, onSettle }) {
   const today = new Date();
   const maturity = new Date(pos.maturity_date);
   const opened = pos.opened_date ? new Date(pos.opened_date) : null;
@@ -22,7 +31,8 @@ export default function OpenPositionCard({ pos, onEdit, onSettle }) {
   const isImminent = daysLeft <= 3 && daysLeft >= 0;
 
   const strike = pos.strike_price || 0;
-  const current = pos.current_price || 0;
+  const livePrice = priceMap[resolvePriceKey(pos.asset)];
+  const current = livePrice || pos.current_price || 0;
 
   // Cushion logic
   let cushion = 0;
