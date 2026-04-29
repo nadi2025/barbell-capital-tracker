@@ -206,12 +206,12 @@ export default function CryptoDashboard() {
             <p>Aave Borrow: {fmt(aaveBorrow)}</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4 hidden">
-          <p className="text-xs text-muted-foreground mb-1">Effective Leverage</p>
-          <p className="text-xl font-bold font-mono text-foreground">{leverageRatio.toFixed(2)}x</p>
-          <p className="text-xs text-muted-foreground mt-1">Exposure {fmt(totalExposure)} / Equity</p>
-          <p className="text-xs text-muted-foreground">Aave HF: <span className={aaveHF > 2 ? "text-profit" : aaveHF > 1.5 ? "text-amber-500" : "text-loss"}>{aaveHF > 0 ? aaveHF.toFixed(2) : "—"}</span></p>
-        </div>
+        
+
+
+
+
+        
       </div>
 
       {/* Second row */}
