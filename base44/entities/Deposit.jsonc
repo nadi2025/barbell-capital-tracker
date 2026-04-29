@@ -28,9 +28,20 @@
       ],
       "title": "Capital Source"
     },
-    "platform": {
+    "destination_platform": {
       "type": "string",
-      "title": "Platform"
+      "enum": [
+        "Interactive Brokers",
+        "HyperLiquid",
+        "Aave",
+        "Rysk Finance",
+        "Other"
+      ],
+      "title": "Destination Platform"
+    },
+    "investor_id": {
+      "type": "string",
+      "title": "Investor ID (for Debt)"
     },
     "notes": {
       "type": "string",
