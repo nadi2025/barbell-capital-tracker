@@ -26,12 +26,13 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
   const remainingMonths = termMonths - payments.length;
   const progressPct = Math.min(100, (payments.length / termMonths) * 100);
 
-  // Next payment date — use payment_day_of_month if set
+  // Next payment date — always based on number of payments already recorded
   const payDay = investor.payment_day_of_month;
   let nextPaymentDate;
   if (payDay) {
-    nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), payDay);
-    if (nextPaymentDate <= today) nextPaymentDate = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
+    // payments.length tells us how many months have been paid; the next is payments.length+1 months from start
+    const baseNext = addMonths(start, payments.length + 1);
+    nextPaymentDate = new Date(baseNext.getFullYear(), baseNext.getMonth(), payDay);
   } else {
     nextPaymentDate = addMonths(start, payments.length + 1);
   }
@@ -144,7 +145,7 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
                 <span className="text-emerald-500">✓</span>
                 <span className="text-muted-foreground">{format(new Date(p.payment_date), "MMM d")}</span>
               </div>
-              <span className="font-mono font-medium">{fmtUSD(p.amount)}</span>
+              <span className="font-mono font-medium">{(p.currency === "ILS" || isILS) ? fmtILS(p.amount) : fmtUSD(p.amount)}</span>
             </div>
           ))}
         </div>
