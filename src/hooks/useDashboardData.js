@@ -26,6 +26,7 @@ export function useDashboardData() {
   const leveraged = useEntityList("LeveragedPosition", { filter: { status: "Open" } });
   const cryptoOptions = useEntityList("CryptoOptionsPosition");
   const offChainInvestors = useEntityList("OffChainInvestor", { filter: { status: "Active" } });
+  const investorPayments = useEntityList("InvestorPayment", { sort: "-payment_date", limit: 500 });
   const prices = useEntityList("Prices");
   const lpPositions = useEntityList("LpPosition", { filter: { status: "Active" } });
   const hlTrades = useEntityList("HLTrade", { sort: "-trade_date", limit: 500 });
@@ -38,7 +39,7 @@ export function useDashboardData() {
   const allQueries = [
     options, stocks, deposits, snapshots, debts,
     cryptoAssets, cryptoLoans, cryptoLending, leveraged, cryptoOptions,
-    offChainInvestors, prices, lpPositions, hlTrades,
+    offChainInvestors, investorPayments, prices, lpPositions, hlTrades,
   ];
 
   // aave is derived (not a real query) but it does wrap real queries
@@ -78,6 +79,7 @@ export function useDashboardData() {
       cryptoOptions: cryptoOpts,
       openCryptoOptions: cryptoOpts.filter((o) => o.status === "Open"),
       offChainInvestors: offChainInvestors.data || [],
+      investorPayments: investorPayments.data || [],
       prices: prices.data || [],
       aaveCollateral: aave.collateralDetails || [],
       aaveBorrowUsd: aave.borrowedAmount || 0,
@@ -89,7 +91,7 @@ export function useDashboardData() {
   }, [
     options.data, stocks.data, deposits.data, snapshots.data, debts.data,
     cryptoAssets.data, cryptoLoans.data, cryptoLending.data, leveraged.data,
-    cryptoOptions.data, offChainInvestors.data, prices.data,
+    cryptoOptions.data, offChainInvestors.data, investorPayments.data, prices.data,
     lpPositions.data, hlTrades.data,
     aave.collateralDetails, aave.borrowedAmount, aave.healthFactor, aave.borrowPowerUsed,
   ]);

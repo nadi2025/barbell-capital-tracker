@@ -60,25 +60,37 @@ function buildAlerts(data, c) {
     }
   });
 
-  // Investor payments
+  // Investor payments — only alert if no payment was recorded this month yet
+  const payments = data.investorPayments || [];
   (data.offChainInvestors || [])
     .filter((inv) => inv.interest_schedule === "Monthly" && inv.status === "Active")
     .forEach((inv) => {
       const payDay = inv.payment_day_of_month || 1;
+      // Compute the upcoming payment date
       let next = new Date(today.getFullYear(), today.getMonth(), payDay);
       if (next <= today) next = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
       const d = differenceInDays(next, today);
-      if (d <= 14) {
-        const amount = inv.interest_currency === "ILS"
-          ? `₪${Math.abs(inv.monthly_payment || 0).toLocaleString("he-IL")}`
-          : fmt(inv.monthly_payment);
-        alerts.push({
-          urgency: d <= 5 ? "red" : "amber",
-          icon: Clock,
-          title: `ריבית ${inv.name}`,
-          text: `${amount} · ${format(next, "d.M.yy")}`,
-        });
-      }
+      if (d > 14) return;
+
+      // Check if a payment was already recorded for this upcoming month
+      const nextMonth = next.getMonth();
+      const nextYear = next.getFullYear();
+      const alreadyPaid = payments.some((p) => {
+        if (p.investor_id !== inv.id) return false;
+        const pd = new Date(p.payment_date);
+        return pd.getMonth() === nextMonth && pd.getFullYear() === nextYear;
+      });
+      if (alreadyPaid) return;
+
+      const amount = inv.interest_currency === "ILS"
+        ? `₪${Math.abs(inv.monthly_payment || 0).toLocaleString("he-IL")}`
+        : fmt(inv.monthly_payment);
+      alerts.push({
+        urgency: d <= 5 ? "red" : "amber",
+        icon: Clock,
+        title: `ריבית ${inv.name}`,
+        text: `${amount} · ${format(next, "d.M.yy")}`,
+      });
     });
 
   // Big stock loss — threshold-based risk alert (user-chosen 30%+ drawdown)
