@@ -45,10 +45,10 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
     setSaving(true);
     const shares = parseFloat(form.shares) || 0;
     const avgCost = parseFloat(form.average_cost) || 0;
-    // current_price input still exists for visual feedback while typing,
-    // but it's NOT persisted on save — derived live from priceMap × shares
-    // by computeStockDerived. Same goes for invested_value / current_value /
-    // gain_loss / gain_loss_pct (single-formula land in portfolioMath).
+    // invested_value is the cost-basis baseline that StocksPage's enrichedStocks
+    // memo subtracts from current_value to get gain_loss. Without it, brand-new
+    // positions show P&L = full position value.
+    const invested_value = shares * avgCost;
 
     const data = {
       ticker: form.ticker.toUpperCase(),
@@ -56,6 +56,7 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
       entry_date: form.entry_date,
       shares,
       average_cost: avgCost,
+      invested_value,
       status: form.status,
       high_52w: parseFloat(form.high_52w) || undefined,
       low_52w: parseFloat(form.low_52w) || undefined,
@@ -66,11 +67,37 @@ export default function StockPositionForm({ open, onClose, editStock, onSaved })
       await base44.entities.StockPosition.update(editStock.id, data);
       toast.success("Position updated");
     } else {
-      await base44.entities.StockPosition.create(data);
-      toast.success("Position added");
+      // Auto-merge: if an open (Holding / Partially Sold) position for this
+      // ticker already exists, blend new shares into it with a weighted-average
+      // cost basis instead of creating a duplicate row.
+      const existing = await base44.entities.StockPosition.filter({
+        ticker: data.ticker,
+      });
+      const mergeTarget = (existing || []).find(
+        (s) => s.status === "Holding" || s.status === "Partially Sold"
+      );
+
+      if (mergeTarget) {
+        const oldShares = mergeTarget.shares || 0;
+        const oldAvg = mergeTarget.average_cost || 0;
+        const newShares = oldShares + shares;
+        const newAvg = newShares > 0
+          ? (oldShares * oldAvg + shares * avgCost) / newShares
+          : avgCost;
+        const newInvested = newShares * newAvg;
+
+        await base44.entities.StockPosition.update(mergeTarget.id, {
+          shares: newShares,
+          average_cost: newAvg,
+          invested_value: newInvested,
+        });
+        toast.success(`Merged ${shares} shares into existing ${data.ticker} position (avg cost $${newAvg.toFixed(2)})`);
+      } else {
+        await base44.entities.StockPosition.create(data);
+        toast.success("Position added");
+      }
     }
 
-    // Invalidate cached queries so the Dashboard (and any other page) refetches
     queryClient.invalidateQueries({ queryKey: ["entity", "StockPosition"] });
     queryClient.invalidateQueries({ queryKey: ["function"] });
 

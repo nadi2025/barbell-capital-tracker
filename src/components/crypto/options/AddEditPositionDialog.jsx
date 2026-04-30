@@ -13,7 +13,7 @@ const STRATEGIES = [
 ];
 
 const DEFAULT = {
-  platform: "Rysk Finance",
+  platform: "",
   asset: "UETH",
   strategy: "Cash secured put",
   option_type: "Put",
@@ -91,6 +91,20 @@ export default function AddEditPositionDialog({ open, onClose, onSave, initialDa
                 { value: "UETH", label: "UETH" },
                 { value: "UBTC", label: "UBTC" },
                 { value: "Other", label: "Other" },
+              ]}
+            />
+          </div>
+
+          {/* Platform */}
+          <div>
+            <Label>Platform</Label>
+            <MobileSelect
+              value={form.platform}
+              onValueChange={(v) => setField("platform", v)}
+              placeholder="בחר פלטפורמה"
+              options={[
+                { value: "Rysk Finance", label: "Rysk Finance" },
+                { value: "Derive", label: "Derive" },
               ]}
             />
           </div>

@@ -105,6 +105,7 @@ export default function OptionsPage() {
   const createActivityLog = useEntityMutation("CryptoActivityLog", "create");
 
   const [tab, setTab] = useState("Open");
+  const [platformFilter, setPlatformFilter] = useState("All");
   const [settlePos, setSettlePos] = useState(null);
   const [editPos, setEditPos] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -115,21 +116,28 @@ export default function OptionsPage() {
     return t;
   }, []);
 
+  // Apply platform filter at the source so all downstream memos (open / closed
+  // / KPIs) recompute against the same filtered set automatically.
+  const platformFiltered = useMemo(() => {
+    if (platformFilter === "All") return positions;
+    return positions.filter((p) => p.platform === platformFilter);
+  }, [positions, platformFilter]);
+
   const needsSettlement = useMemo(
-    () => positions.filter((p) => p.status === "Open" && p.maturity_date && new Date(p.maturity_date) < today),
-    [positions, today]
+    () => platformFiltered.filter((p) => p.status === "Open" && p.maturity_date && new Date(p.maturity_date) < today),
+    [platformFiltered, today]
   );
   const openPositions = useMemo(
-    () => positions.filter((p) => p.status === "Open" && (!p.maturity_date || new Date(p.maturity_date) >= today)),
-    [positions, today]
+    () => platformFiltered.filter((p) => p.status === "Open" && (!p.maturity_date || new Date(p.maturity_date) >= today)),
+    [platformFiltered, today]
   );
   const allClosed = useMemo(
-    () => positions.filter((p) => p.status === "Expired OTM" || p.status === "Expired ITM" || p.status === "Exercised"),
-    [positions]
+    () => platformFiltered.filter((p) => p.status === "Expired OTM" || p.status === "Expired ITM" || p.status === "Exercised"),
+    [platformFiltered]
   );
 
   const activeNotional = openPositions.reduce((s, p) => s + (p.notional_usd || 0), 0);
-  const totalPremium = positions.reduce((s, p) => s + (p.income_usd || 0), 0);
+  const totalPremium = platformFiltered.reduce((s, p) => s + (p.income_usd || 0), 0);
   const wins = allClosed.filter((p) => p.status === "Expired OTM");
   const winRate = allClosed.length > 0 ? (wins.length / allClosed.length) * 100 : 0;
   const realizedPnl = allClosed.reduce((s, p) => s + (p.net_pnl || (p.status === "Expired OTM" ? p.income_usd || 0 : 0)), 0);
@@ -166,7 +174,7 @@ export default function OptionsPage() {
     ? [...needsSettlement, ...openPositions]
     : tab === "Closed"
       ? allClosed
-      : positions;
+      : platformFiltered;
 
   if (positionsQ.isLoading) return (
     <div className="flex items-center justify-center h-64">
@@ -221,6 +229,24 @@ export default function OptionsPage() {
             {t === "Open" && needsSettlement.length > 0 && (
               <span className="ml-1.5 bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full">{needsSettlement.length}</span>
             )}
+          </button>
+        ))}
+      </div>
+
+      {/* Platform filter pills */}
+      <div className="flex gap-2 items-center text-xs">
+        <span className="text-muted-foreground">Platform:</span>
+        {["All", "Rysk Finance", "Derive"].map((p) => (
+          <button
+            key={p}
+            onClick={() => setPlatformFilter(p)}
+            className={`px-3 py-1 rounded-md border transition ${
+              platformFilter === p
+                ? "bg-primary text-primary-foreground border-primary"
+                : "border-border hover:bg-muted"
+            }`}
+          >
+            {p}
           </button>
         ))}
       </div>
