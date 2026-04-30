@@ -11,11 +11,14 @@ import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
 import { toast } from "sonner";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import { differenceInDays } from "date-fns";
 import {
   getStrategyDisplay, isCoveredCall, isProtectivePut, isCashSecuredPut,
   computeRealizedPL,
 } from "@/lib/optionsHelpers";
+
+const MIGRATION_KEY = "stocks_migration_v1_done";
 
 const fmt = (v) =>
   v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -300,18 +303,23 @@ export default function StocksPage() {
     return m;
   }, [pricesData]);
 
-  // Enrich each stock with live price from Prices entity (falls back to stored value)
+  // Enrich each stock with live price from Prices entity (falls back to stored value).
+  // Defensive baseline: if invested_value isn't stored on the row (legacy data
+  // saved before the form started persisting it), fall back to shares × avg_cost
+  // so P&L stays correct even before the migration below has run.
   const enrichedStocks = useMemo(() => {
     return stocks.map((s) => {
       const livePrice = priceMap[(s.ticker || "").toUpperCase()];
       if (!livePrice) return s;
       const currentValue = (s.shares || 0) * livePrice;
-      const gainLoss = currentValue - (s.invested_value || 0);
-      const gainLossPct = s.invested_value > 0 ? (gainLoss / s.invested_value) * 100 : 0;
+      const baseline = s.invested_value || ((s.shares || 0) * (s.average_cost || 0));
+      const gainLoss = currentValue - baseline;
+      const gainLossPct = baseline > 0 ? (gainLoss / baseline) * 100 : 0;
       return { ...s, current_price: livePrice, current_value: currentValue, gain_loss: gainLoss, gain_loss_pct: gainLossPct };
     });
   }, [stocks, priceMap]);
   const deleteStock = useEntityMutation("StockPosition", "delete");
+  const queryClient = useQueryClient();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editStock, setEditStock] = useState(null);
@@ -322,6 +330,96 @@ export default function StocksPage() {
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => setUser(null));
   }, []);
+
+  // ── One-shot data migration ──
+  // Two cleanups for legacy data created before the form persisted
+  // invested_value and before the auto-merge logic existed:
+  //   1. Backfill invested_value = shares × average_cost on rows missing it.
+  //   2. Merge duplicate (Holding / Partially Sold) rows for the same ticker
+  //      into one row with weighted-average cost; delete the extras.
+  // Guarded by a localStorage flag so it runs at most once per browser. Idempotent
+  // either way (a re-run finds nothing to do).
+  useEffect(() => {
+    if (isLoading || stocks.length === 0) return;
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem(MIGRATION_KEY) === "1") return;
+
+    let cancelled = false;
+    const run = async () => {
+      try {
+        let backfilled = 0;
+        let mergedExtras = 0;
+
+        // Pass 1 — backfill invested_value
+        for (const s of stocks) {
+          if (cancelled) return;
+          const hasShares = (s.shares || 0) > 0;
+          const hasCost = (s.average_cost || 0) > 0;
+          if (!s.invested_value && hasShares && hasCost) {
+            await base44.entities.StockPosition.update(s.id, {
+              invested_value: s.shares * s.average_cost,
+            });
+            backfilled++;
+          }
+        }
+
+        // Pass 2 — merge duplicate Holding / Partially Sold rows by ticker
+        const open = stocks.filter(
+          (s) => s.status === "Holding" || s.status === "Partially Sold"
+        );
+        const byTicker = {};
+        for (const s of open) {
+          const k = (s.ticker || "").toUpperCase();
+          if (!k) continue;
+          (byTicker[k] = byTicker[k] || []).push(s);
+        }
+        for (const ticker of Object.keys(byTicker)) {
+          if (cancelled) return;
+          const group = byTicker[ticker];
+          if (group.length < 2) continue;
+          // Keep the oldest row as the merge target (preserves entry_date).
+          group.sort((a, b) => new Date(a.entry_date || 0) - new Date(b.entry_date || 0));
+          const target = group[0];
+          const extras = group.slice(1);
+
+          const totalShares = group.reduce((s, x) => s + (x.shares || 0), 0);
+          const totalCost = group.reduce(
+            (s, x) => s + (x.shares || 0) * (x.average_cost || 0),
+            0
+          );
+          const newAvg = totalShares > 0 ? totalCost / totalShares : 0;
+          const newInvested = totalShares * newAvg;
+
+          await base44.entities.StockPosition.update(target.id, {
+            shares: totalShares,
+            average_cost: newAvg,
+            invested_value: newInvested,
+          });
+          for (const e of extras) {
+            if (cancelled) return;
+            await base44.entities.StockPosition.delete(e.id);
+            mergedExtras++;
+          }
+        }
+
+        localStorage.setItem(MIGRATION_KEY, "1");
+
+        if (backfilled > 0 || mergedExtras > 0) {
+          const parts = [];
+          if (backfilled) parts.push(`עודכנו ${backfilled} שורות עם עלות`);
+          if (mergedExtras) parts.push(`מוזגו ${mergedExtras} כפילויות`);
+          toast.success(`נתוני מניות סודרו: ${parts.join(" · ")}`);
+          queryClient.invalidateQueries({ queryKey: ["entity", "StockPosition"] });
+        }
+      } catch (e) {
+        // Don't set the flag — we'll retry on next visit.
+        console.error("Stocks migration failed:", e);
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [isLoading, stocks, queryClient]);
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
