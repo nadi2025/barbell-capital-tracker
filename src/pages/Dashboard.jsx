@@ -6,6 +6,7 @@ import SegmentsSection from "@/components/dashboard2/SegmentsSection";
 import AlertsSection from "@/components/dashboard2/AlertsSection";
 import HLPositionsSection from "@/components/dashboard2/HLPositionsSection";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import ManualEntriesPanel from "@/components/dashboard2/ManualEntriesPanel";
 
 export default function Dashboard() {
   const { data, isLoading, isFetching, refetchAll, lastSyncedAt } = useDashboardData();
@@ -36,6 +37,7 @@ export default function Dashboard() {
         <SegmentsSection data={data} />
         <HLPositionsSection data={data} />
         <AllocationSection data={data} />
+        <ManualEntriesPanel />
       </div>
     </div>
   );
