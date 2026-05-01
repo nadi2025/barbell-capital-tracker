@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, ArrowUpRight, Settings, Zap } from "lucide-react";
 import { base44 } from "@/api/base44Client";
@@ -318,19 +318,20 @@ export default function ManualEntriesPanel() {
   );
 
   // Panel-level state — open by default if anything is red
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(() => false);
   // Per-section state: open the section only if it has red rows
   const [sectionOpen, setSectionOpen] = useState({});
 
-  // Trigger open on first render with red items
-  useMemo(() => {
+  // Sync open state when data loads (use useEffect, not useMemo)
+  useEffect(() => {
     if (totalRedCount > 0) setPanelOpen(true);
     const next = {};
     for (const sec of allSections) {
       next[sec.key] = sec.items.some((it) => it.status === "red");
     }
     setSectionOpen(next);
-  }, [totalRedCount, allSections]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalRedCount]);
 
   if (allSections.every((s) => s.items.length === 0)) return null;
 
