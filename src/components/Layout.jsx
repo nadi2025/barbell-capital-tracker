@@ -9,7 +9,6 @@ import BottomNav from "@/components/mobile/BottomNav";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import RouteTransition from "@/components/mobile/RouteTransition";
 import PriceHub from "@/components/PriceHub";
-import ManualEntriesPanel from "@/components/dashboard2/ManualEntriesPanel";
 
 const offChainNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -158,11 +157,6 @@ export default function Layout() {
             })}
           </div>
         </nav>
-
-        {/* Manual Entries Panel — always visible in sidebar */}
-        <div className="px-3 py-3 border-t border-sidebar-border overflow-y-auto max-h-72">
-          <ManualEntriesPanel />
-        </div>
 
         {/* User info + Delete Account */}
         <div className="p-4 border-t border-sidebar-border space-y-2">
