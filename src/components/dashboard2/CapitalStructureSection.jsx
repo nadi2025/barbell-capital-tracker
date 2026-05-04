@@ -39,17 +39,11 @@ export default function CapitalStructureSection({ data }) {
   const depositDebtGap = c.debtFundedDeposits - c.offChainInvestorDebt;
 
   // ── P&L split — capital deployed per side ──
-  // Off-Chain P&L: IB NAV minus ALL capital that funded the off-chain side.
-  // We use totalDeposited (all flows into IB) as the cost basis for IB,
-  // because offChainDebt is also tracked separately in totalDebt.
-  // Simple: totalPnl = totalNAV - totalDeposited (from calcDashboard)
-  // Split: offChainPnl = ibNav - totalDeposited (IB funded by all deposits)
-  //        onChainPnl  = onChainNAV - (onChainDebt + aaveLeverage)
   const offChainCapital = ownEquity + offChainDebt;
   const onChainCapital = onChainDebt + aaveLeverage;
   const offChainPnl = c.ibNav - offChainCapital;
-  const onChainPnl = c.onChainNAV - onChainCapital;
-  const totalPnl = c.totalPnl; // canonical — totalNAV - totalDeposited
+  const onChainPnl = c.cryptoTotalAssets - onChainCapital;
+  const totalPnl = offChainPnl + onChainPnl;
 
   return (
     <div className="space-y-3">
@@ -154,9 +148,8 @@ export default function CapitalStructureSection({ data }) {
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-border/40 text-[10px] text-muted-foreground space-y-0.5 leading-relaxed">
-            <p>Off-Chain = IB NAV ({fmt(c.ibNav, 0)}) − הון עצמי+חוב ({fmt(offChainCapital, 0)})</p>
-            <p className="text-[9px] opacity-70">cash {fmt(c.ibCash,0)} · stocks {fmt(c.ibStocksValue,0)} · options {fmt(c.ibOptionsValue,0)}</p>
-            <p>On-Chain = Crypto NAV ({fmt(c.onChainNAV, 0)}) − חוב on+Aave ({fmt(onChainCapital, 0)})</p>
+            <p>Off-Chain = IB NAV ({fmt(c.ibNav, 0)}) − הון עצמי + חוב off ({fmt(offChainCapital, 0)})</p>
+            <p>On-Chain = Crypto NAV ({fmt(c.cryptoTotalAssets, 0)}) − חוב on + Aave ({fmt(onChainCapital, 0)})</p>
           </div>
         </div>
       </div>
