@@ -4,13 +4,15 @@ import AssignmentAnalysis from "../components/AssignmentAnalysis";
 import ExpiryAlerts from "../components/ExpiryAlerts";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, RefreshCw, Layers, List, TrendingUp, TrendingDown, Target, DollarSign } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Pencil, Trash2, RefreshCw, Layers, List, TrendingUp, TrendingDown, Target, DollarSign, Save } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import OptionTradeForm from "../components/OptionTradeForm";
 import { toast } from "sonner";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getCanonicalCategory, getDirection, isCredit,
   getLongStrike, getShortStrike,
@@ -95,7 +97,9 @@ export default function OptionsPage() {
   const { data: trades = [], isLoading: loadingTrades, refetch: refetchTrades } =
     useEntityList("OptionsTrade", { sort: "-open_date" });
   const { data: stocks = [], refetch: refetchStocks } = useEntityList("StockPosition");
+  const { data: snapshots = [] } = useEntityList("AccountSnapshot", { sort: "-snapshot_date", limit: 1 });
   const deleteTrade = useEntityMutation("OptionsTrade", "delete");
+  const queryClient = useQueryClient();
 
   // PriceHub mounted at the Layout level — open it from here via Outlet context.
   const { openPriceHub } = useOutletContext() || {};
@@ -106,10 +110,38 @@ export default function OptionsPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTicker, setFilterTicker] = useState("all");
   const [consolidated, setConsolidated] = useState(true);
+  const [optionsValueInput, setOptionsValueInput] = useState("");
+  const [savingOptionsValue, setSavingOptionsValue] = useState(false);
+
+  const latestSnapshot = snapshots[0];
 
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => setUser(null));
   }, []);
+
+  // Pre-fill input with current snapshot value when snapshot loads
+  useEffect(() => {
+    if (latestSnapshot?.options_value != null) {
+      setOptionsValueInput(String(latestSnapshot.options_value));
+    }
+  }, [latestSnapshot?.id]);
+
+  const handleSaveOptionsValue = async () => {
+    const val = parseFloat(optionsValueInput);
+    if (isNaN(val)) { toast.error("ערך לא תקין"); return; }
+    setSavingOptionsValue(true);
+    try {
+      if (latestSnapshot?.id) {
+        await base44.entities.AccountSnapshot.update(latestSnapshot.id, { options_value: val });
+        toast.success("שווי אופציות עודכן בהצלחה");
+        queryClient.invalidateQueries({ queryKey: ["entity", "AccountSnapshot"] });
+      } else {
+        toast.error("לא נמצא snapshot — יש לייבא CSV תחילה");
+      }
+    } finally {
+      setSavingOptionsValue(false);
+    }
+  };
 
   const loadData = () => {
     refetchTrades();
@@ -246,6 +278,39 @@ export default function OptionsPage() {
           sub={`${kpis.open} פתוחות · ${kpis.closed} סגורות`}
         />
       </div>
+
+      {/* Manual open options value override */}
+      {!isReadOnly && (
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-foreground">עדכון ידני — שווי אופציות פתוחות (IB)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              הזן את השווי הנוכחי מ-IB (options_value). ישתקף בדשבורד הראשי.
+              {latestSnapshot?.snapshot_date && (
+                <span className="mr-1">· snapshot: {latestSnapshot.snapshot_date}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={optionsValueInput}
+              onChange={(e) => setOptionsValueInput(e.target.value)}
+              placeholder="לדוגמה: -3200"
+              className="w-40 font-mono text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={handleSaveOptionsValue}
+              disabled={savingOptionsValue}
+              className="gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {savingOptionsValue ? "שומר..." : "שמור"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <ExpiryAlerts trades={trades} />
 
