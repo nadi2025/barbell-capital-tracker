@@ -215,13 +215,31 @@ export default function WeeklyReportPage() {
   };
 
   const handleMarkSent = async (id) => {
-    await updateReport.mutateAsync({ id, data: { status: "Sent" } });
-    toast.success("סומן כנשלח");
+    try {
+      await updateReport.mutateAsync({ id, data: { status: "Sent" } });
+      toast.success("סומן כנשלח");
+    } catch (e) {
+      if (e.message?.includes("not found")) {
+        reportsQ.refetch();
+        toast.error("הדוח לא נמצא — רשימת הדוחות עודכנה");
+      } else {
+        toast.error("שגיאה: " + e.message);
+      }
+    }
   };
 
   const handleDelete = async (id) => {
-    await deleteReportM.mutateAsync(id);
-    toast.success("נמחק");
+    try {
+      await deleteReportM.mutateAsync(id);
+      toast.success("נמחק");
+    } catch (e) {
+      if (e.message?.includes("not found")) {
+        reportsQ.refetch();
+        toast.error("הדוח כבר לא קיים — רשימה עודכנה");
+      } else {
+        toast.error("שגיאה: " + e.message);
+      }
+    }
   };
 
   if (isLoading) return (
