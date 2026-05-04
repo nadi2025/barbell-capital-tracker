@@ -18,9 +18,7 @@ const offChainNav = [
 { path: "/reports", label: "Reports", icon: FileText },
 { path: "/debt", label: "Debt & Capital", icon: Landmark },
 { path: "/offchain-investors", label: "Investors (Off-Chain)", icon: Users },
-{ path: "/weekly-report", label: "דוח שבועי", icon: FileText },
-{ path: "/ib-import", label: "ייבוא IB (שבועי)", icon: Upload },
-{ path: "/ib-reconcile", label: "IB Reconcile (מלא)", icon: RefreshCw }];
+{ path: "/weekly-report", label: "דוח שבועי", icon: FileText }];
 
 
 const onChainNav = [
