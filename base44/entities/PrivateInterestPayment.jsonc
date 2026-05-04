@@ -1,0 +1,55 @@
+{
+  "name": "PrivateInterestPayment",
+  "type": "object",
+  "properties": {
+    "investor_id": {
+      "type": "string",
+      "title": "Investor ID"
+    },
+    "investor_name": {
+      "type": "string",
+      "title": "Investor Name (denormalized)"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Payment Date"
+    },
+    "amount": {
+      "type": "number",
+      "title": "Amount"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Currency"
+    },
+    "period_covered": {
+      "type": "string",
+      "title": "Period Covered"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Scheduled",
+        "Paid"
+      ],
+      "title": "Status",
+      "default": "Scheduled"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "investor_id",
+    "payment_date",
+    "amount",
+    "currency",
+    "status"
+  ]
+}

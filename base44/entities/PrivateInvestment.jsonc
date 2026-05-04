@@ -1,0 +1,84 @@
+{
+  "name": "PrivateInvestment",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Investment Name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Real Estate",
+        "Venture Capital",
+        "Internal Product",
+        "Other"
+      ],
+      "title": "Category"
+    },
+    "investment_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Investment Date"
+    },
+    "initial_cost": {
+      "type": "number",
+      "title": "Initial Cost"
+    },
+    "current_value": {
+      "type": "number",
+      "title": "Current Value"
+    },
+    "last_valued_at": {
+      "type": "string",
+      "format": "date",
+      "title": "Last Valued At"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Currency",
+      "default": "USD"
+    },
+    "ownership_percent": {
+      "type": "number",
+      "title": "Ownership (%)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Realized",
+        "Written Off"
+      ],
+      "title": "Status",
+      "default": "Active"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    },
+    "funding_source": {
+      "type": "string",
+      "enum": [
+        "Company Equity",
+        "Debt Investors",
+        "Mixed"
+      ],
+      "title": "Funding Source"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "investment_date",
+    "initial_cost",
+    "current_value",
+    "currency",
+    "status",
+    "funding_source"
+  ]
+}

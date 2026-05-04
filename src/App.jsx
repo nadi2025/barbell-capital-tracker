@@ -26,6 +26,14 @@ import OffChainInvestorsPage from './pages/OffChainInvestorsPage';
 import WeeklyReportPage from './pages/WeeklyReportPage';
 import AssetsPage from './pages/AssetsPage';
 
+// ===== PRIVATE INVESTMENTS MODULE — START =====
+import { ENABLE_PRIVATE_MODULE } from '@/lib/app-params';
+import PrivateDashboard from './pages/private/PrivateDashboard';
+import PrivateInvestmentsPage from './pages/private/PrivateInvestmentsPage';
+import PrivateInvestorsPage from './pages/private/PrivateInvestorsPage';
+import PrivatePaymentsPage from './pages/private/PrivatePaymentsPage';
+// ===== PRIVATE INVESTMENTS MODULE — END =====
+
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,6 +80,18 @@ const AuthenticatedApp = () => {
         <Route path="/offchain-investors" element={<OffChainInvestorsPage />} />
         <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="/settings/assets" element={<AssetsPage />} />
+
+        {/* ===== PRIVATE INVESTMENTS MODULE — START ===== */}
+        {/* To remove: delete this block + the import block above + folders src/pages/private/ and src/components/private/ */}
+        {ENABLE_PRIVATE_MODULE && (
+          <>
+            <Route path="/private" element={<PrivateDashboard />} />
+            <Route path="/private/investments" element={<PrivateInvestmentsPage />} />
+            <Route path="/private/investors" element={<PrivateInvestorsPage />} />
+            <Route path="/private/payments" element={<PrivatePaymentsPage />} />
+          </>
+        )}
+        {/* ===== PRIVATE INVESTMENTS MODULE — END ===== */}
 
         <Route path="*" element={<PageNotFound />} />
       </Route>

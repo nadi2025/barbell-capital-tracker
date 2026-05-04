@@ -1,0 +1,74 @@
+{
+  "name": "PrivateDebtInvestor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Investor Name"
+    },
+    "principal": {
+      "type": "number",
+      "title": "Principal"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Currency"
+    },
+    "interest_rate": {
+      "type": "number",
+      "title": "Interest Rate (% annual)"
+    },
+    "payment_frequency": {
+      "type": "string",
+      "enum": [
+        "Monthly",
+        "Quarterly",
+        "Annual",
+        "At Maturity"
+      ],
+      "title": "Payment Frequency"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Start Date"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Maturity Date"
+    },
+    "linked_investment_name": {
+      "type": "string",
+      "title": "Linked Investment (label)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Repaid",
+        "Defaulted"
+      ],
+      "title": "Status",
+      "default": "Active"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "name",
+    "principal",
+    "currency",
+    "interest_rate",
+    "payment_frequency",
+    "start_date",
+    "maturity_date",
+    "status"
+  ]
+}

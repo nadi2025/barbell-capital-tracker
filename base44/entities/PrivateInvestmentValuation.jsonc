@@ -1,0 +1,37 @@
+{
+  "name": "PrivateInvestmentValuation",
+  "type": "object",
+  "properties": {
+    "investment_id": {
+      "type": "string",
+      "title": "Investment ID"
+    },
+    "valuation_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Valuation Date"
+    },
+    "value": {
+      "type": "number",
+      "title": "Value"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "ILS"
+      ],
+      "title": "Currency"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "investment_id",
+    "valuation_date",
+    "value",
+    "currency"
+  ]
+}

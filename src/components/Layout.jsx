@@ -3,12 +3,18 @@ import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import {
   LayoutDashboard, TrendingUp, Wallet, Building2, FileText, Landmark,
-  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw, Upload, ArrowLeft, Trash2 } from "lucide-react";
+  Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw, Upload, ArrowLeft, Trash2,
+  // ===== PRIVATE INVESTMENTS MODULE — icon (Briefcase) =====
+  Briefcase,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/mobile/BottomNav";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import RouteTransition from "@/components/mobile/RouteTransition";
 import PriceHub from "@/components/PriceHub";
+// ===== PRIVATE INVESTMENTS MODULE — START =====
+import { ENABLE_PRIVATE_MODULE } from "@/lib/app-params";
+// ===== PRIVATE INVESTMENTS MODULE — END =====
 
 const offChainNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -32,6 +38,15 @@ const onChainNav = [
 { path: "/crypto/options", label: "Options", icon: TrendingDown }];
 
 
+// ===== PRIVATE INVESTMENTS MODULE — START =====
+const privateNav = [
+  { path: "/private", label: "Dashboard פרטי", icon: Briefcase },
+  { path: "/private/investments", label: "השקעות", icon: Building2 },
+  { path: "/private/investors", label: "משקיעי חוב", icon: Users },
+  { path: "/private/payments", label: "תשלומי ריבית", icon: CreditCard },
+];
+// ===== PRIVATE INVESTMENTS MODULE — END =====
+
 const settingsNav = [
 { path: "/settings/assets", label: "ניהול נכסים", icon: Settings }];
 
@@ -53,7 +68,8 @@ export default function Layout() {
   const isRootPath = ROOT_PATHS.includes(location.pathname);
 
   // Page title from nav
-  const currentNav = [...offChainNav, ...onChainNav, ...settingsNav].find(
+  // ===== PRIVATE INVESTMENTS MODULE — include privateNav in title lookup =====
+  const currentNav = [...offChainNav, ...onChainNav, ...(ENABLE_PRIVATE_MODULE ? privateNav : []), ...settingsNav].find(
     (n) => n.path === location.pathname
   );
   const pageTitle = currentNav?.label || "Oasis";
@@ -138,6 +154,28 @@ export default function Layout() {
               );
             })}
           </div>
+          {/* ===== PRIVATE INVESTMENTS MODULE — START ===== */}
+          {ENABLE_PRIVATE_MODULE && (
+            <>
+              <p className="text-xs font-semibold text-purple-400/70 uppercase tracking-wider px-3 mb-1 mt-4">השקעות פרטיות</p>
+              <div className="space-y-0.5">
+                {privateNav.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
+                        ${isActive ? "bg-purple-500/15 text-purple-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {/* ===== PRIVATE INVESTMENTS MODULE — END ===== */}
           <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-4">הגדרות</p>
           <div className="space-y-0.5">
             {settingsNav.map((item) => {
