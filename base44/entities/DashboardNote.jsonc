@@ -1,0 +1,23 @@
+{
+  "name": "DashboardNote",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "title": "\u05d4\u05e2\u05e8\u05d4"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "red",
+        "amber",
+        "info"
+      ],
+      "title": "\u05e8\u05de\u05ea \u05d3\u05d7\u05d9\u05e4\u05d5\u05ea",
+      "default": "info"
+    }
+  },
+  "required": [
+    "text"
+  ]
+}

@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { differenceInDays, format } from "date-fns";
-import { AlertTriangle, Calendar, TrendingDown, Clock, ChevronDown, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Calendar, TrendingDown, Clock, ChevronDown, CheckCircle2, StickyNote, Plus, Trash2, X } from "lucide-react";
 import { calcDashboard, fmt } from "./dashboardCalcs";
+import { base44 } from "@/api/base44Client";
+import { useEntityList } from "@/hooks/useEntityQuery";
+import { useQueryClient } from "@tanstack/react-query";
 
 function buildAlerts(data, c) {
   const alerts = [];
@@ -66,13 +69,11 @@ function buildAlerts(data, c) {
     .filter((inv) => inv.interest_schedule === "Monthly" && inv.status === "Active")
     .forEach((inv) => {
       const payDay = inv.payment_day_of_month || 1;
-      // Compute the upcoming payment date
       let next = new Date(today.getFullYear(), today.getMonth(), payDay);
       if (next <= today) next = new Date(today.getFullYear(), today.getMonth() + 1, payDay);
       const d = differenceInDays(next, today);
       if (d > 14) return;
 
-      // Check if a payment was already recorded for this upcoming month
       const nextMonth = next.getMonth();
       const nextYear = next.getFullYear();
       const alreadyPaid = payments.some((p) => {
@@ -93,7 +94,7 @@ function buildAlerts(data, c) {
       });
     });
 
-  // Big stock loss — threshold-based risk alert (user-chosen 30%+ drawdown)
+  // Big stock loss
   const bigLoss = (data.stocks || []).find((s) => s.gain_loss_pct && s.gain_loss_pct < -0.3);
   if (bigLoss) {
     alerts.push({
@@ -104,62 +105,171 @@ function buildAlerts(data, c) {
     });
   }
 
-  // Sort by urgency: red first
   return alerts.sort((a, b) => (a.urgency === "red" ? -1 : 1) - (b.urgency === "red" ? -1 : 1));
 }
 
 const urgencyStyles = {
   red: "border-red-500/30 bg-red-500/10 text-red-400",
   amber: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+  info: "border-blue-500/30 bg-blue-500/10 text-blue-400",
 };
 
+const urgencyLabels = {
+  red: "דחוף",
+  amber: "שים לב",
+  info: "מידע",
+};
+
+function AddNoteForm({ onClose }) {
+  const queryClient = useQueryClient();
+  const [text, setText] = useState("");
+  const [urgency, setUrgency] = useState("info");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!text.trim()) return;
+    setSaving(true);
+    await base44.entities.DashboardNote.create({ text: text.trim(), urgency });
+    queryClient.invalidateQueries({ queryKey: ["entity", "DashboardNote"] });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold">הערה חדשה</p>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+      </div>
+      <textarea
+        autoFocus
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="כתוב הערה..."
+        className="w-full text-sm bg-muted/30 border border-border rounded-lg px-3 py-2 resize-none min-h-[70px] focus:outline-none focus:ring-1 focus:ring-ring"
+        dir="rtl"
+      />
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">רמה:</span>
+        {["info", "amber", "red"].map((u) => (
+          <button
+            key={u}
+            onClick={() => setUrgency(u)}
+            className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${urgency === u ? urgencyStyles[u] + " font-bold" : "border-border text-muted-foreground"}`}
+          >
+            {urgencyLabels[u]}
+          </button>
+        ))}
+        <button
+          onClick={handleSave}
+          disabled={!text.trim() || saving}
+          className="mr-auto text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded-lg disabled:opacity-50"
+        >
+          {saving ? "שומר..." : "שמור"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AlertsSection({ data }) {
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(true);
+  const [showAddNote, setShowAddNote] = useState(false);
+  const { data: notes = [] } = useEntityList("DashboardNote", { sort: "-created_date" });
+
   const c = calcDashboard(data);
   const alerts = buildAlerts(data, c);
   const redCount = alerts.filter((a) => a.urgency === "red").length;
+  const totalCount = alerts.length + notes.length;
 
-  if (!alerts.length) {
+  const handleDeleteNote = async (id) => {
+    await base44.entities.DashboardNote.delete(id);
+    queryClient.invalidateQueries({ queryKey: ["entity", "DashboardNote"] });
+  };
+
+  const accentBorder = redCount > 0 ? "border-red-500/40" : notes.some(n => n.urgency === "red") ? "border-red-500/40" : "border-amber-500/40";
+
+  if (totalCount === 0 && !showAddNote) {
     return (
       <div className="bg-card border border-border rounded-2xl px-5 py-3 flex items-center gap-2">
         <CheckCircle2 className="w-4 h-4 text-profit" />
         <span className="text-xs text-muted-foreground">אין התראות פעילות</span>
+        <button
+          onClick={() => setShowAddNote(true)}
+          className="mr-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" /> הוסף הערה
+        </button>
       </div>
     );
   }
 
-  const accentBorder = redCount > 0 ? "border-red-500/40" : "border-amber-500/40";
-
   return (
-    <div className={`bg-card border ${accentBorder} rounded-2xl overflow-hidden`}>
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full px-5 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+    <div className={`bg-card border ${totalCount > 0 ? accentBorder : "border-border"} rounded-2xl overflow-hidden`}>
+      <div className="px-5 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-2 flex-1"
+        >
           <AlertTriangle className={`w-4 h-4 ${redCount > 0 ? "text-red-400" : "text-amber-400"}`} />
           <span className="text-sm font-semibold">
-            {alerts.length} התראות
+            {alerts.length} התראות{notes.length > 0 ? ` · ${notes.length} הערות` : ""}
           </span>
           {redCount > 0 && (
             <span className="text-[10px] uppercase tracking-wide font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
               {redCount} דחוף
             </span>
           )}
-        </div>
-        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? "rotate-180" : ""}`} />
-      </button>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform mr-1 ${expanded ? "rotate-180" : ""}`} />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowAddNote((v) => !v); }}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-muted/30"
+        >
+          <StickyNote className="w-3.5 h-3.5" />
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+
       {expanded && (
-        <div className="px-5 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          {alerts.map((a, i) => (
-            <div key={i} className={`flex items-start gap-2.5 text-xs px-3 py-2 rounded-lg border ${urgencyStyles[a.urgency]}`}>
-              <a.icon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="font-semibold truncate">{a.title}</p>
-                <p className="opacity-80 truncate">{a.text}</p>
-              </div>
+        <div className="px-5 pb-4 pt-1 space-y-3">
+          {showAddNote && (
+            <AddNoteForm onClose={() => setShowAddNote(false)} />
+          )}
+
+          {/* Manual notes */}
+          {notes.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {notes.map((note) => (
+                <div key={note.id} className={`flex items-start gap-2.5 text-xs px-3 py-2 rounded-lg border group ${urgencyStyles[note.urgency || "info"]}`}>
+                  <StickyNote className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <p className="flex-1 min-w-0 break-words">{note.text}</p>
+                  <button
+                    onClick={() => handleDeleteNote(note.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 hover:text-red-400"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Auto alerts */}
+          {alerts.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {alerts.map((a, i) => (
+                <div key={i} className={`flex items-start gap-2.5 text-xs px-3 py-2 rounded-lg border ${urgencyStyles[a.urgency]}`}>
+                  <a.icon className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="font-semibold truncate">{a.title}</p>
+                    <p className="opacity-80 truncate">{a.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
