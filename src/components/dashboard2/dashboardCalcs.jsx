@@ -72,17 +72,21 @@ export function calcDashboard(data) {
   // debt-funded transfers — kept for backward compatibility).
   const totalDeposited = deposits.reduce((s, d) => d.type === "Deposit" ? s + d.amount : s - d.amount, 0);
 
-  // Own equity only — Deposit rows flagged as Equity Investment / Equity Cash Flow.
-  const equityDeposits = deposits.filter((d) =>
-    d.capital_source === "Equity Investment" || d.capital_source === "Equity Cash Flow"
-  );
+  // Own equity and off-chain debt are now both derived from the Deposit ledger
+  // exclusively. Each deposit row carries a capital_source flag that tells us
+  // whether the money came from the user's own pocket ("Equity") or from a
+  // private/institutional lender ("Off-Chain Debt"). Legacy values
+  // (Equity Investment / Equity Cash Flow / Debt Investment) are folded in.
+  const isEquitySource = (cs) =>
+    cs === "Equity" || cs === "Equity Investment" || cs === "Equity Cash Flow" || !cs;
+  const isOffChainDebtSource = (cs) =>
+    cs === "Off-Chain Debt" || cs === "Debt Investment";
+
+  const equityDeposits = deposits.filter((d) => isEquitySource(d.capital_source));
   const ownEquity = equityDeposits.reduce((s, d) => d.type === "Deposit" ? s + (d.amount || 0) : s - (d.amount || 0), 0);
 
-  // Informational: which part of the Deposit ledger was funded by debt (should
-  // roughly match OffChainInvestor principal, used to detect missing investor
-  // records).
   const debtFundedDeposits = deposits
-    .filter((d) => d.capital_source === "Debt Investment")
+    .filter((d) => isOffChainDebtSource(d.capital_source))
     .reduce((s, d) => s + (d.type === "Deposit" ? (d.amount || 0) : -(d.amount || 0)), 0);
 
   const ibPnl = ibNav - totalDeposited;
@@ -96,17 +100,15 @@ export function calcDashboard(data) {
 
   const unrealizedPnl = holdingStocks.reduce((s, x) => s + (x.gain_loss || 0), 0);
 
-  // Off-chain debt comes from two authoritative sources:
-  //   1. OffChainInvestor entity — private investors (loan-like). Source of truth
-  //      for things like עידו/טל/נעמה/אלינור.
-  //   2. DebtFacility entity — bank loans and other institutional facilities.
-  const offChainInvestorDebt = offChainInvestors
-    .filter((inv) => inv.status === "Active")
-    .reduce((s, inv) => s + (inv.principal_usd || 0), 0);
-  const offChainFacilityDebt = debts
-    .filter((d) => d.status === "Active")
-    .reduce((s, d) => s + (d.outstanding_balance || 0), 0);
-  const totalOffChainDebt = offChainInvestorDebt + offChainFacilityDebt;
+  // Off-chain debt is now derived solely from Deposit rows tagged as
+  // "Off-Chain Debt". OffChainInvestor and DebtFacility entities are still
+  // tracked separately for payment scheduling, but the dashboard's capital
+  // structure no longer reads from them.
+  const totalOffChainDebt = debtFundedDeposits;
+  // Kept for the existing UI breakdown line in CapitalStructureSection — both
+  // mirror the same number so the sub-line stays consistent without breaking.
+  const offChainInvestorDebt = debtFundedDeposits;
+  const offChainFacilityDebt = 0;
 
   // ── On-Chain ──
   const aaveCollateralValue = aaveCollateral.reduce((s, c) => s + (c.value_usd || 0), 0);

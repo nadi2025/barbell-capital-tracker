@@ -22,9 +22,8 @@
     "capital_source": {
       "type": "string",
       "enum": [
-        "Equity Investment",
-        "Equity Cash Flow",
-        "Debt Investment"
+        "Equity",
+        "Off-Chain Debt"
       ],
       "title": "Capital Source"
     },

@@ -27,7 +27,7 @@ export default function DepositsPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editDeposit, setEditDeposit] = useState(null);
-  const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
+  const [form, setForm] = useState({ date: "", type: "Deposit", amount: "", capital_source: "Equity", notes: "" });
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -36,8 +36,15 @@ export default function DepositsPage() {
 
   const isReadOnly = user?.role === "partner" || user?.role === "investor";
 
-  const openNew = () => { setEditDeposit(null); setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" }); setFormOpen(true); };
-  const openEdit = (dep) => { setEditDeposit(dep); setForm({ date: dep.date, type: dep.type, amount: String(dep.amount), capital_source: dep.capital_source || "Equity Investment", notes: dep.notes || "" }); setFormOpen(true); };
+  // Migrate legacy capital_source values on read so old records still display correctly.
+  const normalizeCapitalSource = (cs) => {
+    if (cs === "Equity Investment" || cs === "Equity Cash Flow") return "Equity";
+    if (cs === "Debt Investment") return "Off-Chain Debt";
+    return cs || "Equity";
+  };
+
+  const openNew = () => { setEditDeposit(null); setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity", notes: "" }); setFormOpen(true); };
+  const openEdit = (dep) => { setEditDeposit(dep); setForm({ date: dep.date, type: dep.type, amount: String(dep.amount), capital_source: normalizeCapitalSource(dep.capital_source), notes: dep.notes || "" }); setFormOpen(true); };
 
   const handleSave = async () => {
     const data = { date: form.date, type: form.type, amount: parseFloat(form.amount), capital_source: form.capital_source, notes: form.notes || undefined };
@@ -49,7 +56,7 @@ export default function DepositsPage() {
       toast.success(`${form.type} recorded`);
     }
     setFormOpen(false);
-    setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity Investment", notes: "" });
+    setForm({ date: "", type: "Deposit", amount: "", capital_source: "Equity", notes: "" });
     setEditDeposit(null);
   };
 
@@ -129,10 +136,14 @@ export default function DepositsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full border ${d.capital_source === "Debt Investment" ? "bg-loss/10 text-loss border-loss/20"
-                      : d.capital_source === "Equity Cash Flow" ? "bg-blue-50 text-blue-700 border-blue-200"
-                      : "bg-profit/10 text-profit border-profit/20"
-                      }`}>{d.capital_source || "Equity Investment"}</span>
+                    {(() => {
+                      const cs = normalizeCapitalSource(d.capital_source);
+                      const label = cs === "Off-Chain Debt" ? "חוב Off-Chain" : "הון עצמי";
+                      const cls = cs === "Off-Chain Debt"
+                        ? "bg-loss/10 text-loss border-loss/20"
+                        : "bg-profit/10 text-profit border-profit/20";
+                      return <span className={`text-xs px-2 py-0.5 rounded-full border ${cls}`}>{label}</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-right font-mono font-medium">
                     <span className={d.type === "Deposit" ? "text-profit" : "text-loss"}>
@@ -184,9 +195,8 @@ export default function DepositsPage() {
               <Select value={form.capital_source} onValueChange={(v) => setForm((f) => ({ ...f, capital_source: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Equity Investment">הון עצמי – השקעה</SelectItem>
-                  <SelectItem value="Equity Cash Flow">הון עצמי – תזרים</SelectItem>
-                  <SelectItem value="Debt Investment">השקעת חוב</SelectItem>
+                  <SelectItem value="Equity">הון עצמי</SelectItem>
+                  <SelectItem value="Off-Chain Debt">חוב Off-Chain</SelectItem>
                 </SelectContent>
               </Select>
             </div>
