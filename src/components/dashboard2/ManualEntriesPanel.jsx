@@ -557,42 +557,42 @@ function MaintenanceShell({ keys, headerActions = {} }) {
 
   if (filtered.every((s) => s.items.length === 0)) return null;
 
-  return (
-    <div className="space-y-2 hidden">
-      {filtered.map((sec) => {
-        const hasRed = sec.items.some((it) => it.status === "red");
-        const headerAction = headerActions[sec.key];
-        return (
-          <SectionCard
-            key={sec.key}
-            title={sec.title}
-            count={sec.items.length}
-            threshold={sec.threshold}
-            items={sec.items}
-            hasRed={hasRed}
-            expanded={!!openMap[sec.key]}
-            onToggle={() => setOpenMap((p) => ({ ...p, [sec.key]: !p[sec.key] }))}
-            emptyMessage={sec.emptyMessage}
-            headerAction={headerAction}
-            renderItem={(item) =>
-            <Link
-              key={item.id}
-              to={item.editHref}
-              className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors ${STATUS_CLASSES[item.status].row}`}>
-              
-                <StatusDot status={item.status} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-mono truncate">{item.primary}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{item.secondary}</p>
-                </div>
-                <DaysBadge days={item.days} status={item.status} />
-                <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
-              </Link>
-            } />);
+  return null;
 
 
-      })}
-    </div>);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
 
