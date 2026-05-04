@@ -558,7 +558,7 @@ function MaintenanceShell({ keys, headerActions = {} }) {
   if (filtered.every((s) => s.items.length === 0)) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 hidden">
       {filtered.map((sec) => {
         const hasRed = sec.items.some((it) => it.status === "red");
         const headerAction = headerActions[sec.key];

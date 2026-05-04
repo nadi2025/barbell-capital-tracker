@@ -32,23 +32,23 @@ export default function AaveAccountPage() {
     lastUpdated,
     isLoading,
     error,
-    refetch,
+    refetch
   } = useAavePosition();
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+      </div>);
+
   }
 
   if (error) {
     return (
       <div className="text-center py-8">
         <p className="text-red-500 text-sm">שגיאה בטעינת נתונים: {error?.message}</p>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -62,24 +62,24 @@ export default function AaveAccountPage() {
         netWorth={netWorth}
         netApy={netApy}
         healthFactor={healthFactor}
-        borrowPowerUsed={borrowPowerUsed}
-      />
+        borrowPowerUsed={borrowPowerUsed} />
+      
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AaveSuppliesTable
           collateralDetails={collateralDetails}
           totalCollateral={totalCollateral}
           supplyApy={supplyApy}
-          onEdit={refetch}
-        />
+          onEdit={refetch} />
+        
         <AaveBorrowsTable
           borrowedAmount={borrowedAmount}
           borrowApy={borrowApy}
           availableToBorrow={availableToBorrow}
           maxBorrowCapacity={maxBorrowCapacity}
           eMode={eMode}
-          onEdit={refetch}
-        />
+          onEdit={refetch} />
+        
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -88,14 +88,14 @@ export default function AaveAccountPage() {
       </div>
 
       {/* Manual maintenance reminders — surfaced here on the Aave page rather
-          than the main dashboard so they don't add noise where most users land. */}
+           than the main dashboard so they don't add noise where most users land. */}
       <AaveMaintenance />
 
-      {lastUpdated && (
-        <div className="text-xs text-muted-foreground text-center py-4">
+      {lastUpdated &&
+      <div className="text-xs text-muted-foreground text-center py-4 hidden">
           Updated: {new Date(lastUpdated).toLocaleString('he-IL')}
         </div>
-      )}
-    </div>
-  );
+      }
+    </div>);
+
 }
