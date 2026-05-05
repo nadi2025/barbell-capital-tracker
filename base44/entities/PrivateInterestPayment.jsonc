@@ -8,7 +8,7 @@
     },
     "investor_name": {
       "type": "string",
-      "title": "Investor Name (denormalized)"
+      "title": "Investor Name"
     },
     "payment_date": {
       "type": "string",
@@ -25,6 +25,7 @@
         "USD",
         "ILS"
       ],
+      "default": "USD",
       "title": "Currency"
     },
     "period_covered": {
@@ -37,8 +38,8 @@
         "Scheduled",
         "Paid"
       ],
-      "title": "Status",
-      "default": "Scheduled"
+      "default": "Paid",
+      "title": "Status"
     },
     "notes": {
       "type": "string",
@@ -48,8 +49,6 @@
   "required": [
     "investor_id",
     "payment_date",
-    "amount",
-    "currency",
-    "status"
+    "amount"
   ]
 }

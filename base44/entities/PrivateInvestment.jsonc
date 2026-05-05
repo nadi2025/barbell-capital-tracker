@@ -4,7 +4,7 @@
   "properties": {
     "name": {
       "type": "string",
-      "title": "Investment Name"
+      "title": "Name"
     },
     "category": {
       "type": "string",
@@ -14,6 +14,7 @@
         "Internal Product",
         "Other"
       ],
+      "default": "Real Estate",
       "title": "Category"
     },
     "investment_date": {
@@ -40,8 +41,8 @@
         "USD",
         "ILS"
       ],
-      "title": "Currency",
-      "default": "USD"
+      "default": "USD",
+      "title": "Currency"
     },
     "ownership_percent": {
       "type": "number",
@@ -54,12 +55,8 @@
         "Realized",
         "Written Off"
       ],
-      "title": "Status",
-      "default": "Active"
-    },
-    "notes": {
-      "type": "string",
-      "title": "Notes"
+      "default": "Active",
+      "title": "Status"
     },
     "funding_source": {
       "type": "string",
@@ -68,17 +65,16 @@
         "Debt Investors",
         "Mixed"
       ],
+      "default": "Company Equity",
       "title": "Funding Source"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
     }
   },
   "required": [
     "name",
-    "category",
-    "investment_date",
-    "initial_cost",
-    "current_value",
-    "currency",
-    "status",
-    "funding_source"
+    "investment_date"
   ]
 }

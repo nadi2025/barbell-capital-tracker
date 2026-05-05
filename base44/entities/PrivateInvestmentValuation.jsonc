@@ -21,6 +21,7 @@
         "USD",
         "ILS"
       ],
+      "default": "USD",
       "title": "Currency"
     },
     "notes": {
@@ -31,7 +32,6 @@
   "required": [
     "investment_id",
     "valuation_date",
-    "value",
-    "currency"
+    "value"
   ]
 }

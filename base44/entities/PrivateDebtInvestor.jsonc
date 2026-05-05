@@ -16,11 +16,12 @@
         "USD",
         "ILS"
       ],
+      "default": "USD",
       "title": "Currency"
     },
     "interest_rate": {
       "type": "number",
-      "title": "Interest Rate (% annual)"
+      "title": "Annual Interest Rate (%)"
     },
     "payment_frequency": {
       "type": "string",
@@ -30,6 +31,7 @@
         "Annual",
         "At Maturity"
       ],
+      "default": "Monthly",
       "title": "Payment Frequency"
     },
     "start_date": {
@@ -53,8 +55,8 @@
         "Repaid",
         "Defaulted"
       ],
-      "title": "Status",
-      "default": "Active"
+      "default": "Active",
+      "title": "Status"
     },
     "notes": {
       "type": "string",
@@ -63,12 +65,7 @@
   },
   "required": [
     "name",
-    "principal",
-    "currency",
-    "interest_rate",
-    "payment_frequency",
     "start_date",
-    "maturity_date",
-    "status"
+    "maturity_date"
   ]
 }
