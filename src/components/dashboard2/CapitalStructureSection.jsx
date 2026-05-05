@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Plus, Wallet, Landmark, TrendingUp, TrendingDown } from "lucide-react";
 import { calcDashboard, fmt } from "./dashboardCalcs";
+import FreeCashTile from "./FreeCashTile";
 
 /**
  * Capital Structure — three hero tiles answering:
@@ -156,17 +157,7 @@ export default function CapitalStructureSection({ data }) {
 
       {/* Secondary risk/activity metrics row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div className="bg-card border border-border rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Aave Health</p>
-          </div>
-          <p className={`text-xl font-bold font-mono ${c.healthFactor > 2 ? "text-profit" : c.healthFactor > 1.5 ? "text-amber-500" : c.healthFactor > 0 ? "text-loss" : ""}`}>
-            {c.healthFactor > 0 ? c.healthFactor.toFixed(2) : "—"}
-          </p>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {c.aaveBorrowUsd > 0 ? `Borrow ${fmt(c.aaveBorrowUsd, 0)}` : "ללא חוב"}
-          </p>
-        </div>
+        <FreeCashTile />
         <div className="bg-card border border-border rounded-2xl p-4">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1">
             פרמיה שנגבתה (IB)

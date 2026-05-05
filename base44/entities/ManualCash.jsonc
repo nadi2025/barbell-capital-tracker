@@ -1,0 +1,18 @@
+{
+  "name": "ManualCash",
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "number",
+      "title": "\u05de\u05d6\u05d5\u05de\u05df \u05e4\u05e0\u05d5\u05d9 (USD)",
+      "default": 0
+    },
+    "notes": {
+      "type": "string",
+      "title": "\u05d4\u05e2\u05e8\u05d5\u05ea"
+    }
+  },
+  "required": [
+    "amount"
+  ]
+}
