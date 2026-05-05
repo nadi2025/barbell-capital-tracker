@@ -112,6 +112,8 @@ export default function OptionsPage() {
   const [consolidated, setConsolidated] = useState(true);
   const [optionsValueInput, setOptionsValueInput] = useState("");
   const [savingOptionsValue, setSavingOptionsValue] = useState(false);
+  const [cashInput, setCashInput] = useState("");
+  const [savingCash, setSavingCash] = useState(false);
 
   const latestSnapshot = snapshots[0];
 
@@ -123,6 +125,9 @@ export default function OptionsPage() {
   useEffect(() => {
     if (latestSnapshot?.options_value != null) {
       setOptionsValueInput(String(latestSnapshot.options_value));
+    }
+    if (latestSnapshot?.cash != null) {
+      setCashInput(String(latestSnapshot.cash));
     }
   }, [latestSnapshot?.id]);
 
@@ -140,6 +145,23 @@ export default function OptionsPage() {
       }
     } finally {
       setSavingOptionsValue(false);
+    }
+  };
+
+  const handleSaveCash = async () => {
+    const val = parseFloat(cashInput);
+    if (isNaN(val)) { toast.error("ערך לא תקין"); return; }
+    setSavingCash(true);
+    try {
+      if (latestSnapshot?.id) {
+        await base44.entities.AccountSnapshot.update(latestSnapshot.id, { cash: val });
+        toast.success("מזומן עודכן בהצלחה");
+        queryClient.invalidateQueries({ queryKey: ["entity", "AccountSnapshot"] });
+      } else {
+        toast.error("לא נמצא snapshot — יש לייבא CSV תחילה");
+      }
+    } finally {
+      setSavingCash(false);
     }
   };
 
@@ -307,6 +329,39 @@ export default function OptionsPage() {
             >
               <Save className="w-3.5 h-3.5" />
               {savingOptionsValue ? "שומר..." : "שמור"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Manual cash override */}
+      {!isReadOnly && (
+        <div className="bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="text-xs font-semibold text-foreground">עדכון ידני — מזומן בחשבון (IB)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              הזן את יתרת המזומן הנוכחית מ-IB (cash). ישתקף בחישובי IB NAV ובכל הדשבורדים.
+              {latestSnapshot?.snapshot_date && (
+                <span className="mr-1">· snapshot: {latestSnapshot.snapshot_date}</span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={cashInput}
+              onChange={(e) => setCashInput(e.target.value)}
+              placeholder="לדוגמה: 12500"
+              className="w-40 font-mono text-sm"
+            />
+            <Button
+              size="sm"
+              onClick={handleSaveCash}
+              disabled={savingCash}
+              className="gap-1.5"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {savingCash ? "שומר..." : "שמור"}
             </Button>
           </div>
         </div>
