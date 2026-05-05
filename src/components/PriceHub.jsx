@@ -79,10 +79,10 @@ export default function PriceHub({ open, onClose }) {
     setMode("overview");
     setError(null);
     const initial = {};
-    prices.forEach((row) => { initial[row.asset] = row.price_usd || ""; });
+    prices.forEach((row) => {initial[row.asset] = row.price_usd || "";});
     setManual(initial);
     setManualExtras({});
-  }, [open]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tracked symbols — used to drive the overview table and detect unmapped
   // tokens. Prices are read ONLY from the Prices entity.
@@ -91,7 +91,7 @@ export default function PriceHub({ open, onClose }) {
     // 1. Every Prices row is a tracked symbol with its known price + freshness
     prices.forEach((p) => {
       bySymbol[p.asset] = {
-        symbol: p.asset, kind: "crypto", price: p.price_usd, updated: p.last_updated, source: "Prices",
+        symbol: p.asset, kind: "crypto", price: p.price_usd, updated: p.last_updated, source: "Prices"
       };
     });
     // 2. Every held stock — even if Prices doesn't have a row, we want it surfaced
@@ -210,30 +210,30 @@ export default function PriceHub({ open, onClose }) {
           </DialogTitle>
         </DialogHeader>
 
-        {mode === "overview" && (
-          <div className="space-y-4">
+        {mode === "overview" &&
+        <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
               בחר מקור עדכון. שינוי מחיר ב-Prices מתעדכן אוטומטית בכל האפליקציה (דשבורדים, פוזיציות, מניות, aTokens — הכל מחושב on-the-fly).
             </p>
 
-            {(staleCount > 0 || unmapped.length > 0) && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-1">
-                {staleCount > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-amber-700">
+            {(staleCount > 0 || unmapped.length > 0) &&
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 space-y-1 hidden">
+                {staleCount > 0 &&
+            <div className="flex items-center gap-2 text-xs text-amber-700">
                     <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{staleCount} מחירים ישנים (יותר מ-48 שעות). לחץ "עדכון אוטומטי" לרענון.</span>
                   </div>
-                )}
-                {unmapped.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-amber-700">
+            }
+                {unmapped.length > 0 &&
+            <div className="flex items-center gap-2 text-xs text-amber-700">
                     <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>
                       {unmapped.length} נכסים ללא מיפוי אוטומטי ({unmapped.map((u) => u.symbol).join(", ")}) — יש להזין מחיר ידני בלחיצה על "עדכון ידני".
                     </span>
                   </div>
-                )}
+            }
               </div>
-            )}
+          }
 
             <div className="grid grid-cols-2 gap-2">
               <Button onClick={handleAutoFetch} className="gap-2 h-auto py-3 flex-col items-start">
@@ -268,12 +268,12 @@ export default function PriceHub({ open, onClose }) {
                 </thead>
                 <tbody>
                   {tracked.map((t) => {
-                    const upper = t.symbol.toUpperCase();
-                    const isStable = STABLECOINS.has(upper);
-                    const base = TOKEN_ALIAS_TO_BASE[upper];
-                    const isUnmapped = !isStable && !base;
-                    return (
-                      <tr key={t.symbol} className="border-b border-border/40">
+                  const upper = t.symbol.toUpperCase();
+                  const isStable = STABLECOINS.has(upper);
+                  const base = TOKEN_ALIAS_TO_BASE[upper];
+                  const isUnmapped = !isStable && !base;
+                  return (
+                    <tr key={t.symbol} className="border-b border-border/40">
                         <td className="px-3 py-2 font-mono font-semibold">
                           {t.symbol}
                           <span className="mr-1 text-[10px] text-muted-foreground font-normal">
@@ -291,21 +291,21 @@ export default function PriceHub({ open, onClose }) {
                           {base && base === upper && <span className="text-muted-foreground">base</span>}
                           {isUnmapped && <span className="text-amber-600">ידני נדרש</span>}
                         </td>
-                      </tr>
-                    );
-                  })}
-                  {tracked.length === 0 && (
-                    <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">אין נכסים</td></tr>
-                  )}
+                      </tr>);
+
+                })}
+                  {tracked.length === 0 &&
+                <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">אין נכסים</td></tr>
+                }
                 </tbody>
               </table>
             </div>
           </div>
-        )}
+        }
 
         {/* Manual mode */}
-        {mode === "manual" && (
-          <div className="space-y-4">
+        {mode === "manual" &&
+        <div className="space-y-4">
             <p className="text-xs text-muted-foreground">
               הזן מחירים עדכניים. השינויים נשמרים ל-Prices entity ומופיעים מיד בכל הדפים — derived values (current_value, mark_price וכו׳) מחושבים on-the-fly.
             </p>
@@ -313,74 +313,74 @@ export default function PriceHub({ open, onClose }) {
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">מחירי בסיס</p>
               {["BTC", "ETH", "AAVE", "MSTR"].map((asset) => {
-                const existing = prices.find((p) => p.asset === asset);
-                return (
-                  <div key={asset} className="flex items-center gap-3">
+              const existing = prices.find((p) => p.asset === asset);
+              return (
+                <div key={asset} className="flex items-center gap-3">
                     <label className="w-20 text-sm font-semibold font-mono">{asset}</label>
                     <Input
-                      type="number"
-                      step="0.01"
-                      value={manual[asset] ?? ""}
-                      onChange={(e) => setManual((p) => ({ ...p, [asset]: e.target.value }))}
-                      className="flex-1 font-mono"
-                      placeholder={existing?.price_usd?.toString() || "0"}
-                    />
+                    type="number"
+                    step="0.01"
+                    value={manual[asset] ?? ""}
+                    onChange={(e) => setManual((p) => ({ ...p, [asset]: e.target.value }))}
+                    className="flex-1 font-mono"
+                    placeholder={existing?.price_usd?.toString() || "0"} />
+                  
                     <span className="text-xs text-muted-foreground w-24 text-left">
                       {existing?.last_updated ? timeAgo(existing.last_updated) : "—"}
                     </span>
-                  </div>
-                );
-              })}
+                  </div>);
+
+            })}
             </div>
 
-            {unmapped.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-border/50">
+            {unmapped.length > 0 &&
+          <div className="space-y-2 pt-2 border-t border-border/50">
                 <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
                   נכסים ללא מיפוי — הזן מחיר ידני
                 </p>
-                {unmapped.map((t) => (
-                  <div key={t.symbol} className="flex items-center gap-3">
+                {unmapped.map((t) =>
+            <div key={t.symbol} className="flex items-center gap-3">
                     <label className="w-20 text-sm font-semibold font-mono">{t.symbol}</label>
                     <Input
-                      type="number"
-                      step="0.0001"
-                      value={manualExtras[t.symbol] ?? ""}
-                      onChange={(e) => setManualExtras((p) => ({ ...p, [t.symbol]: e.target.value }))}
-                      className="flex-1 font-mono"
-                      placeholder={t.price?.toString() || "0"}
-                    />
+                type="number"
+                step="0.0001"
+                value={manualExtras[t.symbol] ?? ""}
+                onChange={(e) => setManualExtras((p) => ({ ...p, [t.symbol]: e.target.value }))}
+                className="flex-1 font-mono"
+                placeholder={t.price?.toString() || "0"} />
+              
                     <span className="text-xs text-muted-foreground w-24 text-left">
                       {t.updated ? timeAgo(t.updated) : "—"}
                     </span>
                   </div>
-                ))}
-              </div>
             )}
+              </div>
+          }
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setMode("overview")} className="flex-1">חזרה</Button>
               <Button onClick={handleManualSave} className="flex-1">שמור</Button>
             </div>
           </div>
-        )}
+        }
 
-        {mode === "fetching" && (
-          <div className="py-8 text-center space-y-3">
+        {mode === "fetching" &&
+        <div className="py-8 text-center space-y-3">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-primary" />
             <p className="text-sm font-semibold">מושך מחירים חיים מהאינטרנט</p>
             <p className="text-xs text-muted-foreground">syncPrices רץ ברקע...</p>
           </div>
-        )}
+        }
 
-        {mode === "saving" && (
-          <div className="py-8 text-center space-y-3">
+        {mode === "saving" &&
+        <div className="py-8 text-center space-y-3">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto text-primary" />
             <p className="text-sm font-semibold">שומר ל-Prices entity</p>
           </div>
-        )}
+        }
 
-        {mode === "done" && (
-          <div className="py-6 space-y-4 text-center">
+        {mode === "done" &&
+        <div className="py-6 space-y-4 text-center">
             <CheckCircle2 className="w-10 h-10 text-profit mx-auto" />
             <p className="font-semibold">המערכת עודכנה</p>
             <p className="text-xs text-muted-foreground">
@@ -388,10 +388,10 @@ export default function PriceHub({ open, onClose }) {
             </p>
             <Button className="w-full" onClick={onClose}>סגור</Button>
           </div>
-        )}
+        }
 
-        {mode === "error" && (
-          <div className="py-6 space-y-4 text-center">
+        {mode === "error" &&
+        <div className="py-6 space-y-4 text-center">
             <AlertTriangle className="w-10 h-10 text-loss mx-auto" />
             <p className="font-semibold text-loss">שגיאה</p>
             <p className="text-xs text-muted-foreground">{error}</p>
@@ -400,8 +400,8 @@ export default function PriceHub({ open, onClose }) {
               <Button className="flex-1" onClick={onClose}>סגור</Button>
             </div>
           </div>
-        )}
+        }
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>);
+
 }
