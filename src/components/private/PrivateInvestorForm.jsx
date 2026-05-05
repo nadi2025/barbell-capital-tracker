@@ -17,6 +17,7 @@ const blank = {
   name: "",
   principal: "",
   currency: "USD",
+  fx_rate_at_conversion: "",
   interest_rate: "",
   payment_frequency: "Monthly",
   start_date: "",
@@ -37,6 +38,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         name: editInvestor.name || "",
         principal: editInvestor.principal ?? "",
         currency: editInvestor.currency || "USD",
+        fx_rate_at_conversion: editInvestor.fx_rate_at_conversion ?? "",
         interest_rate: editInvestor.interest_rate ?? "",
         payment_frequency: editInvestor.payment_frequency || "Monthly",
         start_date: editInvestor.start_date || "",
@@ -61,6 +63,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         name: form.name.trim(),
         principal: parseFloat(form.principal) || 0,
         currency: form.currency,
+        fx_rate_at_conversion: form.fx_rate_at_conversion === "" ? undefined : parseFloat(form.fx_rate_at_conversion),
         interest_rate: parseFloat(form.interest_rate) || 0,
         payment_frequency: form.payment_frequency,
         start_date: form.start_date,
@@ -113,6 +116,23 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
             <Label className="text-xs">Interest Rate (% annual)</Label>
             <Input type="number" step="0.01" value={form.interest_rate} onChange={(e) => setForm((f) => ({ ...f, interest_rate: e.target.value }))} />
           </div>
+          {form.currency === "ILS" && (
+            <div className="col-span-2">
+              <Label className="text-xs">שער דולר בעת המרה (ILS per 1 USD)</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={form.fx_rate_at_conversion}
+                onChange={(e) => setForm((f) => ({ ...f, fx_rate_at_conversion: e.target.value }))}
+                placeholder="3.7"
+              />
+              {form.principal && form.fx_rate_at_conversion && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  שווי בדולרים: ${(parseFloat(form.principal) / parseFloat(form.fx_rate_at_conversion)).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                </p>
+              )}
+            </div>
+          )}
           <div>
             <Label className="text-xs">Payment Frequency</Label>
             <MobileSelect

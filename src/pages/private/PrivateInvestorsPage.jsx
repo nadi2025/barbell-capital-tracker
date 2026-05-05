@@ -75,6 +75,7 @@ export default function PrivateInvestorsPage() {
                 <th className="text-left px-4 py-3 font-medium">Name</th>
                 <th className="text-left px-4 py-3 font-medium">Linked Investment</th>
                 <th className="text-right px-4 py-3 font-medium">Principal</th>
+                <th className="text-right px-4 py-3 font-medium">USD Value</th>
                 <th className="text-right px-4 py-3 font-medium">Rate</th>
                 <th className="text-left px-4 py-3 font-medium">Frequency</th>
                 <th className="text-left px-4 py-3 font-medium">Maturity</th>
@@ -87,7 +88,7 @@ export default function PrivateInvestorsPage() {
             <tbody>
               {enriched.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-muted-foreground text-sm">
+                  <td colSpan={11} className="text-center py-8 text-muted-foreground text-sm">
                     אין משקיעים — לחץ "Add Investor" כדי להתחיל
                   </td>
                 </tr>
@@ -98,6 +99,16 @@ export default function PrivateInvestorsPage() {
                     <td className="px-4 py-3 font-medium">{inv.name}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{inv.linked_investment_name || "—"}</td>
                     <td className="px-4 py-3 text-right font-mono">{fmtCurrency(inv.principal, inv.currency)}</td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">
+                      {inv.currency === "ILS" && inv.fx_rate_at_conversion > 0
+                        ? <>
+                            {fmtCurrency((inv.principal || 0) / inv.fx_rate_at_conversion, "USD")}
+                            <div className="text-[10px] text-muted-foreground">@ {inv.fx_rate_at_conversion}</div>
+                          </>
+                        : inv.currency === "USD"
+                          ? fmtCurrency(inv.principal, "USD")
+                          : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono">{inv.interest_rate?.toFixed(2)}%</td>
                     <td className="px-4 py-3 text-xs">{inv.payment_frequency}</td>
                     <td className="px-4 py-3 font-mono text-xs">

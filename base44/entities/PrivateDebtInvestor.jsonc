@@ -19,6 +19,10 @@
       "default": "USD",
       "title": "Currency"
     },
+    "fx_rate_at_conversion": {
+      "type": "number",
+      "title": "FX Rate (ILS\u2192USD) at conversion"
+    },
     "interest_rate": {
       "type": "number",
       "title": "Annual Interest Rate (%)"
