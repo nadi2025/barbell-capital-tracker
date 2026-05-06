@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { format, differenceInMonths, addMonths, differenceInDays } from "date-fns";
-import { CalendarDays, MapPin, Edit2, Clock } from "lucide-react";
+import { CalendarDays, MapPin, Edit2, Clock, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtILS = (v) => v == null ? "₪0" : `₪${Math.abs(v).toLocaleString("he-IL")}`;
 
-export default function MonthlyInvestorCard({ investor, payments, onRecordPayment, onEdit }) {
+export default function MonthlyInvestorCard({ investor, payments, onRecordPayment, onEdit, onDelete }) {
   const [showHistory, setShowHistory] = useState(false);
 
   const today = new Date();
@@ -61,6 +61,11 @@ export default function MonthlyInvestorCard({ investor, payments, onRecordPaymen
           <Button variant="outline" size="sm" onClick={() => onEdit(investor)}>
             <Edit2 className="w-3.5 h-3.5" />
           </Button>
+          {onDelete && (
+            <Button variant="outline" size="sm" onClick={() => onDelete(investor)} className="text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 

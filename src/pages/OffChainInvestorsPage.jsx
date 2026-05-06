@@ -34,6 +34,7 @@ export default function OffChainInvestorsPage() {
 
   const createInvestor = useEntityMutation("OffChainInvestor", "create");
   const updateInvestor = useEntityMutation("OffChainInvestor", "update");
+  const deleteInvestor = useEntityMutation("OffChainInvestor", "delete");
   const createPayment = useEntityMutation("InvestorPayment", "create");
   const createActivityLog = useEntityMutation("CryptoActivityLog", "create");
 
@@ -98,6 +99,12 @@ export default function OffChainInvestorsPage() {
     toast.success("Investor updated");
   };
 
+  const handleDelete = async (investor) => {
+    if (!confirm(`למחוק את המשקיע "${investor.name}"?\nפעולה זו לא תמחק תשלומים שכבר נרשמו.`)) return;
+    await deleteInvestor.mutateAsync(investor.id);
+    toast.success("Investor deleted");
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -151,11 +158,13 @@ export default function OffChainInvestorsPage() {
                 payments={getPayments(investor.id)}
                 onRecordPayment={setRecordTarget}
                 onEdit={setEditTarget}
+                onDelete={handleDelete}
               />
             : <MaturityInvestorCard
                 key={investor.id}
                 investor={investor}
                 onEdit={setEditTarget}
+                onDelete={handleDelete}
               />
         ))}
         {investors.length === 0 && (

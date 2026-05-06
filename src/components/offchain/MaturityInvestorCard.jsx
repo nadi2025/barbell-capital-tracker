@@ -1,12 +1,12 @@
 import { format, differenceInDays } from "date-fns";
-import { MapPin, Edit2, AlertTriangle } from "lucide-react";
+import { MapPin, Edit2, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const ILS_RATE = 3.27; // approximate
 
-export default function MaturityInvestorCard({ investor, onEdit }) {
+export default function MaturityInvestorCard({ investor, onEdit, onDelete }) {
   const today = new Date();
   const start = new Date(investor.start_date);
   const maturity = new Date(investor.maturity_date);
@@ -41,9 +41,16 @@ export default function MaturityInvestorCard({ investor, onEdit }) {
             <span>{investor.investment_location}</span>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => onEdit(investor)}>
-          <Edit2 className="w-3.5 h-3.5" />
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => onEdit(investor)}>
+            <Edit2 className="w-3.5 h-3.5" />
+          </Button>
+          {onDelete && (
+            <Button variant="outline" size="sm" onClick={() => onDelete(investor)} className="text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Key terms */}
