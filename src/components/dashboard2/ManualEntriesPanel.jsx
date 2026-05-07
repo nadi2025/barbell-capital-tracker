@@ -71,19 +71,19 @@ function DaysBadge({ days, status }) {
 function SectionCard({ title, count, threshold, items, renderItem, emptyMessage, expanded, onToggle, hasRed, headerAction }) {
   return (
     <div className={`bg-card border rounded-xl overflow-hidden ${hasRed ? "border-red-500/30" : "border-border"}`}>
-      <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors hidden">
-        <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-right">
-          {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-          <span className="text-sm font-semibold">{title}</span>
-          <span className="text-[10px] text-muted-foreground">({count} · סף {threshold} ימים)</span>
-          {hasRed &&
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 font-medium">
-              דורש עדכון
-            </span>
-          }
-        </button>
-        {headerAction && <div onClick={(e) => e.stopPropagation()}>{headerAction}</div>}
-      </div>
+      
+
+
+
+
+
+
+
+
+
+
+
+      
       {expanded &&
       <div className="border-t border-border/40 divide-y divide-border/30">
           {items.length === 0 ?
@@ -359,44 +359,44 @@ export default function ManualEntriesPanel() {
         {panelOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
       </button>
 
-      {panelOpen &&
-      <div className="border-t border-border/40 p-3 space-y-2 hidden">
-          {allSections.map((sec) => {
-          const hasRed = sec.items.some((it) => it.status === "red");
-          // HL has a public read-only API — give the section a one-click sync.
-          const headerAction = sec.key === "hl" ? <HLSyncButton /> : null;
-          return (
-            <SectionCard
-              key={sec.key}
-              title={sec.title}
-              count={sec.items.length}
-              threshold={sec.threshold}
-              items={sec.items}
-              hasRed={hasRed}
-              expanded={!!sectionOpen[sec.key]}
-              onToggle={() => setSectionOpen((p) => ({ ...p, [sec.key]: !p[sec.key] }))}
-              emptyMessage={sec.emptyMessage}
-              headerAction={headerAction}
-              renderItem={(item) =>
-              <Link
-                key={item.id}
-                to={item.editHref}
-                className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors ${STATUS_CLASSES[item.status].row}`}>
-                
-                    <StatusDot status={item.status} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-mono truncate">{item.primary}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{item.secondary}</p>
-                    </div>
-                    <DaysBadge days={item.days} status={item.status} />
-                    <ArrowUpRight className="w-3.5 h-3.5 text-muted-foreground" />
-                  </Link>
-              } />);
+      
 
 
-        })}
-        </div>
-      }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      
     </div>);
 
 }
