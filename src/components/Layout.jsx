@@ -6,6 +6,8 @@ import {
   Menu, X, LogOut, ChevronRight, DollarSign, Bitcoin, Activity, Users, CreditCard, Layers, Zap, TrendingDown, Settings, RefreshCw, Upload, ArrowLeft, Trash2,
   // ===== PRIVATE INVESTMENTS MODULE — icon (Briefcase) =====
   Briefcase,
+  // ===== FX HEDGING MODULE — icon (ArrowLeftRight) =====
+  ArrowLeftRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/mobile/BottomNav";
@@ -15,6 +17,9 @@ import PriceHub from "@/components/PriceHub";
 // ===== PRIVATE INVESTMENTS MODULE — START =====
 import { ENABLE_PRIVATE_MODULE } from "@/lib/app-params";
 // ===== PRIVATE INVESTMENTS MODULE — END =====
+// ===== FX HEDGING MODULE — START =====
+import { ENABLE_FX_HEDGING_MODULE } from "@/lib/app-params";
+// ===== FX HEDGING MODULE — END =====
 
 const offChainNav = [
 { path: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -47,6 +52,13 @@ const privateNav = [
 ];
 // ===== PRIVATE INVESTMENTS MODULE — END =====
 
+// ===== FX HEDGING MODULE — START =====
+const fxNav = [
+  { path: "/fx", label: "Dashboard גידור", icon: TrendingUp },
+  { path: "/fx/transactions", label: "עסקאות", icon: ArrowLeftRight },
+];
+// ===== FX HEDGING MODULE — END =====
+
 const settingsNav = [
 { path: "/settings/assets", label: "ניהול נכסים", icon: Settings }];
 
@@ -69,9 +81,14 @@ export default function Layout() {
 
   // Page title from nav
   // ===== PRIVATE INVESTMENTS MODULE — include privateNav in title lookup =====
-  const currentNav = [...offChainNav, ...onChainNav, ...(ENABLE_PRIVATE_MODULE ? privateNav : []), ...settingsNav].find(
-    (n) => n.path === location.pathname
-  );
+  // ===== FX HEDGING MODULE — include fxNav in title lookup =====
+  const currentNav = [
+    ...offChainNav,
+    ...onChainNav,
+    ...(ENABLE_PRIVATE_MODULE ? privateNav : []),
+    ...(ENABLE_FX_HEDGING_MODULE ? fxNav : []),
+    ...settingsNav,
+  ].find((n) => n.path === location.pathname);
   const pageTitle = currentNav?.label || "Oasis";
 
   useEffect(() => {
@@ -176,6 +193,28 @@ export default function Layout() {
             </>
           )}
           {/* ===== PRIVATE INVESTMENTS MODULE — END ===== */}
+          {/* ===== FX HEDGING MODULE — START ===== */}
+          {ENABLE_FX_HEDGING_MODULE && (
+            <>
+              <p className="text-xs font-semibold text-cyan-400/70 uppercase tracking-wider px-3 mb-1 mt-4">גידורי מט"ח</p>
+              <div className="space-y-0.5">
+                {fxNav.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
+                        ${isActive ? "bg-cyan-500/15 text-cyan-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
+                      <Icon className="w-4 h-4" />
+                      {item.label}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                    </Link>
+                  );
+                })}
+              </div>
+            </>
+          )}
+          {/* ===== FX HEDGING MODULE — END ===== */}
           <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-4">הגדרות</p>
           <div className="space-y-0.5">
             {settingsNav.map((item) => {

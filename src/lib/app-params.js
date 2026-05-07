@@ -59,3 +59,10 @@ export const appParams = {
 export const ENABLE_PRIVATE_MODULE =
   import.meta.env.VITE_ENABLE_PRIVATE_MODULE !== "false";
 // ===== PRIVATE INVESTMENTS MODULE — END =====
+
+// ===== FX HEDGING MODULE — START =====
+// To remove this feature entirely, see src/pages/fx/REMOVAL.md
+// To temporarily disable: set VITE_ENABLE_FX_HEDGING_MODULE=false in .env.local
+export const ENABLE_FX_HEDGING_MODULE =
+  import.meta.env.VITE_ENABLE_FX_HEDGING_MODULE !== "false";
+// ===== FX HEDGING MODULE — END =====

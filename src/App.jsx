@@ -34,6 +34,13 @@ import PrivateInvestorsPage from './pages/private/PrivateInvestorsPage';
 import PrivatePaymentsPage from './pages/private/PrivatePaymentsPage';
 // ===== PRIVATE INVESTMENTS MODULE — END =====
 
+// ===== FX HEDGING MODULE — START =====
+import { ENABLE_FX_HEDGING_MODULE } from '@/lib/app-params';
+import FxDashboard from './pages/fx/FxDashboard';
+import FxTransactionsPage from './pages/fx/FxTransactionsPage';
+import FxTransactionDetailPage from './pages/fx/FxTransactionDetailPage';
+// ===== FX HEDGING MODULE — END =====
+
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -92,6 +99,17 @@ const AuthenticatedApp = () => {
           </>
         )}
         {/* ===== PRIVATE INVESTMENTS MODULE — END ===== */}
+
+        {/* ===== FX HEDGING MODULE — START ===== */}
+        {/* To remove: delete this block + the import block above + folders src/pages/fx/ and src/components/fx/ */}
+        {ENABLE_FX_HEDGING_MODULE && (
+          <>
+            <Route path="/fx" element={<FxDashboard />} />
+            <Route path="/fx/transactions" element={<FxTransactionsPage />} />
+            <Route path="/fx/transactions/:id" element={<FxTransactionDetailPage />} />
+          </>
+        )}
+        {/* ===== FX HEDGING MODULE — END ===== */}
 
         <Route path="*" element={<PageNotFound />} />
       </Route>
