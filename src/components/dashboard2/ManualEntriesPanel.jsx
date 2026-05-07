@@ -71,7 +71,7 @@ function DaysBadge({ days, status }) {
 function SectionCard({ title, count, threshold, items, renderItem, emptyMessage, expanded, onToggle, hasRed, headerAction }) {
   return (
     <div className={`bg-card border rounded-xl overflow-hidden ${hasRed ? "border-red-500/30" : "border-border"}`}>
-      <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors">
+      <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/20 transition-colors hidden">
         <button onClick={onToggle} className="flex items-center gap-2 flex-1 text-right">
           {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
           <span className="text-sm font-semibold">{title}</span>
@@ -360,7 +360,7 @@ export default function ManualEntriesPanel() {
       </button>
 
       {panelOpen &&
-      <div className="border-t border-border/40 p-3 space-y-2">
+      <div className="border-t border-border/40 p-3 space-y-2 hidden">
           {allSections.map((sec) => {
           const hasRed = sec.items.some((it) => it.status === "red");
           // HL has a public read-only API — give the section a one-click sync.
