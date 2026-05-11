@@ -14,6 +14,7 @@ import BottomNav from "@/components/mobile/BottomNav";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import RouteTransition from "@/components/mobile/RouteTransition";
 import PriceHub from "@/components/PriceHub";
+import ModusLogo from "@/components/brand/ModusLogo";
 // ===== PRIVATE INVESTMENTS MODULE — START =====
 import { ENABLE_PRIVATE_MODULE } from "@/lib/app-params";
 // ===== PRIVATE INVESTMENTS MODULE — END =====
@@ -133,40 +134,43 @@ export default function Layout() {
         flex flex-col transition-transform duration-300 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
-        <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-          <DollarSign className="w-7 h-7 text-primary mr-2" />
-          <span className="text-sidebar-foreground text-lg font-semibold tracking-tight">Company tracker</span>
+        <div className="h-20 flex items-center justify-center px-6 border-b border-sidebar-border/60">
+          <ModusLogo variant="stacked-paper" height={52} />
         </div>
 
-        <nav className="flex-1 py-4 px-3 overflow-y-auto">
-          <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-1">Off-Chain</p>
-          <div className="space-y-0.5 mb-4">
+        <nav className="flex-1 py-5 px-3 overflow-y-auto">
+          <p className="modus-eyebrow px-3 mb-2 mt-1 text-sidebar-foreground/55">Off-Chain</p>
+          <div className="space-y-0.5 mb-5">
             {offChainNav.filter((item) => isInvestor ? item.path === "/" || item.path === "/reports" : true).map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
-                    ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
-                  <Icon className="w-4 h-4" />
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-light transition-colors duration-150 select-none
+                    ${isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground border-l border-[var(--modus-gold)]"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4 opacity-80" />
                   {item.label}
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
                 </Link>
               );
             })}
           </div>
-          <p className="text-xs font-semibold text-orange-400/70 uppercase tracking-wider px-3 mb-1">On-Chain · קריפטו</p>
+          <p className="modus-eyebrow px-3 mb-2 text-sidebar-foreground/55">On-Chain · קריפטו</p>
           <div className="space-y-0.5">
             {onChainNav.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
-                    ${isActive ? "bg-orange-500/15 text-orange-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
-                  <Icon className="w-4 h-4" />
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-light transition-colors duration-150 select-none
+                    ${isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground border-l border-[var(--modus-gold)]"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4 opacity-80" />
                   {item.label}
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
                 </Link>
               );
             })}
@@ -174,18 +178,20 @@ export default function Layout() {
           {/* ===== PRIVATE INVESTMENTS MODULE — START ===== */}
           {ENABLE_PRIVATE_MODULE && (
             <>
-              <p className="text-xs font-semibold text-purple-400/70 uppercase tracking-wider px-3 mb-1 mt-4">השקעות פרטיות</p>
+              <p className="modus-eyebrow px-3 mb-2 mt-5 text-sidebar-foreground/55">השקעות פרטיות</p>
               <div className="space-y-0.5">
                 {privateNav.map((item) => {
                   const isActive = location.pathname === item.path;
                   const Icon = item.icon;
                   return (
                     <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
-                        ${isActive ? "bg-purple-500/15 text-purple-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
-                      <Icon className="w-4 h-4" />
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-light transition-colors duration-150 select-none
+                        ${isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground border-l border-[var(--modus-gold)]"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"}`}>
+                      <Icon className="w-4 h-4 opacity-80" />
                       {item.label}
-                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
                     </Link>
                   );
                 })}
@@ -196,18 +202,20 @@ export default function Layout() {
           {/* ===== FX HEDGING MODULE — START ===== */}
           {ENABLE_FX_HEDGING_MODULE && (
             <>
-              <p className="text-xs font-semibold text-cyan-400/70 uppercase tracking-wider px-3 mb-1 mt-4">גידורי מט"ח</p>
+              <p className="modus-eyebrow px-3 mb-2 mt-5 text-sidebar-foreground/55">גידורי מט"ח</p>
               <div className="space-y-0.5">
                 {fxNav.map((item) => {
                   const isActive = location.pathname === item.path;
                   const Icon = item.icon;
                   return (
                     <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
-                        ${isActive ? "bg-cyan-500/15 text-cyan-400" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
-                      <Icon className="w-4 h-4" />
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-light transition-colors duration-150 select-none
+                        ${isActive
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground border-l border-[var(--modus-gold)]"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"}`}>
+                      <Icon className="w-4 h-4 opacity-80" />
                       {item.label}
-                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                      {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
                     </Link>
                   );
                 })}
@@ -215,18 +223,20 @@ export default function Layout() {
             </>
           )}
           {/* ===== FX HEDGING MODULE — END ===== */}
-          <p className="text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider px-3 mb-1 mt-4">הגדרות</p>
+          <p className="modus-eyebrow px-3 mb-2 mt-5 text-sidebar-foreground/55">הגדרות</p>
           <div className="space-y-0.5">
             {settingsNav.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link key={item.path} to={item.path} onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 select-none
-                    ${isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}>
-                  <Icon className="w-4 h-4" />
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-light transition-colors duration-150 select-none
+                    ${isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground border-l border-[var(--modus-gold)]"
+                      : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"}`}>
+                  <Icon className="w-4 h-4 opacity-80" />
                   {item.label}
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto opacity-60" />}
                 </Link>
               );
             })}
@@ -234,14 +244,14 @@ export default function Layout() {
         </nav>
 
         {/* User info + Delete Account */}
-        <div className="p-4 border-t border-sidebar-border space-y-2">
+        <div className="p-4 border-t border-sidebar-border/60 space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-semibold select-none">
+            <div className="w-8 h-8 rounded-md bg-sidebar-accent flex items-center justify-center text-sidebar-foreground text-sm font-light select-none modus-mono">
               {user?.full_name?.[0] || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.full_name || "User"}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role || "admin"}</p>
+              <p className="text-[13px] font-normal text-sidebar-foreground truncate">{user?.full_name || "User"}</p>
+              <p className="modus-eyebrow text-sidebar-foreground/55">{user?.role || "admin"}</p>
             </div>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => base44.auth.logout()}>
               <LogOut className="w-4 h-4" />
@@ -287,8 +297,11 @@ export default function Layout() {
             )}
           </div>
 
-          {/* Mobile: page title */}
-          <span className="lg:hidden text-sm font-semibold truncate flex-1 select-none">{pageTitle}</span>
+          {/* Mobile: Modus mark + page title */}
+          <div className="lg:hidden flex items-center gap-3 truncate flex-1">
+            <ModusLogo variant="mark-ink" height={26} />
+            <span className="text-[13px] font-normal truncate select-none">{pageTitle}</span>
+          </div>
 
           {/* Desktop: spacer */}
           <div className="hidden lg:flex flex-1" />
