@@ -9,6 +9,7 @@ import {
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
+import GroupedStockCard from "../components/stocks/GroupedStockCard";
 import { toast } from "sonner";
 import { useEntityList, useEntityMutation } from "@/hooks/useEntityQuery";
 import { useQueryClient } from "@tanstack/react-query";
@@ -491,6 +492,27 @@ export default function StocksPage() {
   const visibleStocks = allStocks.filter((s) => s.status !== "Closed");
   const closedStocks = allStocks.filter((s) => s.status === "Closed");
 
+  // Group active positions by ticker so multiple lots of the same ticker
+  // (e.g. several Assignment events) collapse into one card.
+  const groupByTicker = (arr) => {
+    const m = {};
+    for (const s of arr) {
+      const t = (s.ticker || "").toUpperCase();
+      if (!t) continue;
+      (m[t] = m[t] || []).push(s);
+    }
+    // Sort within each group by entry_date (oldest first)
+    Object.values(m).forEach((g) => g.sort((a, b) => new Date(a.entry_date || 0) - new Date(b.entry_date || 0)));
+    // Return array of [ticker, positions] sorted by total current value desc
+    return Object.entries(m).sort((a, b) => {
+      const va = a[1].reduce((s, p) => s + (p.current_value || 0), 0);
+      const vb = b[1].reduce((s, p) => s + (p.current_value || 0), 0);
+      return vb - va;
+    });
+  };
+  const groupedVisible = groupByTicker(visibleStocks);
+  const groupedClosed = groupByTicker(closedStocks);
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -549,18 +571,19 @@ export default function StocksPage() {
         />
       </div>
 
-      {/* Stocks list — expandable cards */}
+      {/* Stocks list — grouped by ticker, expandable cards */}
       <div className="space-y-2">
-        {visibleStocks.length === 0 && (
+        {groupedVisible.length === 0 && (
           <div className="bg-card border border-border rounded-xl p-8 text-center text-sm text-muted-foreground">
             אין מניות פעילות. לחץ "New" או בצע IB Reconcile לייבוא מההיסטוריה.
           </div>
         )}
-        {visibleStocks.map((s) => (
-          <StockCard
-            key={s.id}
-            stock={s}
-            optionsForTicker={optionsByTicker[(s.ticker || "").toUpperCase()] || []}
+        {groupedVisible.map(([ticker, positions]) => (
+          <GroupedStockCard
+            key={ticker}
+            ticker={ticker}
+            positions={positions}
+            optionsForTicker={optionsByTicker[ticker] || []}
             totalValue={kpis.totalValue}
             onEdit={handleEdit}
             onDelete={handleDelete}
@@ -570,18 +593,19 @@ export default function StocksPage() {
       </div>
 
       {/* Closed positions (collapsed list) */}
-      {closedStocks.length > 0 && (
+      {groupedClosed.length > 0 && (
         <details className="bg-card border border-border rounded-xl">
           <summary className="px-4 py-3 cursor-pointer text-sm font-semibold flex items-center justify-between">
             <span>פוזיציות סגורות ({closedStocks.length})</span>
             <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </summary>
           <div className="border-t border-border p-2 space-y-2">
-            {closedStocks.map((s) => (
-              <StockCard
-                key={s.id}
-                stock={s}
-                optionsForTicker={optionsByTicker[(s.ticker || "").toUpperCase()] || []}
+            {groupedClosed.map(([ticker, positions]) => (
+              <GroupedStockCard
+                key={ticker}
+                ticker={ticker}
+                positions={positions}
+                optionsForTicker={optionsByTicker[ticker] || []}
                 totalValue={kpis.totalValue}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
