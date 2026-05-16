@@ -174,10 +174,18 @@ export function computeCollateral(trade) {
 // Realized P&L. Returns null while position is open.
 // For debit positions you paid `fill` and receive `close` → P&L = (close - fill) * 100 * qty
 // For credit positions you received `fill` and pay `close` → P&L = (fill - close) * 100 * qty
+//
+// Special case — "Assigned" status: the backend automation (onOptionAssigned)
+// computes a market-aware P&L at the moment of assignment and persists it on
+// trade.pnl. Trust that value when present, instead of re-deriving from
+// close_price (which doesn't exist for assignments).
 export function computeRealizedPL(trade) {
   if (!trade) return null;
   const closed = trade.status === "Closed" || trade.status === "Expired" || trade.status === "Assigned";
   if (!closed) return null;
+  if (trade.status === "Assigned" && trade.pnl != null) {
+    return Number(trade.pnl);
+  }
   const qty = Number(trade.quantity) || 0;
   const fill = Number(trade.fill_price) || 0;
   const fee = Number(trade.fee) || 0;
