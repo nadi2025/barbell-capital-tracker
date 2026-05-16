@@ -183,12 +183,31 @@ export function computeRealizedPL(trade) {
   if (!trade) return null;
   const closed = trade.status === "Closed" || trade.status === "Expired" || trade.status === "Assigned";
   if (!closed) return null;
-  if (trade.status === "Assigned" && trade.pnl != null) {
-    return Number(trade.pnl);
-  }
+
   const qty = Number(trade.quantity) || 0;
   const fill = Number(trade.fill_price) || 0;
   const fee = Number(trade.fee) || 0;
+
+  // ── Special case — "Assigned" status for CSP:
+  // P&L = premium + (marketPrice − strike) × shares − fees
+  // marketPrice = close_price field (the underlying's price at assignment).
+  // The premium you collected partially offsets the loss on the shares you
+  // were forced to buy at strike when market < strike.
+  if (trade.status === "Assigned") {
+    const cat = getCanonicalCategory(trade);
+    if (cat === "cash_secured_put") {
+      const strike = Number(getShortStrike(trade)) || 0;
+      const marketPrice = Number(trade.close_price) || 0;
+      const shares = qty * 100;
+      const premium = fill * shares;
+      if (marketPrice > 0 && strike > 0) {
+        return premium + (marketPrice - strike) * shares - fee;
+      }
+    }
+    // Fallback: trust persisted pnl if backend computed it
+    if (trade.pnl != null) return Number(trade.pnl);
+  }
+
   // Expired & no close_price typed → assume worthless (close = 0)
   const closeRaw = trade.close_price;
   const close = (trade.status === "Expired" && (closeRaw == null || closeRaw === ""))
