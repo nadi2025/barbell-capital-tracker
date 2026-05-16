@@ -188,21 +188,31 @@ export function computeRealizedPL(trade) {
   const fill = Number(trade.fill_price) || 0;
   const fee = Number(trade.fee) || 0;
 
-  // ── Special case — "Assigned" status for CSP:
-  // P&L = premium + (marketPrice − strike) × shares − fees
-  // marketPrice = close_price field (the underlying's price at assignment).
-  // The premium you collected partially offsets the loss on the shares you
-  // were forced to buy at strike when market < strike.
+  // ── Special case — "Assigned" status for CSP / Covered Call:
+  // Assignment-aware P&L factors in the premium collected plus the difference
+  // between the strike and the underlying's market price at the moment of
+  // assignment. close_price stores that underlying market price.
+  //
+  //   CSP:           you buy shares at strike when market < strike.
+  //                  P&L = premium + (market − strike) × shares − fees
+  //                  (negative when market < strike, partially offset by premium)
+  //
+  //   Covered Call:  shares called away at strike when market > strike.
+  //                  P&L = premium − (market − strike) × shares − fees
+  //                  (the (market − strike) part is the "opportunity cost"
+  //                  realized on the option leg; the actual shares-sale gain
+  //                  lives on the StockPosition.)
   if (trade.status === "Assigned") {
     const cat = getCanonicalCategory(trade);
-    if (cat === "cash_secured_put") {
-      const strike = Number(getShortStrike(trade)) || 0;
-      const marketPrice = Number(trade.close_price) || 0;
-      const shares = qty * 100;
-      const premium = fill * shares;
-      if (marketPrice > 0 && strike > 0) {
-        return premium + (marketPrice - strike) * shares - fee;
-      }
+    const strike = Number(getShortStrike(trade)) || 0;
+    const marketPrice = Number(trade.close_price) || 0;
+    const shares = qty * 100;
+    const premium = fill * shares;
+    if (cat === "cash_secured_put" && marketPrice > 0 && strike > 0) {
+      return premium + (marketPrice - strike) * shares - fee;
+    }
+    if (cat === "covered_call" && marketPrice > 0 && strike > 0) {
+      return premium - Math.max(0, marketPrice - strike) * shares - fee;
     }
     // Fallback: trust persisted pnl if backend computed it
     if (trade.pnl != null) return Number(trade.pnl);
