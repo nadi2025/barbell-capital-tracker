@@ -25,7 +25,7 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
     open_date: "", expiration_date: "", close_date: "",
     ticker: "",
     long_strike: "", short_strike: "",
-    quantity: "", fill_price: "", close_price: "", fee: "",
+    quantity: "", fill_price: "", close_price: "", underlying_close_price: "", fee: "",
     status: "Open", notes: "",
   });
   const [saving, setSaving] = useState(false);
@@ -45,6 +45,7 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
         quantity: editTrade.quantity || "",
         fill_price: editTrade.fill_price || "",
         close_price: editTrade.close_price ?? "",
+        underlying_close_price: editTrade.underlying_close_price ?? "",
         fee: editTrade.fee || "",
         status: editTrade.status || "Open",
         notes: editTrade.notes || "",
@@ -55,7 +56,7 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
         open_date: "", expiration_date: "", close_date: "",
         ticker: "",
         long_strike: "", short_strike: "",
-        quantity: "", fill_price: "", close_price: "", fee: "",
+        quantity: "", fill_price: "", close_price: "", underlying_close_price: "", fee: "",
         status: "Open", notes: "",
       });
     }
@@ -106,9 +107,9 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
     const shortStrike = parseFloat(form.short_strike) || 0;
     const fill = parseFloat(form.fill_price) || 0;
     const closeRaw = parseFloat(form.close_price);
-    const close = form.status === "Expired" && (isNaN(closeRaw) || form.close_price === "")
-      ? 0
-      : (isNaN(closeRaw) ? null : closeRaw);
+    const close = isNaN(closeRaw) ? null : closeRaw;
+    const underlyingRaw = parseFloat(form.underlying_close_price);
+    const underlyingClose = isNaN(underlyingRaw) ? null : underlyingRaw;
     const fee = parseFloat(form.fee) || 0;
 
     // Build a normalized trade object for helpers.
@@ -120,6 +121,7 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
       short_strike: showShort ? shortStrike : null,
       fill_price: fill,
       close_price: close,
+      underlying_close_price: underlyingClose,
       fee,
       status: form.status,
     };
@@ -162,6 +164,7 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
       quantity: qty,
       fill_price: fill,
       close_price: close ?? undefined,
+      underlying_close_price: underlyingClose ?? undefined,
       fee: fee || undefined,
       status: form.status,
       collateral,
@@ -291,11 +294,26 @@ export default function OptionTradeForm({ open, onClose, editTrade, onSaved }) {
             <Input type="number" step="0.01" value={form.fill_price}
               onChange={e => setForm(f => ({ ...f, fill_price: e.target.value }))} />
           </div>
-          <div>
-            <Label className="text-xs">Close Price ($/share)</Label>
-            <Input type="number" step="0.01" value={form.close_price}
-              onChange={e => setForm(f => ({ ...f, close_price: e.target.value }))} />
-          </div>
+          {form.status === "Closed" ? (
+            <div>
+              <Label className="text-xs">Option Close Price ($/share)</Label>
+              <Input type="number" step="0.01" value={form.close_price}
+                onChange={e => setForm(f => ({ ...f, close_price: e.target.value }))}
+                placeholder="Price you paid/received to close" />
+            </div>
+          ) : (form.status === "Expired" || form.status === "Assigned") ? (
+            <div>
+              <Label className="text-xs">Underlying Stock Price at Close ($/share)</Label>
+              <Input type="number" step="0.01" value={form.underlying_close_price}
+                onChange={e => setForm(f => ({ ...f, underlying_close_price: e.target.value }))}
+                placeholder="Stock price at expiration/assignment" />
+            </div>
+          ) : (
+            <div>
+              <Label className="text-xs text-muted-foreground">Close Price</Label>
+              <Input disabled placeholder="Available when status is Closed/Expired/Assigned" />
+            </div>
+          )}
           <div>
             <Label className="text-xs">Fee ($)</Label>
             <Input type="number" step="0.01" value={form.fee}

@@ -205,7 +205,9 @@ export function computeRealizedPL(trade) {
   if (trade.status === "Assigned") {
     const cat = getCanonicalCategory(trade);
     const strike = Number(getShortStrike(trade)) || 0;
-    const marketPrice = Number(trade.close_price) || 0;
+    // Prefer the dedicated underlying-price field; fall back to close_price
+    // for legacy rows that stored underlying price there.
+    const marketPrice = Number(trade.underlying_close_price ?? trade.close_price) || 0;
     const shares = qty * 100;
     const premium = fill * shares;
     if (cat === "cash_secured_put" && marketPrice > 0 && strike > 0) {
@@ -218,11 +220,41 @@ export function computeRealizedPL(trade) {
     if (trade.pnl != null) return Number(trade.pnl);
   }
 
-  // Expired & no close_price typed → assume worthless (close = 0)
+  // Expired: P&L is driven by whether the option finished ITM vs OTM, which
+  // depends on the UNDERLYING price at expiration — not the option's close
+  // price. Prefer underlying_close_price; fall back to close_price (legacy)
+  // or 0 (assume worthless OTM) for short positions.
+  if (trade.status === "Expired") {
+    const cat = getCanonicalCategory(trade);
+    const dir = getDirection(trade);
+    const strike = Number(getShortStrike(trade) ?? getLongStrike(trade)) || 0;
+    const underlying = Number(trade.underlying_close_price ?? trade.close_price);
+    const shares = qty * 100;
+    const premium = fill * shares;
+
+    // If user supplied an underlying price, compute intrinsic value at expiration.
+    if (!isNaN(underlying) && underlying > 0 && strike > 0) {
+      const isCall = cat === "covered_call" || cat === "naked_call" || cat === "long_call";
+      const isPut  = cat === "cash_secured_put" || cat === "naked_put" || cat === "long_put";
+      let intrinsic = 0;
+      if (isCall) intrinsic = Math.max(0, underlying - strike);
+      else if (isPut) intrinsic = Math.max(0, strike - underlying);
+      // Short → keep premium, pay intrinsic. Long → lose premium, recover intrinsic.
+      if (dir === "credit") return premium - intrinsic * shares - fee;
+      if (dir === "debit")  return intrinsic * shares - premium - fee;
+    }
+    // No underlying provided → assume worthless (close = 0)
+    const closeRaw = trade.close_price;
+    const close = (closeRaw == null || closeRaw === "") ? 0 : (Number(closeRaw) || 0);
+    const d = getDirection(trade);
+    if (!d) return null;
+    const sign = d === "debit" ? 1 : -1;
+    return sign * (close - fill) * 100 * qty - fee;
+  }
+
+  // Closed: option was closed by buying/selling the contract → use option close_price.
   const closeRaw = trade.close_price;
-  const close = (trade.status === "Expired" && (closeRaw == null || closeRaw === ""))
-    ? 0
-    : (Number(closeRaw) || 0);
+  const close = Number(closeRaw) || 0;
   const dir = getDirection(trade);
   if (!dir) return null;
   const sign = dir === "debit" ? 1 : -1;
