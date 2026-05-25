@@ -49,7 +49,10 @@ export function calcDashboard(data) {
 
   if (hasBreakdown) {
     ibCash = snapshot.cash;
-    ibStocksValue = snapshot.stocks_value != null ? snapshot.stocks_value : liveStocksValue;
+    // Always use live stocks value (computed from current prices × shares)
+    // so the dashboard matches StocksPage. The snapshot's stocks_value can
+    // be stale if prices were updated after the CSV import.
+    ibStocksValue = liveStocksValue;
     ibOptionsValue = snapshot.options_value != null ? snapshot.options_value : liveOptionsValue;
     ibNav = ibCash + ibStocksValue + ibOptionsValue;
     ibNavSource = "breakdown";
