@@ -28,7 +28,18 @@ export function calcDashboard(data) {
   // ── IB / Off-Chain ──
   // New formula: ibNav = cash + stocks_value + options_value (from latest snapshot,
   // with live fallbacks computed from current entity state)
-  const holdingStocks = stocks.filter(s => ["Holding", "Partially Sold"].includes(s.status));
+  // Enrich stocks with live prices from the Prices entity (same logic as StocksPage).
+  // The stored current_value on a StockPosition row goes stale; we must recompute it
+  // from shares × live price so the dashboard always matches the Stocks page.
+  const enrichedStocks = stocks.map((s) => {
+    const livePrice = priceMap[(s.ticker || "").toUpperCase()];
+    if (!livePrice) return s;
+    const currentValue = (s.shares || 0) * livePrice;
+    const baseline = s.invested_value || ((s.shares || 0) * (s.average_cost || 0));
+    const gainLoss = currentValue - baseline;
+    return { ...s, current_price: livePrice, current_value: currentValue, gain_loss: gainLoss };
+  });
+  const holdingStocks = enrichedStocks.filter(s => ["Holding", "Partially Sold"].includes(s.status));
   const openOptions = options.filter(o => o.status === "Open");
   const closedOptions = options.filter(o => ["Closed", "Expired", "Assigned"].includes(o.status));
 
