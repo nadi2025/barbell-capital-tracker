@@ -38,7 +38,8 @@
         "Stablecoin",
         "LP Token",
         "Vault",
-        "Other"
+        "Other",
+        "On-Chain Equity"
       ],
       "title": "Category"
     },

@@ -131,6 +131,17 @@ export function calcDashboard(data) {
   const investorDebt = cryptoLoans.reduce((s, l) => s + (l.principal_usd || 0), 0);
   const stablecoinsValue = cryptoAssets.filter(a => a.asset_category === "Stablecoin")
     .reduce((s, a) => s + (a.current_value_usd || 0), 0);
+  // On-Chain Equities (tokenized stocks like BMNR/MSTR) — priced LIVE from
+  // the underlying stock price in priceMap. Kept as its own line and added
+  // explicitly into onChainNAV (which is bucket-by-bucket and has no
+  // generic wallet term). cryptoTotalAssets already includes these via
+  // walletValue, so do NOT add there a second time.
+  const onChainEquityValue = cryptoAssets
+    .filter(a => a.asset_category === "On-Chain Equity")
+    .reduce((s, a) => {
+      const livePrice = priceMap[(a.token || "").toUpperCase()] || 0;
+      return s + (a.amount || 0) * livePrice;
+    }, 0);
   const activeNotional = openCryptoOptions.reduce((s, o) => s + (o.notional_usd || 0), 0);
   const vaultValue = lpPositions.reduce((s, l) => s + (l.current_value_usd || 0), 0);
 
@@ -146,7 +157,7 @@ export function calcDashboard(data) {
   // (the actual capital locked there). Unrealized P&L is tracked separately.
   const cryptoTotalAssets = walletValue + totalMargin + vaultValue + loansGivenValue + activeNotional;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + totalMargin + vaultValue;
+  const onChainNAV = aaveNetWorth + stablecoinsValue + onChainEquityValue + loansGivenValue + activeNotional + totalMargin + vaultValue;
 
   // ── Totals ──
   const totalAssets = ibNav + cryptoTotalAssets;
@@ -191,7 +202,7 @@ export function calcDashboard(data) {
     holdingStocks, unrealizedPnl,
     totalOffChainDebt, offChainInvestorDebt, offChainFacilityDebt,
     aaveCollateralValue, aaveNetWorth, loansGivenValue, investorDebt,
-    stablecoinsValue, activeNotional, vaultValue,
+    stablecoinsValue, activeNotional, vaultValue, onChainEquityValue,
     cryptoTotalAssets, cryptoTotalDebt, onChainNAV,
     hlUnrealizedPnl, totalMargin,
     healthFactor, borrowPowerUsed, aaveBorrowUsd,

@@ -55,16 +55,22 @@ Deno.serve(async (req) => {
     }
 
     // ── Stocks (Yahoo Finance) ──
+    // Sources of tickers:
+    //   1. StockPosition rows (status Holding ∪ Partially Sold) — IB stocks.
+    //   2. CryptoAsset rows with asset_category === "On-Chain Equity" — tokenized
+    //      stocks (e.g. BMNR, MSTR) held in a crypto wallet but priced from
+    //      the underlying NASDAQ stock via Yahoo. We do NOT create StockPosition
+    //      rows for these — they remain CryptoAsset rows only.
     let stockTickers = payload.stockTickers;
     if (!stockTickers || stockTickers.length === 0) {
-      const [holding, partial] = await Promise.all([
+      const [holding, partial, onChainEquities] = await Promise.all([
         base44.entities.StockPosition.filter({ status: 'Holding' }),
         base44.entities.StockPosition.filter({ status: 'Partially Sold' }),
+        base44.entities.CryptoAsset.filter({ asset_category: 'On-Chain Equity' }),
       ]);
-      const allStocks = [...holding, ...partial];
-      stockTickers = Array.from(new Set(
-        allStocks.map((s) => s.ticker).filter(Boolean)
-      ));
+      const ibTickers = [...holding, ...partial].map((s) => s.ticker).filter(Boolean);
+      const onChainEquityTickers = onChainEquities.map((a) => a.token).filter(Boolean);
+      stockTickers = Array.from(new Set([...ibTickers, ...onChainEquityTickers]));
     }
 
     await Promise.all(

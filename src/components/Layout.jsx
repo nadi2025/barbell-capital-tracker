@@ -36,7 +36,7 @@ const offChainNav = [
 const onChainNav = [
 { path: "/crypto", label: "Crypto Dashboard", icon: Bitcoin },
 { path: "/crypto/wallets", label: "Wallets & Assets", icon: Wallet },
-{ path: "/crypto/leveraged", label: "Leveraged Positions", icon: Layers },
+{ path: "/crypto/leveraged", label: "Positions", icon: Layers },
 { path: "/crypto/debt", label: "Debt & Interest", icon: CreditCard },
 { path: "/crypto/investors", label: "Investors", icon: Users },
 { path: "/crypto/activity", label: "Activity Log", icon: FileText },

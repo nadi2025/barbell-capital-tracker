@@ -2,6 +2,7 @@ import { useState } from "react";
 import OpenPositionsTab from "@/components/hyperliquid/OpenPositionsTab";
 import TradeHistoryTab from "@/components/hyperliquid/TradeHistoryTab";
 import PerformanceTab from "@/components/hyperliquid/PerformanceTab";
+import OnChainEquitiesTable from "@/components/crypto/OnChainEquitiesTable";
 import { useEntityList } from "@/hooks/useEntityQuery";
 import { HLMaintenance } from "@/components/dashboard2/ManualEntriesPanel";
 
@@ -48,7 +49,7 @@ export default function LeveragedPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs bg-orange-500/15 text-orange-500 border border-orange-500/20 px-2 py-0.5 rounded-full font-medium">On-Chain</span>
-          <h1 className="text-2xl font-bold">HyperLiquid</h1>
+          <h1 className="text-2xl font-bold">On-Chain Positions</h1>
         </div>
       </div>
 
@@ -70,7 +71,12 @@ export default function LeveragedPage() {
 
       {/* Tab content — onRefresh kept as a no-op; child mutations invalidate
           their own caches via useEntityMutation, so there's nothing to do here. */}
-      {tab === "positions" && <OpenPositionsTab positions={positions} onRefresh={() => {}} />}
+      {tab === "positions" && (
+        <>
+          <OpenPositionsTab positions={positions} onRefresh={() => {}} />
+          <OnChainEquitiesTable />
+        </>
+      )}
       {tab === "history" && <TradeHistoryTab trades={trades} onRefresh={() => {}} />}
       {tab === "performance" && <PerformanceTab trades={trades} positions={positions} />}
 
