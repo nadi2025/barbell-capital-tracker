@@ -48,7 +48,7 @@ export default function WalletsPage() {
   const [editWallet, setEditWallet] = useState(null);
   const [editAsset, setEditAsset] = useState(null);
   const [walletForm, setWalletForm] = useState({ name: "", type: "MetaMask", network: "Ethereum", address: "", notes: "" });
-  const [assetForm, setAssetForm] = useState({ token: "", amount: "", asset_category: "Spot" });
+  const [assetForm, setAssetForm] = useState({ token: "", amount: "", asset_category: "Spot", average_cost_usd: "" });
 
   // Manual Entries Panel deep-links via ?editId=… — open the asset edit dialog
   // automatically and select the asset's wallet when we land here from there.
@@ -61,7 +61,7 @@ export default function WalletsPage() {
     const wallet = wallets.find((w) => w.id === asset.wallet_id);
     if (wallet) setSelectedWallet(wallet);
     setEditAsset(asset);
-    setAssetForm({ token: asset.token, amount: asset.amount, asset_category: asset.asset_category });
+    setAssetForm({ token: asset.token, amount: asset.amount, asset_category: asset.asset_category, average_cost_usd: asset.average_cost_usd ?? "" });
     setAssetDialog(true);
     // Strip the param so back/forward navigation doesn't re-trigger
     const next = new URLSearchParams(searchParams);
@@ -98,13 +98,19 @@ export default function WalletsPage() {
     // Only persist structural fields. current_price_usd / current_value_usd
     // are derived at render time from priceMap × amount.
     const data = {
-      token: assetForm.token,
+      token: (assetForm.token || "").toUpperCase().trim(),
       amount,
       asset_category: assetForm.asset_category,
       wallet_id: selectedWallet.id,
       wallet_name: selectedWallet.name,
       last_updated: new Date().toISOString().split("T")[0],
     };
+    // average_cost_usd is only meaningful for On-Chain Equities (per-share cost
+    // basis). Persist it when provided so the On-Chain Equities table can show
+    // P&L = (live price − avg cost) × amount.
+    if (assetForm.average_cost_usd !== "" && assetForm.average_cost_usd != null) {
+      data.average_cost_usd = parseFloat(assetForm.average_cost_usd) || 0;
+    }
     if (editAsset) await updateAsset.mutateAsync({ id: editAsset.id, data });
     else await createAsset.mutateAsync(data);
     toast.success("Asset saved");
@@ -169,7 +175,7 @@ export default function WalletsPage() {
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold">{selectedWallet.name} — Assets</h2>
-                <Button size="sm" onClick={() => { setEditAsset(null); setAssetForm({ token: "", amount: "", asset_category: "Spot" }); setAssetDialog(true); }} className="gap-1.5">
+                <Button size="sm" onClick={() => { setEditAsset(null); setAssetForm({ token: "", amount: "", asset_category: "Spot", average_cost_usd: "" }); setAssetDialog(true); }} className="gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> New Asset
                 </Button>
               </div>
@@ -200,7 +206,7 @@ export default function WalletsPage() {
                         <td className="py-2 text-xs text-muted-foreground">{a.last_updated || "—"}</td>
                         <td className="py-2">
                           <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditAsset(a); setAssetForm({ token: a.token, amount: a.amount, asset_category: a.asset_category }); setAssetDialog(true); }}>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditAsset(a); setAssetForm({ token: a.token, amount: a.amount, asset_category: a.asset_category, average_cost_usd: a.average_cost_usd ?? "" }); setAssetDialog(true); }}>
                               <Pencil className="w-3 h-3" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteAsset(a.id)}>
@@ -273,12 +279,27 @@ export default function WalletsPage() {
               <Select value={assetForm.asset_category} onValueChange={(v) => setAssetForm((p) => ({ ...p, asset_category: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["Collateral on Aave", "Spot", "Stablecoin", "LP Token", "Vault", "Other"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {["Collateral on Aave", "Spot", "Stablecoin", "LP Token", "Vault", "Other", "On-Chain Equity"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
+            {assetForm.asset_category === "On-Chain Equity" && (
+              <div>
+                <Label className="text-xs mb-1 block">Average Cost per Share (USD)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={assetForm.average_cost_usd}
+                  onChange={(e) => setAssetForm((p) => ({ ...p, average_cost_usd: e.target.value }))}
+                  placeholder="לדוגמה: 1450.50"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  עלות ממוצעת למניה. המחיר החי יישאב מ-Yahoo Finance לפי הטיקר ({(assetForm.token || "—").toUpperCase()}).
+                </p>
+              </div>
+            )}
             <p className="text-[10px] text-muted-foreground">
-              מחיר נגזר אוטומטית מ-Prices entity דרך מפת aliases (aWBTC → BTC, aETH → ETH וכו׳).
+              מחיר נגזר אוטומטית מ-Prices entity דרך מפת aliases (aWBTC → BTC, aETH → ETH וכו׳). On-Chain Equity (BMNR, MSTR) משוך ישירות מנאסד״ק.
             </p>
             <Button className="w-full" onClick={saveAsset}>Save</Button>
           </div>
