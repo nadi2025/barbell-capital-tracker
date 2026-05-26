@@ -235,6 +235,7 @@ export default function CryptoDashboard() {
           <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
             <p>Aave Collateral: {fmt(aaveCollateralValue)}</p>
             <p>Stablecoins: {fmt(stablecoinsValue)}</p>
+            <p>Spot / Other: {fmt(walletValue - aaveCollateralValue - stablecoinsValue - onChainEquityValue)}</p>
             <p>HL Margin: {fmt(totalMarginFromPositions)}</p>
             <p>On-Chain Equities: {fmt(onChainEquityValue)}</p>
             <p>Vaults: {fmt(vaultValue)}</p>
