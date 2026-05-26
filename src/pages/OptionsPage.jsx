@@ -268,20 +268,13 @@ export default function OptionsPage() {
       </div>
 
       {/* Mini-dashboard KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <KpiTile
           label="P&L ממומש"
           value={fmt(kpis.realizedPnl)}
           sub={`${kpis.closed} עסקאות סגורות`}
           accent={kpis.realizedPnl >= 0 ? "text-profit" : "text-loss"}
           icon={kpis.realizedPnl >= 0 ? TrendingUp : TrendingDown}
-        />
-        <KpiTile
-          label="פרמיה נטו"
-          value={fmt(kpis.netPremium)}
-          sub={`נגבתה ${fmt(kpis.premiumCollected)} · שולמה ${fmt(kpis.premiumPaid)}`}
-          accent={kpis.netPremium >= 0 ? "text-profit" : "text-loss"}
-          icon={DollarSign}
         />
         <KpiTile
           label="Collateral פתוח"
