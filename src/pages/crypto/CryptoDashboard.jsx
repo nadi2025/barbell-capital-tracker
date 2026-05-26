@@ -223,9 +223,9 @@ export default function CryptoDashboard() {
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground mb-1">Net Asset Value</p>
           <p className={`text-2xl font-bold font-mono ${nav >= 0 ? "text-profit" : "text-loss"}`}>{fmt(nav)}</p>
-          <p className="text-xs mt-1 hidden">
-            Perf: <span className={perfPct >= 0 ? "text-profit" : "text-loss"}>{perfPct >= 0 ? "+" : ""}{perfPct.toFixed(1)}%</span>
-          </p>
+          
+
+          
           <p className="text-xs text-muted-foreground">Assets {fmt(totalAssets)} − Debt {fmt(totalDebt)}</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
@@ -236,7 +236,7 @@ export default function CryptoDashboard() {
             <p>Stablecoins: {fmt(stablecoinsValue)}</p>
             <p>HL Margin: {fmt(totalMarginFromPositions)}</p>
             <p>On-Chain Equities: {fmt(onChainEquityValue)}</p>
-            <p className="hidden">Vaults: {fmt(vaultValue)}</p>
+            
             <p>Lending Given: {fmt(lentValue)}</p>
             <p>Options Notional: {fmt(activeNotional)}</p>
           </div>
