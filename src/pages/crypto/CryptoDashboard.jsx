@@ -150,17 +150,18 @@ export default function CryptoDashboard() {
   filter((a) => {
     const t = (a.token || "").toUpperCase();
     const known = ["AWBTC", "WBTC", "BTC", "AETH", "WETH", "ETH", "AAAVE", "AAVE"].includes(t);
-    return !known && a.asset_category !== "Stablecoin";
+    return !known && a.asset_category !== "Stablecoin" && a.asset_category !== "On-Chain Equity";
   }).
   reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
 
-  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + hlExposure + stableExposure + optionsExposure + otherExposure || 1;
+  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + hlExposure + stableExposure + optionsExposure + onChainEquityValue + otherExposure || 1;
 
   const pieData = [
   { name: "BTC", value: btcExposure },
   { name: "ETH", value: ethExposure },
   { name: "AAVE", value: aaveExposure },
   { name: "HyperLiquid", value: hlExposure },
+  { name: "On-Chain Equities", value: onChainEquityValue },
   { name: "Stablecoins", value: stableExposure },
   { name: "Options", value: optionsExposure },
   { name: "Other", value: otherExposure }].
@@ -237,6 +238,8 @@ export default function CryptoDashboard() {
             <p>HL Margin: {fmt(totalMarginFromPositions)}</p>
             <p>On-Chain Equities: {fmt(onChainEquityValue)}</p>
             <p>Vaults: {fmt(vaultValue)}</p>
+            <p>Lending Given: {fmt(lentValue)}</p>
+            <p>Options Notional: {fmt(activeNotional)}</p>
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
