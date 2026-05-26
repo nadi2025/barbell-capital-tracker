@@ -59,7 +59,6 @@ export default function HLPositionsSection({ data }) {
   const totalMargin = positions.reduce((s, p) => s + (p.margin_usd || 0), 0);
   const totalNotional = positions.reduce((s, p) => s + calcPositionValue(p, priceMap), 0);
   const totalLivePnl = positions.reduce((s, p) => s + (calcLivePnl(p, priceMap) || 0), 0);
-  const accountEquity = totalMargin + totalLivePnl;
 
   // Sort by distance to liquidation (most risky first)
   const sorted = [...positions].sort((a, b) => {
@@ -100,10 +99,6 @@ export default function HLPositionsSection({ data }) {
             <span className={`font-mono font-semibold ${totalLivePnl >= 0 ? "text-profit" : "text-loss"}`}>
               {fmt(totalLivePnl, 0)}
             </span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Equity: </span>
-            <span className="font-mono font-semibold">{fmt(accountEquity, 0)}</span>
           </div>
           <Link to="/crypto/leveraged" className="text-primary hover:underline flex items-center gap-1">
             פירוט מלא <ArrowUpRight className="w-3 h-3" />

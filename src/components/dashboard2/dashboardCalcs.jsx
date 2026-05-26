@@ -141,11 +141,12 @@ export function calcDashboard(data) {
   const enrichedLev = leveraged.map(l => ({ ...l, ...computeLeveragedDerived(l, priceMap) }));
   const totalMargin = enrichedLev.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const hlUnrealizedPnl = enrichedLev.reduce((s, l) => s + (l.pnl_usd || 0), 0);
-  const hlEquity = totalMargin + hlUnrealizedPnl;
 
-  const cryptoTotalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + loansGivenValue + activeNotional;
+  // HL contribution to NAV/Assets is the margin posted on HyperLiquid
+  // (the actual capital locked there). Unrealized P&L is tracked separately.
+  const cryptoTotalAssets = walletValue + totalMargin + vaultValue + loansGivenValue + activeNotional;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + Math.max(0, hlEquity) + vaultValue;
+  const onChainNAV = aaveNetWorth + stablecoinsValue + loansGivenValue + activeNotional + totalMargin + vaultValue;
 
   // ── Totals ──
   const totalAssets = ibNav + cryptoTotalAssets;
@@ -192,7 +193,7 @@ export function calcDashboard(data) {
     aaveCollateralValue, aaveNetWorth, loansGivenValue, investorDebt,
     stablecoinsValue, activeNotional, vaultValue,
     cryptoTotalAssets, cryptoTotalDebt, onChainNAV,
-    hlUnrealizedPnl, hlEquity, totalMargin,
+    hlUnrealizedPnl, totalMargin,
     healthFactor, borrowPowerUsed, aaveBorrowUsd,
     totalAssets, totalDebt, totalNAV, totalPnl,
     allocationSlices, perfItems, priceMap, btcPrice, ethPrice, aavePrice,

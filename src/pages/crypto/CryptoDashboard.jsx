@@ -75,12 +75,12 @@ export default function CryptoDashboard() {
   const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
 
-  // Total Assets = wallet (incl. Aave collateral) + HL equity + vaults + lending + options notional
-  const totalAssets = walletValue + Math.max(0, hlEquity) + vaultValue + lentValue + activeNotional;
+  // Total Assets = wallet (incl. Aave collateral) + HL margin + vaults + lending + options notional
+  const totalAssets = walletValue + totalMarginFromPositions + vaultValue + lentValue + activeNotional;
   const totalDebt = investorDebt + aaveBorrow;
 
-  // NAV = equity in every bucket
-  const nav = aaveNetWorth + stablecoinsValue + spotValue + lentValue + activeNotional + Math.max(0, hlEquity) + vaultValue - investorDebt;
+  // NAV = equity in every bucket (HL contribution = margin posted)
+  const nav = aaveNetWorth + stablecoinsValue + spotValue + lentValue + activeNotional + totalMarginFromPositions + vaultValue - investorDebt;
 
   // Performance = NAV vs invested capital (investor debt is the capital we work with)
   const investedCapital = investorDebt > 0 ? investorDebt : 1;
@@ -220,7 +220,7 @@ export default function CryptoDashboard() {
           <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
             <p>Aave Collateral: {fmt(aaveCollateralValue)}</p>
             <p>Stablecoins: {fmt(stablecoinsValue)}</p>
-            <p>HL Equity: {fmt(Math.max(0, hlEquity))}</p>
+            <p>HL Margin: {fmt(totalMarginFromPositions)}</p>
             <p>Vaults: {fmt(vaultValue)}</p>
           </div>
         </div>
