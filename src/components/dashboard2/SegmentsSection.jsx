@@ -106,11 +106,13 @@ export default function SegmentsSection({ data }) {
         link="/crypto"
         linkLabel="לדשבורד קריפטו"
       >
-        <MetricLine label="Aave (נטו)" value={fmt(c.aaveNetWorth)} accent={c.aaveNetWorth >= 0 ? "text-profit" : "text-loss"} sub={`בטוחה ${fmt(c.aaveCollateralValue, 0)}`} />
-        <MetricLine label="הלוואות שנתנו" value={fmt(c.loansGivenValue)} />
+        <MetricLine label="בטוחת Aave" value={fmt(c.aaveCollateralValue)} />
         <MetricLine label="מזומן / יציב" value={fmt(c.stablecoinsValue)} />
         <MetricLine label="HL Margin" value={fmt(c.totalMargin)} sub={`P&L לא ממומש: ${fmt(c.hlUnrealizedPnl, 0)}`} />
         <MetricLine label="מניות On-Chain" value={fmt(c.onChainEquityValue)} />
+        <MetricLine label="Vaults" value={fmt(c.vaultValue)} />
+        <MetricLine label="הלוואות שנתנו" value={fmt(c.loansGivenValue)} />
+        <MetricLine label="Options Notional" value={fmt(c.activeNotional)} />
         <MetricLine label="חוב משקיעים" value={fmt(c.investorDebt)} accent="text-loss" />
         <MetricLine label="Aave Borrow" value={fmt(c.aaveBorrowUsd)} accent={c.aaveBorrowUsd > 0 ? "text-loss" : ""} />
       </SegmentCard>

@@ -153,11 +153,18 @@ export function calcDashboard(data) {
   const totalMargin = enrichedLev.reduce((s, l) => s + (l.margin_usd || 0), 0);
   const hlUnrealizedPnl = enrichedLev.reduce((s, l) => s + (l.pnl_usd || 0), 0);
 
-  // HL contribution to NAV/Assets is the margin posted on HyperLiquid
-  // (the actual capital locked there). Unrealized P&L is tracked separately.
-  const cryptoTotalAssets = walletValue + totalMargin + vaultValue + loansGivenValue + activeNotional;
+  // On-Chain assets — the 7 components (mirror of Crypto Dashboard's Total Assets)
+  const cryptoTotalAssets =
+    aaveCollateralValue +
+    stablecoinsValue +
+    totalMargin +
+    onChainEquityValue +
+    vaultValue +
+    loansGivenValue +
+    activeNotional;
   const cryptoTotalDebt = investorDebt + aaveBorrowUsd;
-  const onChainNAV = aaveNetWorth + stablecoinsValue + onChainEquityValue + loansGivenValue + activeNotional + totalMargin + vaultValue;
+  // On-Chain NAV = assets − debt (investor debt + Aave borrow), identical to Crypto Dashboard
+  const onChainNAV = cryptoTotalAssets - cryptoTotalDebt;
 
   // ── Totals ──
   const totalAssets = ibNav + cryptoTotalAssets;

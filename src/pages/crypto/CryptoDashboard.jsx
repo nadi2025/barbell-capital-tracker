@@ -56,9 +56,6 @@ export default function CryptoDashboard() {
   const stablecoinsValue = assets.
   filter((a) => a.asset_category === "Stablecoin").
   reduce((s, a) => s + (a.current_value_usd || 0), 0);
-  const spotValue = assets.
-  filter((a) => a.asset_category === "Spot").
-  reduce((s, a) => s + (a.current_value_usd || 0), 0);
   // On-Chain Equities (tokenized stocks like BMNR/MSTR) — priced LIVE from
   // the underlying stock price in priceMap, NOT from the stored
   // current_value_usd (which can lag behind a Prices update).
@@ -84,17 +81,19 @@ export default function CryptoDashboard() {
   const lentValue = lending.reduce((s, l) => s + (l.amount_usd || 0), 0);
   const investorDebt = loans.reduce((s, l) => s + (l.principal_usd || 0), 0);
 
-  // Total Assets = wallet (incl. Aave collateral + on-chain equities) + HL margin + vaults + lending + options notional
-  // walletValue already includes On-Chain Equities (via stored current_value_usd),
-  // so we don't add onChainEquityValue here a second time.
-  const totalAssets = walletValue + totalMarginFromPositions + vaultValue + lentValue + activeNotional;
+  // Total Assets = exact sum of the 7 displayed components (asset side only)
+  const totalAssets =
+    aaveCollateralValue +
+    stablecoinsValue +
+    totalMarginFromPositions +
+    onChainEquityValue +
+    vaultValue +
+    lentValue +
+    activeNotional;
   const totalDebt = investorDebt + aaveBorrow;
 
-  // NAV = equity in every bucket (HL contribution = margin posted). On-Chain
-  // Equities are added explicitly since the NAV formula is bucket-by-bucket
-  // and has no generic "wallet" term — without this, Total Assets would
-  // include them but NAV would not.
-  const nav = aaveNetWorth + stablecoinsValue + spotValue + onChainEquityValue + lentValue + activeNotional + totalMarginFromPositions + vaultValue - investorDebt;
+  // NAV = Total Assets − all debt (investor debt + Aave borrow)
+  const nav = totalAssets - totalDebt;
 
   // Performance = NAV vs invested capital (investor debt is the capital we work with)
   const investedCapital = investorDebt > 0 ? investorDebt : 1;
@@ -235,7 +234,6 @@ export default function CryptoDashboard() {
           <div className="text-xs text-muted-foreground space-y-0.5 mt-1">
             <p>Aave Collateral: {fmt(aaveCollateralValue)}</p>
             <p>Stablecoins: {fmt(stablecoinsValue)}</p>
-            <p>Spot / Other: {fmt(walletValue - aaveCollateralValue - stablecoinsValue - onChainEquityValue)}</p>
             <p>HL Margin: {fmt(totalMarginFromPositions)}</p>
             <p>On-Chain Equities: {fmt(onChainEquityValue)}</p>
             <p>Vaults: {fmt(vaultValue)}</p>
