@@ -125,10 +125,10 @@ export default function CryptoDashboard() {
     return s + Math.abs(val);
   }, 0);
 
-  const btcExposure = byToken(["AWBTC", "WBTC", "BTC"]) + byHLAsset("BTC");
-  const ethExposure = byToken(["AETH", "WETH", "ETH"]) + byHLAsset("ETH");
-  const aaveExposure = byToken(["AAAVE", "AAVE"]) + byHLAsset("AAVE");
-  const mstrExposure = byHLAsset("MSTR");
+  const btcExposure = byToken(["AWBTC", "WBTC", "BTC"]);
+  const ethExposure = byToken(["AETH", "WETH", "ETH"]);
+  const aaveExposure = byToken(["AAAVE", "AAVE"]);
+  const hlExposure = Math.max(0, hlEquity);
   const stableExposure = stablecoinsValue;
   const optionsExposure = activeNotional;
   const otherExposure =
@@ -140,17 +140,43 @@ export default function CryptoDashboard() {
   }).
   reduce((s, a) => s + (a.current_value_usd || 0), 0) + vaultValue;
 
-  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + mstrExposure + stableExposure + optionsExposure + otherExposure || 1;
+  const totalExposureForPie = btcExposure + ethExposure + aaveExposure + hlExposure + stableExposure + optionsExposure + otherExposure || 1;
 
   const pieData = [
   { name: "BTC", value: btcExposure },
   { name: "ETH", value: ethExposure },
   { name: "AAVE", value: aaveExposure },
-  { name: "MSTR", value: mstrExposure },
+  { name: "HyperLiquid", value: hlExposure },
   { name: "Stablecoins", value: stableExposure },
   { name: "Options", value: optionsExposure },
   { name: "Other", value: otherExposure }].
   filter((d) => d.value > 0);
+
+  // HyperLiquid breakdown by asset (position value = mark_price × size)
+  const hlByAssetMap = {};
+  leveraged.forEach((l) => {
+    const asset = (l.asset || "").toUpperCase();
+    if (!asset) return;
+    const livePrice = priceMap[asset] || l.mark_price || 0;
+    const val = livePrice && l.size ? livePrice * l.size : l.position_value_usd || 0;
+    hlByAssetMap[asset] = (hlByAssetMap[asset] || 0) + Math.abs(val);
+  });
+  const hlPieData = Object.entries(hlByAssetMap).
+  map(([name, value]) => ({ name, value })).
+  filter((d) => d.value > 0);
+  const hlPieTotal = hlPieData.reduce((s, d) => s + d.value, 0) || 1;
+
+  // Crypto Options breakdown by underlying asset
+  const optionsByAssetMap = {};
+  cryptoOptions.forEach((o) => {
+    const asset = (o.asset || "").toUpperCase();
+    if (!asset) return;
+    optionsByAssetMap[asset] = (optionsByAssetMap[asset] || 0) + (o.notional_usd || 0);
+  });
+  const optionsPieData = Object.entries(optionsByAssetMap).
+  map(([name, value]) => ({ name, value })).
+  filter((d) => d.value > 0);
+  const optionsPieTotal = optionsPieData.reduce((s, d) => s + d.value, 0) || 1;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -271,7 +297,7 @@ export default function CryptoDashboard() {
         </div>
 
         <div className="bg-card border border-border rounded-xl p-5">
-          <h3 className="text-sm font-semibold mb-4">Portfolio Allocation (Exposure)</h3>
+          <h3 className="text-sm font-semibold mb-4">Portfolio Allocation</h3>
           {pieData.length > 0 ?
           <div className="flex items-center gap-4">
               <ResponsiveContainer width="50%" height={180}>
@@ -298,6 +324,68 @@ export default function CryptoDashboard() {
             </div> :
 
           <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No asset data</div>
+          }
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-4">HyperLiquid Positions</h3>
+          {hlPieData.length > 0 ?
+          <div className="flex items-center gap-4">
+              <ResponsiveContainer width="50%" height={180}>
+                <PieChart>
+                  <Pie data={hlPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value">
+                    {hlPieData.map((_, i) =>
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  )}
+                  </Pie>
+                  <Tooltip formatter={(v) => fmt(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-1.5">
+                {hlPieData.map((d, i) =>
+              <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                    </div>
+                    <span className="font-mono font-medium">{(d.value / hlPieTotal * 100).toFixed(0)}%</span>
+                  </div>
+              )}
+              </div>
+            </div> :
+
+          <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No HyperLiquid positions</div>
+          }
+        </div>
+
+        <div className="bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-semibold mb-4">Crypto Options</h3>
+          {optionsPieData.length > 0 ?
+          <div className="flex items-center gap-4">
+              <ResponsiveContainer width="50%" height={180}>
+                <PieChart>
+                  <Pie data={optionsPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} dataKey="value">
+                    {optionsPieData.map((_, i) =>
+                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  )}
+                  </Pie>
+                  <Tooltip formatter={(v) => fmt(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-1.5">
+                {optionsPieData.map((d, i) =>
+              <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="text-muted-foreground">{d.name}</span>
+                    </div>
+                    <span className="font-mono font-medium">{(d.value / optionsPieTotal * 100).toFixed(0)}%</span>
+                  </div>
+              )}
+              </div>
+            </div> :
+
+          <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">No open options</div>
           }
         </div>
       </div>
