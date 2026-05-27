@@ -6,6 +6,11 @@
       "type": "string",
       "title": "Investor Name"
     },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "title": "Email"
+    },
     "principal": {
       "type": "number",
       "title": "Principal"
@@ -14,14 +19,15 @@
       "type": "string",
       "enum": [
         "USD",
-        "ILS"
+        "ILS",
+        "EUR"
       ],
       "default": "USD",
       "title": "Currency"
     },
     "fx_rate_at_conversion": {
       "type": "number",
-      "title": "FX Rate (ILS\u2192USD) at conversion"
+      "title": "FX Rate (\u2192USD) at conversion"
     },
     "interest_rate": {
       "type": "number",

@@ -11,10 +11,11 @@ import MobileSelect from "@/components/ui/MobileSelect";
 
 const FREQUENCIES = ["Monthly", "Quarterly", "Annual", "At Maturity"];
 const STATUSES = ["Active", "Repaid", "Defaulted"];
-const CURRENCIES = ["USD", "ILS"];
+const CURRENCIES = ["USD", "ILS", "EUR"];
 
 const blank = {
   name: "",
+  email: "",
   principal: "",
   currency: "USD",
   fx_rate_at_conversion: "",
@@ -36,6 +37,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
     if (editInvestor) {
       setForm({
         name: editInvestor.name || "",
+        email: editInvestor.email || "",
         principal: editInvestor.principal ?? "",
         currency: editInvestor.currency || "USD",
         fx_rate_at_conversion: editInvestor.fx_rate_at_conversion ?? "",
@@ -61,6 +63,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
     try {
       const data = {
         name: form.name.trim(),
+        email: form.email?.trim() || undefined,
         principal: parseFloat(form.principal) || 0,
         currency: form.currency,
         fx_rate_at_conversion: form.fx_rate_at_conversion === "" ? undefined : parseFloat(form.fx_rate_at_conversion),
@@ -99,6 +102,10 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
             <Label className="text-xs">Investor Name</Label>
             <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Sigma Holdings" />
           </div>
+          <div className="col-span-2">
+            <Label className="text-xs">Email</Label>
+            <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="investor@example.com" />
+          </div>
           <div>
             <Label className="text-xs">Principal</Label>
             <Input type="number" step="0.01" value={form.principal} onChange={(e) => setForm((f) => ({ ...f, principal: e.target.value }))} />
@@ -116,15 +123,19 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
             <Label className="text-xs">Interest Rate (% annual)</Label>
             <Input type="number" step="0.01" value={form.interest_rate} onChange={(e) => setForm((f) => ({ ...f, interest_rate: e.target.value }))} />
           </div>
-          {form.currency === "ILS" && (
+          {form.currency !== "USD" && (
             <div className="col-span-2">
-              <Label className="text-xs">שער דולר בעת המרה (ILS per 1 USD)</Label>
+              <Label className="text-xs">
+                {form.currency === "ILS"
+                  ? "שער דולר בעת המרה (ILS per 1 USD)"
+                  : "שער דולר בעת המרה (EUR per 1 USD)"}
+              </Label>
               <Input
                 type="number"
                 step="0.0001"
                 value={form.fx_rate_at_conversion}
                 onChange={(e) => setForm((f) => ({ ...f, fx_rate_at_conversion: e.target.value }))}
-                placeholder="3.7"
+                placeholder={form.currency === "ILS" ? "3.7" : "0.92"}
               />
               {form.principal && form.fx_rate_at_conversion && (
                 <p className="text-[10px] text-muted-foreground mt-1">
