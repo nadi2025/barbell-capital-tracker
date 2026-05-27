@@ -12,6 +12,8 @@ import MobileSelect from "@/components/ui/MobileSelect";
 const FREQUENCIES = ["Monthly", "Quarterly", "Annual", "At Maturity"];
 const STATUSES = ["Active", "Repaid", "Defaulted"];
 const CURRENCIES = ["USD", "ILS", "EUR"];
+const INTEREST_TYPES = ["Simple", "Compound"];
+const COMPOUND_FREQS = ["Annual", "Semi-Annual", "Quarterly", "Monthly"];
 
 const blank = {
   name: "",
@@ -20,6 +22,8 @@ const blank = {
   currency: "USD",
   fx_rate_at_conversion: "",
   interest_rate: "",
+  interest_type: "Simple",
+  compound_frequency: "Annual",
   payment_frequency: "Monthly",
   start_date: "",
   maturity_date: "",
@@ -42,6 +46,8 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         currency: editInvestor.currency || "USD",
         fx_rate_at_conversion: editInvestor.fx_rate_at_conversion ?? "",
         interest_rate: editInvestor.interest_rate ?? "",
+        interest_type: editInvestor.interest_type || "Simple",
+        compound_frequency: editInvestor.compound_frequency || "Annual",
         payment_frequency: editInvestor.payment_frequency || "Monthly",
         start_date: editInvestor.start_date || "",
         maturity_date: editInvestor.maturity_date || "",
@@ -68,6 +74,8 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         currency: form.currency,
         fx_rate_at_conversion: form.fx_rate_at_conversion === "" ? undefined : parseFloat(form.fx_rate_at_conversion),
         interest_rate: parseFloat(form.interest_rate) || 0,
+        interest_type: form.interest_type,
+        compound_frequency: form.interest_type === "Compound" ? form.compound_frequency : undefined,
         payment_frequency: form.payment_frequency,
         start_date: form.start_date,
         maturity_date: form.maturity_date,
@@ -153,6 +161,26 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
               options={FREQUENCIES.map((c) => ({ value: c, label: c }))}
             />
           </div>
+          <div>
+            <Label className="text-xs">Interest Type</Label>
+            <MobileSelect
+              value={form.interest_type}
+              onValueChange={(v) => setForm((f) => ({ ...f, interest_type: v }))}
+              placeholder="Interest Type"
+              options={INTEREST_TYPES.map((c) => ({ value: c, label: c === "Compound" ? "Compound (דריבית)" : "Simple" }))}
+            />
+          </div>
+          {form.interest_type === "Compound" && (
+            <div>
+              <Label className="text-xs">Compounding Frequency</Label>
+              <MobileSelect
+                value={form.compound_frequency}
+                onValueChange={(v) => setForm((f) => ({ ...f, compound_frequency: v }))}
+                placeholder="Frequency"
+                options={COMPOUND_FREQS.map((c) => ({ value: c, label: c }))}
+              />
+            </div>
+          )}
           <div>
             <Label className="text-xs">Start Date</Label>
             <Input type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />

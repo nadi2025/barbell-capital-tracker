@@ -33,6 +33,26 @@
       "type": "number",
       "title": "Annual Interest Rate (%)"
     },
+    "interest_type": {
+      "type": "string",
+      "enum": [
+        "Simple",
+        "Compound"
+      ],
+      "default": "Simple",
+      "title": "Interest Type"
+    },
+    "compound_frequency": {
+      "type": "string",
+      "enum": [
+        "Annual",
+        "Semi-Annual",
+        "Quarterly",
+        "Monthly"
+      ],
+      "default": "Annual",
+      "title": "Compounding Frequency"
+    },
     "payment_frequency": {
       "type": "string",
       "enum": [
