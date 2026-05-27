@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { differenceInDays, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { useEntityMutation } from "@/hooks/useEntityQuery";
@@ -8,6 +9,7 @@ import { usePrivateData } from "@/hooks/usePrivateData";
 import { fmtCurrency, projectScheduledPayments } from "@/lib/privateMath";
 import PrivateInvestorForm from "@/components/private/PrivateInvestorForm";
 import PrivatePaymentDialog from "@/components/private/PrivatePaymentDialog";
+import MobileSelect from "@/components/ui/MobileSelect";
 
 export default function PrivateInvestorsPage() {
   const { data, isLoading } = usePrivateData();
@@ -18,6 +20,12 @@ export default function PrivateInvestorsPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentFor, setPaymentFor] = useState(null);
 
+  // Filters
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [currencyFilter, setCurrencyFilter] = useState("all");
+  const [frequencyFilter, setFrequencyFilter] = useState("all");
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -27,12 +35,30 @@ export default function PrivateInvestorsPage() {
       const totalPaid = paid.reduce((s, p) => s + (p.amount || 0), 0);
       const projected = projectScheduledPayments(inv);
       const nextDate = projected.length ? projected[0].date : null;
+      const nextAmount = projected.length ? projected[0].amount : 0;
+      const projectedTotal = projected.reduce((s, p) => s + (p.amount || 0), 0);
       const daysToMaturity = inv.maturity_date
         ? differenceInDays(parseISO(inv.maturity_date), today)
         : null;
-      return { ...inv, totalPaid, nextDate, daysToMaturity };
+      return { ...inv, totalPaid, nextDate, nextAmount, projectedTotal, daysToMaturity };
     });
   }, [data.investors, data.payments]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return enriched.filter((inv) => {
+      if (q && !(inv.name || "").toLowerCase().includes(q)
+        && !(inv.linked_investment_name || "").toLowerCase().includes(q)
+        && !(inv.email || "").toLowerCase().includes(q)) return false;
+      if (statusFilter !== "all" && inv.status !== statusFilter) return false;
+      if (currencyFilter !== "all" && (inv.currency || "USD") !== currencyFilter) return false;
+      if (frequencyFilter !== "all" && inv.payment_frequency !== frequencyFilter) return false;
+      return true;
+    });
+  }, [enriched, search, statusFilter, currencyFilter, frequencyFilter]);
+
+  const hasActiveFilters = search || statusFilter !== "all" || currencyFilter !== "all" || frequencyFilter !== "all";
+  const clearFilters = () => { setSearch(""); setStatusFilter("all"); setCurrencyFilter("all"); setFrequencyFilter("all"); };
 
   const handleDelete = async (inv) => {
     if (!confirm(`למחוק את "${inv.name}"? פעולה לא הפיכה.`)) return;
@@ -60,11 +86,70 @@ export default function PrivateInvestorsPage() {
           <h1 className="text-2xl font-bold tracking-tight">משקיעי חוב פרטיים</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data.investors.length} משקיעים · {data.investors.filter((i) => i.status === "Active").length} פעילים
+            {hasActiveFilters && <> · מציג {filtered.length}</>}
           </p>
         </div>
         <Button onClick={() => { setEditInvestor(null); setFormOpen(true); }} className="gap-2">
           <Plus className="w-4 h-4" /> Add Investor
         </Button>
+      </div>
+
+      {/* Filters bar */}
+      <div className="bg-card border border-border rounded-xl p-3 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            placeholder="חיפוש לפי שם, אימייל או השקעה..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+        <div className="w-32">
+          <MobileSelect
+            value={statusFilter}
+            onValueChange={setStatusFilter}
+            placeholder="Status"
+            options={[
+              { value: "all", label: "כל הסטטוסים" },
+              { value: "Active", label: "Active" },
+              { value: "Repaid", label: "Repaid" },
+              { value: "Defaulted", label: "Defaulted" },
+            ]}
+          />
+        </div>
+        <div className="w-28">
+          <MobileSelect
+            value={currencyFilter}
+            onValueChange={setCurrencyFilter}
+            placeholder="Currency"
+            options={[
+              { value: "all", label: "כל המטבעות" },
+              { value: "USD", label: "USD" },
+              { value: "ILS", label: "ILS" },
+              { value: "EUR", label: "EUR" },
+            ]}
+          />
+        </div>
+        <div className="w-36">
+          <MobileSelect
+            value={frequencyFilter}
+            onValueChange={setFrequencyFilter}
+            placeholder="Frequency"
+            options={[
+              { value: "all", label: "כל התדירויות" },
+              { value: "Monthly", label: "Monthly" },
+              { value: "Quarterly", label: "Quarterly" },
+              { value: "Annual", label: "Annual" },
+              { value: "At Maturity", label: "At Maturity" },
+            ]}
+          />
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1 h-9">
+            <X className="w-3.5 h-3.5" /> נקה
+          </Button>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -81,18 +166,21 @@ export default function PrivateInvestorsPage() {
                 <th className="text-left px-4 py-3 font-medium">Maturity</th>
                 <th className="text-right px-4 py-3 font-medium">Total Paid</th>
                 <th className="text-left px-4 py-3 font-medium">Next Payment</th>
+                <th className="text-right px-4 py-3 font-medium" title="סך הריבית הצפויה מהיום עד פדיון">Projected Interest</th>
                 <th className="text-left px-4 py-3 font-medium">Status</th>
                 <th className="text-right px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {enriched.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-muted-foreground text-sm">
-                    אין משקיעים — לחץ "Add Investor" כדי להתחיל
+                  <td colSpan={12} className="text-center py-8 text-muted-foreground text-sm">
+                    {enriched.length === 0
+                      ? 'אין משקיעים — לחץ "Add Investor" כדי להתחיל'
+                      : "אין משקיעים שתואמים את הסינון"}
                   </td>
                 </tr>
-              ) : enriched.map((inv) => {
+              ) : filtered.map((inv) => {
                 const matured = inv.daysToMaturity != null && inv.daysToMaturity < 0;
                 return (
                   <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
@@ -122,8 +210,18 @@ export default function PrivateInvestorsPage() {
                     <td className="px-4 py-3 text-right font-mono text-xs">{fmtCurrency(inv.totalPaid, inv.currency)}</td>
                     <td className="px-4 py-3 text-xs font-mono text-muted-foreground">
                       {inv.nextDate
-                        ? <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {inv.nextDate.toISOString().slice(0, 10)}</span>
+                        ? <div className="space-y-0.5">
+                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {inv.nextDate.toISOString().slice(0, 10)}</span>
+                            {inv.nextAmount > 0 && (
+                              <div className="text-[10px] text-emerald-600">{fmtCurrency(inv.nextAmount, inv.currency)}</div>
+                            )}
+                          </div>
                         : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-xs">
+                      {inv.projectedTotal > 0
+                        ? <span className="text-emerald-600">{fmtCurrency(inv.projectedTotal, inv.currency)}</span>
+                        : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       <span className={`px-2 py-0.5 rounded text-[10px] ${
