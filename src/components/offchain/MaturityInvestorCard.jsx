@@ -2,9 +2,12 @@ import { format, differenceInDays } from "date-fns";
 import { MapPin, Edit2, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { projectedMaturityValue } from "@/lib/offChainInterest";
 
 const fmtUSD = (v) => v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const ILS_RATE = 3.27; // approximate
+
+const FREQ_PER_YEAR = { Annual: 1, "Semi-Annual": 2, Quarterly: 4, Monthly: 12 };
 
 export default function MaturityInvestorCard({ investor, onEdit, onDelete }) {
   const today = new Date();
@@ -17,9 +20,22 @@ export default function MaturityInvestorCard({ investor, onEdit, onDelete }) {
   const daysRemaining = differenceInDays(maturity, today);
   const progressPct = Math.min(100, Math.max(0, (daysElapsed / termDays) * 100));
 
-  const totalInterest = investor.principal_usd * (investor.interest_rate / 100) * termYears;
-  const accrued = investor.principal_usd * (investor.interest_rate / 100) * (daysElapsed / 365);
-  const totalDueAtMaturity = investor.principal_usd + totalInterest;
+  const isCompound = investor.interest_type === "Compound";
+  const totalDueAtMaturity = projectedMaturityValue(investor);
+  const totalInterest = totalDueAtMaturity - (investor.principal_usd || 0);
+
+  // Accrued so far — same formula but using elapsed years
+  let accrued = 0;
+  if (investor.principal_usd && investor.interest_rate && daysElapsed > 0) {
+    const rate = investor.interest_rate / 100;
+    const yrs = Math.min(daysElapsed, termDays) / 365.25;
+    if (isCompound) {
+      const n = FREQ_PER_YEAR[investor.compound_frequency] || 1;
+      accrued = investor.principal_usd * (Math.pow(1 + rate / n, n * yrs) - 1);
+    } else {
+      accrued = investor.principal_usd * rate * yrs;
+    }
+  }
 
   const hasILS = !!investor.principal_ils;
   const ilsRate = hasILS ? investor.principal_ils / investor.principal_usd : ILS_RATE;
@@ -67,6 +83,11 @@ export default function MaturityInvestorCard({ investor, onEdit, onDelete }) {
         <div>
           <p className="text-muted-foreground">Schedule</p>
           <p className="font-bold text-sm">At Maturity</p>
+          {isCompound && (
+            <p className="text-[10px] text-purple-600 mt-0.5">
+              דריבית · {investor.compound_frequency || "Annual"}
+            </p>
+          )}
         </div>
         <div>
           <p className="text-muted-foreground">Currency</p>

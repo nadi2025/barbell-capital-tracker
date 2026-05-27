@@ -1,15 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { projectedMaturityValue, projectedTotalInterest } from "@/lib/offChainInterest";
 
 const DEFAULT = {
   name: "", principal_usd: "", principal_ils: "", interest_rate: "",
-  interest_schedule: "At Maturity", interest_currency: "USD",
+  interest_schedule: "At Maturity", interest_type: "Simple", compound_frequency: "Annual",
+  interest_currency: "USD",
   monthly_payment: "", start_date: "", maturity_date: "",
   investment_location: "Interactive Brokers", status: "Active", notes: "",
 };
+
+const fmtUSD = (v) => (v == null ? "$0" : v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }));
 
 export default function AddInvestorDialog({ open, onClose, onSave, initialData }) {
   const [form, setForm] = useState(DEFAULT);
@@ -30,6 +34,22 @@ export default function AddInvestorDialog({ open, onClose, onSave, initialData }
       monthly_payment: parseFloat(form.monthly_payment) || null,
     });
   };
+
+  // Live preview of maturity value (only meaningful for "At Maturity" schedule)
+  const preview = useMemo(() => {
+    const inv = {
+      ...form,
+      principal_usd: parseFloat(form.principal_usd) || 0,
+      interest_rate: parseFloat(form.interest_rate) || 0,
+    };
+    if (inv.interest_schedule !== "At Maturity" || !inv.principal_usd || !inv.interest_rate || !inv.start_date || !inv.maturity_date) {
+      return null;
+    }
+    return {
+      value: projectedMaturityValue(inv),
+      interest: projectedTotalInterest(inv),
+    };
+  }, [form]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -65,6 +85,30 @@ export default function AddInvestorDialog({ open, onClose, onSave, initialData }
               </select>
             </div>
           </div>
+
+          {form.interest_schedule === "At Maturity" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Interest Type</Label>
+                <select value={form.interest_type} onChange={e => set("interest_type", e.target.value)} className="w-full border border-input rounded-md px-3 py-1.5 text-sm bg-transparent">
+                  <option value="Simple">Simple</option>
+                  <option value="Compound">Compound (ריבית דריבית)</option>
+                </select>
+              </div>
+              {form.interest_type === "Compound" && (
+                <div>
+                  <Label>Compounding Frequency</Label>
+                  <select value={form.compound_frequency} onChange={e => set("compound_frequency", e.target.value)} className="w-full border border-input rounded-md px-3 py-1.5 text-sm bg-transparent">
+                    <option value="Annual">Annual</option>
+                    <option value="Semi-Annual">Semi-Annual</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Monthly">Monthly</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
           {form.interest_schedule === "Monthly" && (
             <div>
               <Label>Monthly Payment (USD)</Label>
@@ -102,6 +146,20 @@ export default function AddInvestorDialog({ open, onClose, onSave, initialData }
             <Label>Notes</Label>
             <Input value={form.notes} onChange={e => set("notes", e.target.value)} />
           </div>
+
+          {preview && (
+            <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs space-y-0.5">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">ערך לפדיון (משוער)</span>
+                <span className="font-mono font-semibold">{fmtUSD(preview.value)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">סך ריבית צבורה</span>
+                <span className="font-mono text-emerald-600">+{fmtUSD(preview.interest)}</span>
+              </div>
+            </div>
+          )}
+
           <Button className="w-full" onClick={handleSave}>{isEdit ? "Save Changes" : "Add Investor"}</Button>
         </div>
       </DialogContent>

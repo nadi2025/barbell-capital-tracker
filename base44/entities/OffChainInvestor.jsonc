@@ -26,6 +26,26 @@
       ],
       "title": "Interest Schedule"
     },
+    "interest_type": {
+      "type": "string",
+      "enum": [
+        "Simple",
+        "Compound"
+      ],
+      "title": "Interest Type",
+      "default": "Simple"
+    },
+    "compound_frequency": {
+      "type": "string",
+      "enum": [
+        "Annual",
+        "Semi-Annual",
+        "Quarterly",
+        "Monthly"
+      ],
+      "title": "Compounding Frequency",
+      "default": "Annual"
+    },
     "interest_currency": {
       "type": "string",
       "enum": [
