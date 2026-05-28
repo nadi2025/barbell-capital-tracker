@@ -17,6 +17,7 @@ const COMPOUND_FREQS = ["Annual", "Semi-Annual", "Quarterly", "Monthly"];
 
 const blank = {
   name: "",
+  name_en: "",
   email: "",
   principal: "",
   currency: "USD",
@@ -41,6 +42,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
     if (editInvestor) {
       setForm({
         name: editInvestor.name || "",
+        name_en: editInvestor.name_en || "",
         email: editInvestor.email || "",
         principal: editInvestor.principal ?? "",
         currency: editInvestor.currency || "USD",
@@ -69,6 +71,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
     try {
       const data = {
         name: form.name.trim(),
+        name_en: form.name_en?.trim() || undefined,
         email: form.email?.trim() || undefined,
         principal: parseFloat(form.principal) || 0,
         currency: form.currency,
@@ -108,7 +111,11 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div className="col-span-2">
             <Label className="text-xs">Investor Name</Label>
-            <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. Sigma Holdings" />
+            <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="e.g. אורית קרא" />
+          </div>
+          <div className="col-span-2">
+            <Label className="text-xs">Investor Name (English)</Label>
+            <Input dir="ltr" value={form.name_en} onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))} placeholder="e.g. Orit Kra" />
           </div>
           <div className="col-span-2">
             <Label className="text-xs">Email</Label>

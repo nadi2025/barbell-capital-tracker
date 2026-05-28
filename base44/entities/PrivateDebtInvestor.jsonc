@@ -6,6 +6,10 @@
       "type": "string",
       "title": "Investor Name"
     },
+    "name_en": {
+      "type": "string",
+      "title": "Investor Name (English)"
+    },
     "email": {
       "type": "string",
       "format": "email",
