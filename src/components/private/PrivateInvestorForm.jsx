@@ -19,6 +19,7 @@ const blank = {
   name: "",
   name_en: "",
   email: "",
+  phone: "",
   principal: "",
   currency: "USD",
   fx_rate_at_conversion: "",
@@ -44,6 +45,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         name: editInvestor.name || "",
         name_en: editInvestor.name_en || "",
         email: editInvestor.email || "",
+        phone: editInvestor.phone || "",
         principal: editInvestor.principal ?? "",
         currency: editInvestor.currency || "USD",
         fx_rate_at_conversion: editInvestor.fx_rate_at_conversion ?? "",
@@ -73,6 +75,7 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
         name: form.name.trim(),
         name_en: form.name_en?.trim() || undefined,
         email: form.email?.trim() || undefined,
+        phone: form.phone?.trim() || undefined,
         principal: parseFloat(form.principal) || 0,
         currency: form.currency,
         fx_rate_at_conversion: form.fx_rate_at_conversion === "" ? undefined : parseFloat(form.fx_rate_at_conversion),
@@ -117,9 +120,13 @@ export default function PrivateInvestorForm({ open, onClose, editInvestor, onSav
             <Label className="text-xs">Investor Name (English)</Label>
             <Input dir="ltr" value={form.name_en} onChange={(e) => setForm((f) => ({ ...f, name_en: e.target.value }))} placeholder="e.g. Orit Kra" />
           </div>
-          <div className="col-span-2">
+          <div>
             <Label className="text-xs">Email</Label>
             <Input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="investor@example.com" />
+          </div>
+          <div>
+            <Label className="text-xs">Phone</Label>
+            <Input dir="ltr" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="0501234567" />
           </div>
           <div>
             <Label className="text-xs">Principal</Label>

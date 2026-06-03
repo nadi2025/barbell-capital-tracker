@@ -9,6 +9,7 @@ import { usePrivateData } from "@/hooks/usePrivateData";
 import { fmtCurrency, projectScheduledPayments } from "@/lib/privateMath";
 import PrivateInvestorForm from "@/components/private/PrivateInvestorForm";
 import PrivatePaymentDialog from "@/components/private/PrivatePaymentDialog";
+import PrivateInvestorDetailsDialog from "@/components/private/PrivateInvestorDetailsDialog";
 import MobileSelect from "@/components/ui/MobileSelect";
 
 export default function PrivateInvestorsPage() {
@@ -19,6 +20,8 @@ export default function PrivateInvestorsPage() {
   const [editInvestor, setEditInvestor] = useState(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentFor, setPaymentFor] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsFor, setDetailsFor] = useState(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -183,8 +186,15 @@ export default function PrivateInvestorsPage() {
               ) : filtered.map((inv) => {
                 const matured = inv.daysToMaturity != null && inv.daysToMaturity < 0;
                 return (
-                  <tr key={inv.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-medium">{inv.name}</td>
+                  <tr
+                    key={inv.id}
+                    className="border-b border-border/50 hover:bg-muted/20 transition-colors cursor-pointer"
+                    onClick={() => { setDetailsFor(inv); setDetailsOpen(true); }}
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      <div>{inv.name}</div>
+                      {inv.name_en && <div className="text-[10px] text-muted-foreground font-normal">{inv.name_en}</div>}
+                    </td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{inv.linked_investment_name || "—"}</td>
                     <td className="px-4 py-3 text-right font-mono">{fmtCurrency(inv.principal, inv.currency)}</td>
                     <td className="px-4 py-3 text-right font-mono text-xs">
@@ -230,7 +240,7 @@ export default function PrivateInvestorsPage() {
                             : "bg-red-500/10 text-red-600"
                       }`}>{inv.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Record Payment"
                           onClick={() => { setPaymentFor(inv); setPaymentOpen(true); }}>
@@ -266,6 +276,12 @@ export default function PrivateInvestorsPage() {
         investor={paymentFor}
         editPayment={null}
         onSaved={() => {}}
+      />
+      <PrivateInvestorDetailsDialog
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        investor={detailsFor}
+        payments={data.payments}
       />
     </div>
   );
