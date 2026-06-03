@@ -1,0 +1,28 @@
+{
+  "name": "FxHedgeRate",
+  "type": "object",
+  "properties": {
+    "pair": {
+      "type": "string",
+      "title": "Pair (e.g. EURUSD)"
+    },
+    "rate_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Rate Date"
+    },
+    "rate": {
+      "type": "number",
+      "title": "Rate"
+    },
+    "source": {
+      "type": "string",
+      "title": "Source"
+    }
+  },
+  "required": [
+    "pair",
+    "rate_date",
+    "rate"
+  ]
+}

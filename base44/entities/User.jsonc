@@ -11,5 +11,8 @@
       ],
       "title": "Role"
     }
-  }
+  },
+  "required": [
+    "role"
+  ]
 }

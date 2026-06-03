@@ -1,0 +1,132 @@
+{
+  "name": "FxHedgeTransaction",
+  "type": "object",
+  "properties": {
+    "reference": {
+      "type": "string",
+      "title": "Broker Reference"
+    },
+    "broker": {
+      "type": "string",
+      "enum": [
+        "Meitav Trade",
+        "Other"
+      ],
+      "default": "Meitav Trade",
+      "title": "Broker"
+    },
+    "account": {
+      "type": "string",
+      "title": "Account"
+    },
+    "trader": {
+      "type": "string",
+      "title": "Trader"
+    },
+    "project": {
+      "type": "string",
+      "title": "Project / Sub-account"
+    },
+    "transaction_type": {
+      "type": "string",
+      "enum": [
+        "SPOT",
+        "FORWARD"
+      ],
+      "default": "FORWARD",
+      "title": "Transaction Type"
+    },
+    "trade_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Trade Date"
+    },
+    "value_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Value Date"
+    },
+    "base_currency": {
+      "type": "string",
+      "enum": [
+        "EUR",
+        "USD",
+        "ILS",
+        "GBP",
+        "CHF",
+        "JPY"
+      ],
+      "title": "Base Currency"
+    },
+    "quote_currency": {
+      "type": "string",
+      "enum": [
+        "EUR",
+        "USD",
+        "ILS",
+        "GBP",
+        "CHF",
+        "JPY"
+      ],
+      "title": "Quote Currency"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "BUY",
+        "SELL"
+      ],
+      "title": "Direction (of base currency)"
+    },
+    "base_amount": {
+      "type": "number",
+      "title": "Base Amount"
+    },
+    "quote_amount": {
+      "type": "number",
+      "title": "Quote Amount"
+    },
+    "locked_rate": {
+      "type": "number",
+      "title": "Locked Rate"
+    },
+    "linked_to_reference": {
+      "type": "string",
+      "title": "Linked Reference (swap)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "SETTLED",
+        "CANCELLED"
+      ],
+      "default": "OPEN",
+      "title": "Status"
+    },
+    "manual_close_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Manual Close Date"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "reference",
+    "broker",
+    "account",
+    "transaction_type",
+    "trade_date",
+    "value_date",
+    "base_currency",
+    "quote_currency",
+    "direction",
+    "base_amount",
+    "quote_amount",
+    "locked_rate",
+    "status"
+  ]
+}
