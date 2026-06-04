@@ -86,8 +86,8 @@ export default function PrivateInvestorsPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">משקיעים אואסיס ישראל</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold tracking-tight">משקיעים אואסיס ישראל</h1>
+          <p className="text-base text-muted-foreground mt-1">
             {data.investors.length} משקיעים · {data.investors.filter((i) => i.status === "Active").length} פעילים
             {hasActiveFilters && <> · מציג {filtered.length}</>}
           </p>
@@ -157,9 +157,9 @@ export default function PrivateInvestorsPage() {
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-base">
             <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
+              <tr className="border-b border-border text-sm text-muted-foreground">
                 <th className="text-left px-4 py-3 font-medium">Name</th>
                 <th className="text-left px-4 py-3 font-medium">Linked Investment</th>
                 <th className="text-right px-4 py-3 font-medium">Principal</th>
