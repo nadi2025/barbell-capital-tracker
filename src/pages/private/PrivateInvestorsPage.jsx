@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar, Search, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { differenceInDays, parseISO } from "date-fns";
@@ -10,6 +10,7 @@ import { fmtCurrency, projectScheduledPayments } from "@/lib/privateMath";
 import PrivateInvestorForm from "@/components/private/PrivateInvestorForm";
 import PrivatePaymentDialog from "@/components/private/PrivatePaymentDialog";
 import PrivateInvestorDetailsDialog from "@/components/private/PrivateInvestorDetailsDialog";
+import InvestorEmailGeneratorDialog from "@/components/private/InvestorEmailGeneratorDialog";
 import MobileSelect from "@/components/ui/MobileSelect";
 import PrivateGlobalSummary from "@/components/private/PrivateGlobalSummary";
 import PrivateCurrencyBreakdown from "@/components/private/PrivateCurrencyBreakdown";
@@ -33,6 +34,8 @@ export default function PrivateInvestorsPage() {
   const [paymentFor, setPaymentFor] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsFor, setDetailsFor] = useState(null);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailFor, setEmailFor] = useState(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -111,9 +114,14 @@ export default function PrivateInvestorsPage() {
             {hasActiveFilters && <> · מציג {filtered.length}</>}
           </p>
         </div>
-        <Button onClick={() => { setEditInvestor(null); setFormOpen(true); }} className="gap-2">
-          <Plus className="w-4 h-4" /> Add Investor
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setEmailFor(null); setEmailOpen(true); }} className="gap-2">
+            <Mail className="w-4 h-4" /> צור מייל עדכון
+          </Button>
+          <Button onClick={() => { setEditInvestor(null); setFormOpen(true); }} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Investor
+          </Button>
+        </div>
       </div>
 
       {/* Filters bar */}
@@ -278,6 +286,10 @@ export default function PrivateInvestorsPage() {
                           onClick={() => { setPaymentFor(inv); setPaymentOpen(true); }}>
                           <DollarSign className="w-3.5 h-3.5" />
                         </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="צור מייל עדכון"
+                          onClick={() => { setEmailFor(inv); setEmailOpen(true); }}>
+                          <Mail className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit"
                           onClick={() => { setEditInvestor(inv); setFormOpen(true); }}>
                           <Pencil className="w-3.5 h-3.5" />
@@ -314,6 +326,13 @@ export default function PrivateInvestorsPage() {
         onClose={() => setDetailsOpen(false)}
         investor={detailsFor}
         payments={data.payments}
+      />
+      <InvestorEmailGeneratorDialog
+        open={emailOpen}
+        onClose={() => setEmailOpen(false)}
+        investors={data.investors}
+        payments={data.payments}
+        initialInvestor={emailFor}
       />
     </div>
   );
