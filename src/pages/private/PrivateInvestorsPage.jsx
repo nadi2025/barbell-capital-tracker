@@ -86,7 +86,7 @@ export default function PrivateInvestorsPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">משקיעי חוב פרטיים</h1>
+          <h1 className="text-2xl font-bold tracking-tight">משקיעים אואסיס ישראל</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {data.investors.length} משקיעים · {data.investors.filter((i) => i.status === "Active").length} פעילים
             {hasActiveFilters && <> · מציג {filtered.length}</>}
