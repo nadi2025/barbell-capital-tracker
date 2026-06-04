@@ -11,6 +11,17 @@ import PrivateInvestorForm from "@/components/private/PrivateInvestorForm";
 import PrivatePaymentDialog from "@/components/private/PrivatePaymentDialog";
 import PrivateInvestorDetailsDialog from "@/components/private/PrivateInvestorDetailsDialog";
 import MobileSelect from "@/components/ui/MobileSelect";
+import PrivateGlobalSummary from "@/components/private/PrivateGlobalSummary";
+import PrivateCurrencyBreakdown from "@/components/private/PrivateCurrencyBreakdown";
+import PrivateInsights from "@/components/private/PrivateInsights";
+import {
+  buildGlobalSummary,
+  buildCurrencyBreakdown,
+  buildMaturityBuckets,
+  buildUpcomingPayments,
+  buildDistributions,
+  buildConcentration,
+} from "@/components/private/investorsSummaryMath";
 
 export default function PrivateInvestorsPage() {
   const { data, isLoading } = usePrivateData();
@@ -61,6 +72,14 @@ export default function PrivateInvestorsPage() {
   }, [enriched, search, statusFilter, currencyFilter, frequencyFilter]);
 
   const hasActiveFilters = search || statusFilter !== "all" || currencyFilter !== "all" || frequencyFilter !== "all";
+
+  // Summary calculations — recompute whenever filtered list changes
+  const globalSummary = useMemo(() => buildGlobalSummary(filtered), [filtered]);
+  const currencyBreakdown = useMemo(() => buildCurrencyBreakdown(filtered), [filtered]);
+  const maturityBuckets = useMemo(() => buildMaturityBuckets(filtered), [filtered]);
+  const upcomingPayments = useMemo(() => buildUpcomingPayments(filtered), [filtered]);
+  const distributions = useMemo(() => buildDistributions(filtered), [filtered]);
+  const concentration = useMemo(() => buildConcentration(filtered), [filtered]);
   const clearFilters = () => { setSearch(""); setStatusFilter("all"); setCurrencyFilter("all"); setFrequencyFilter("all"); };
 
   const handleDelete = async (inv) => {
@@ -154,6 +173,19 @@ export default function PrivateInvestorsPage() {
           </Button>
         )}
       </div>
+
+      {filtered.length > 0 && (
+        <>
+          <PrivateGlobalSummary summary={globalSummary} filtered={hasActiveFilters} />
+          <PrivateCurrencyBreakdown groups={currencyBreakdown} />
+          <PrivateInsights
+            buckets={maturityBuckets}
+            upcoming={upcomingPayments}
+            distributions={distributions}
+            concentration={concentration}
+          />
+        </>
+      )}
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
