@@ -4,8 +4,9 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import {
   Plus, Pencil, Trash2, RefreshCw, ChevronDown, ChevronRight,
-  TrendingUp, TrendingDown, Shield, DollarSign, Layers, AlertTriangle,
+  TrendingUp, TrendingDown, Shield, DollarSign, Layers, AlertTriangle, Download,
 } from "lucide-react";
+import { downloadCsv } from "@/lib/csvExport";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
 import StockPositionForm from "../components/StockPositionForm";
@@ -527,6 +528,35 @@ export default function StocksPage() {
           <Button variant="outline" size="sm" onClick={openPriceHub} className="gap-2 flex-1 sm:flex-initial">
             <RefreshCw className="w-4 h-4" />
             עדכן מחירים
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              downloadCsv("stock_positions", [
+                { key: "ticker", label: "Ticker" },
+                { key: "source", label: "Source" },
+                { key: "status", label: "Status" },
+                { key: "entry_date", label: "Entry Date" },
+                { key: "shares", label: "Shares" },
+                { key: "average_cost", label: "Average Cost $" },
+                { key: "current_price", label: "Current Price $" },
+                { key: "invested_value", label: "Invested Value $" },
+                { key: "current_value", label: "Current Value $" },
+                { key: "gain_loss", label: "Gain/Loss $" },
+                { key: "gain_loss_pct", label: "Gain/Loss %" },
+                { key: "portfolio_weight", label: "Portfolio Weight %" },
+                { key: "high_52w", label: "52W High" },
+                { key: "low_52w", label: "52W Low" },
+                { key: "notes", label: "Notes" },
+              ], allStocks);
+              toast.success(`יוצאו ${allStocks.length} שורות`);
+            }}
+            disabled={allStocks.length === 0}
+            className="gap-2 flex-1 sm:flex-initial"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
           </Button>
           {!isReadOnly && (
             <Button size="sm" onClick={() => { setEditStock(null); setFormOpen(true); }} className="gap-2 flex-1 sm:flex-initial">

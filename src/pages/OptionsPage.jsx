@@ -5,7 +5,8 @@ import ExpiryAlerts from "../components/ExpiryAlerts";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, RefreshCw, Layers, List, TrendingUp, TrendingDown, Target, DollarSign, Save } from "lucide-react";
+import { Plus, Pencil, Trash2, RefreshCw, Layers, List, TrendingUp, TrendingDown, Target, DollarSign, Save, Download } from "lucide-react";
+import { downloadCsv } from "@/lib/csvExport";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StatusBadge from "../components/StatusBadge";
 import PnlBadge from "../components/PnlBadge";
@@ -258,6 +259,38 @@ export default function OptionsPage() {
           <Button variant="outline" onClick={openPriceHub} className="gap-2">
             <RefreshCw className="w-4 h-4" />
             Live Prices
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              downloadCsv("options_trades", [
+                { key: "open_date", label: "Open Date" },
+                { key: "expiration_date", label: "Expiration" },
+                { key: "close_date", label: "Close Date" },
+                { key: "ticker", label: "Ticker" },
+                { key: "category", label: "Category", format: (r) => CATEGORY_LABELS[getCanonicalCategory(r)] || r.category || "" },
+                { key: "direction", label: "Direction", format: (r) => getDirection(r) || "" },
+                { key: "type", label: "Type" },
+                { key: "strike", label: "Strike", format: (r) => formatStrike(r) },
+                { key: "quantity", label: "Quantity" },
+                { key: "fill_price", label: "Fill $" },
+                { key: "close_price", label: "Close $" },
+                { key: "collateral", label: "Collateral $" },
+                { key: "fee", label: "Fee $" },
+                { key: "realized_pl", label: "Realized P&L $", format: (r) => {
+                  const v = computeRealizedPL(r);
+                  return v != null ? v : (r.pnl ?? "");
+                } },
+                { key: "status", label: "Status" },
+                { key: "notes", label: "Notes" },
+              ], filteredTrades);
+              toast.success(`יוצאו ${filteredTrades.length} שורות`);
+            }}
+            disabled={filteredTrades.length === 0}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
           </Button>
           {!isReadOnly && (
             <Button onClick={() => { setEditTrade(null); setFormOpen(true); }} className="gap-2">
