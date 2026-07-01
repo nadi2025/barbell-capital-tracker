@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
-import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar, Search, X, Mail } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Plus, Pencil, Trash2, DollarSign, Lock, Calendar, Search, X, Mail, FileEdit } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+import { PRIVATE_TEMPLATE_KEY } from "@/lib/emailTemplate";
+import EmailTemplateEditorDialog from "@/components/private/EmailTemplateEditorDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { differenceInDays, parseISO } from "date-fns";
@@ -36,6 +39,16 @@ export default function PrivateInvestorsPage() {
   const [detailsFor, setDetailsFor] = useState(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailFor, setEmailFor] = useState(null);
+  const [templateEditorOpen, setTemplateEditorOpen] = useState(false);
+  const [emailTemplate, setEmailTemplate] = useState(null);
+
+  // Load saved email template once (and refresh after edits)
+  const loadTemplate = () => {
+    base44.entities.EmailTemplate.filter({ key: PRIVATE_TEMPLATE_KEY })
+      .then((rows) => setEmailTemplate(rows?.[0] || null))
+      .catch(() => setEmailTemplate(null));
+  };
+  useEffect(() => { loadTemplate(); }, []);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -115,6 +128,9 @@ export default function PrivateInvestorsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setTemplateEditorOpen(true)} className="gap-2">
+            <FileEdit className="w-4 h-4" /> פורמט מייל
+          </Button>
           <Button variant="outline" onClick={() => { setEmailFor(null); setEmailOpen(true); }} className="gap-2">
             <Mail className="w-4 h-4" /> צור מייל עדכון
           </Button>
@@ -333,6 +349,12 @@ export default function PrivateInvestorsPage() {
         investors={data.investors}
         payments={data.payments}
         initialInvestor={emailFor}
+        template={emailTemplate}
+      />
+      <EmailTemplateEditorDialog
+        open={templateEditorOpen}
+        onClose={() => setTemplateEditorOpen(false)}
+        onSaved={loadTemplate}
       />
     </div>
   );

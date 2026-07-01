@@ -1,0 +1,28 @@
+{
+  "name": "EmailTemplate",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "title": "Template Key",
+      "description": "Unique identifier for the template, e.g. 'private_investor_update'"
+    },
+    "subject_template": {
+      "type": "string",
+      "title": "Subject Template"
+    },
+    "body_template": {
+      "type": "string",
+      "title": "Body Template"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "key",
+    "subject_template",
+    "body_template"
+  ]
+}

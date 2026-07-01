@@ -7,6 +7,7 @@
  */
 
 import { differenceInDays, parseISO, format } from "date-fns";
+import { renderTemplate, DEFAULT_BODY_TEMPLATE, DEFAULT_SUBJECT_TEMPLATE } from "@/lib/emailTemplate";
 
 const SYMBOL = { USD: "$", ILS: "₪", EUR: "€" };
 
@@ -148,3 +149,46 @@ export function buildEmailBody({ investorName, items, todayDate }) {
 }
 
 export const EMAIL_SUBJECT = "עדכון תקופתי על השקעתך – אואסיס פרויקט ג׳";
+
+/**
+ * Build the variable dictionary used to fill an email template for a single
+ * investor / single investment. When `item` aggregates several investments
+ * (multi-currency), most single-value placeholders fall back to the first
+ * currency block — the multi-currency scenario keeps using buildEmailBody().
+ */
+export function buildTemplateVars({ investorName, item, todayDate, investor }) {
+  const rate = item?.interestRate ?? item?.weightedRate ?? 0;
+  const currency = item?.currency || "USD";
+  return {
+    investor_name: investorName || "",
+    principal: fmtAmount(item?.principal, currency),
+    principal_raw: (Number(item?.principal) || 0).toString(),
+    currency,
+    currency_symbol: SYMBOL[currency] || "",
+    interest_rate: Number(rate).toFixed(2),
+    interest_type: investor?.interest_type || "Simple",
+    start_date: fmtDateDMY(item?.startDate || item?.earliestStart),
+    maturity_date: fmtDateDMY(investor?.maturity_date),
+    days_elapsed: String(item?.daysElapsed ?? 0),
+    accrued_interest: fmtAmount(item?.accrued, currency),
+    total_paid: fmtAmount(item?.totalPaid, currency),
+    current_balance: fmtAmount(item?.balance, currency),
+    today_date: fmtDateDMY(todayDate),
+    linked_investment: investor?.linked_investment_name || "",
+  };
+}
+
+/**
+ * Render the email using a saved template (subject + body), or fall back to
+ * the built-in defaults. For a single investment only — multi-currency
+ * aggregated emails continue to use buildEmailBody().
+ */
+export function renderEmailFromTemplate({ investorName, item, todayDate, investor, template }) {
+  const vars = buildTemplateVars({ investorName, item, todayDate, investor });
+  const subjectTpl = template?.subject_template || DEFAULT_SUBJECT_TEMPLATE;
+  const bodyTpl = template?.body_template || DEFAULT_BODY_TEMPLATE;
+  return {
+    subject: renderTemplate(subjectTpl, vars),
+    body: renderTemplate(bodyTpl, vars),
+  };
+}

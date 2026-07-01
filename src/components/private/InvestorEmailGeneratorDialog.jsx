@@ -13,11 +13,12 @@ import {
   fmtAmount,
   fmtDateDMY,
   EMAIL_SUBJECT,
+  renderEmailFromTemplate,
 } from "./emailGeneratorMath";
 
 const SYMBOL = { USD: "$", ILS: "₪", EUR: "€" };
 
-export default function InvestorEmailGeneratorDialog({ open, onClose, investors = [], payments = [], initialInvestor = null }) {
+export default function InvestorEmailGeneratorDialog({ open, onClose, investors = [], payments = [], initialInvestor = null, template = null }) {
   const [search, setSearch] = useState("");
   const [selectedName, setSelectedName] = useState("");
   const [selectionMode, setSelectionMode] = useState("single"); // "single" | "all"
@@ -115,18 +116,37 @@ export default function InvestorEmailGeneratorDialog({ open, onClose, investors 
     };
   }, [selectedName, selectionMode, selectedInvestorId, investmentsForName, payments, hasMultiple]);
 
-  // Auto-build body whenever result changes
+  // Auto-build body whenever result changes.
+  // Single-investment mode → render from user's saved template.
+  // Multi-currency aggregated mode → keep the built-in multi-block formatter.
   useEffect(() => {
     if (!result || result.items.length === 0) {
       setBody("");
       return;
     }
+    const today = new Date();
+    if (result.mode === "single" && result.items.length === 1) {
+      const item = result.items[0];
+      const investor = investmentsForName.find((i) => i.id === selectedInvestorId) || investmentsForName[0];
+      const rendered = renderEmailFromTemplate({
+        investorName: selectedName,
+        item,
+        todayDate: today,
+        investor,
+        template,
+      });
+      setSubject(rendered.subject);
+      setBody(rendered.body);
+      return;
+    }
+    // Fallback for aggregated (multi-currency) case
+    setSubject(template?.subject_template || EMAIL_SUBJECT);
     setBody(buildEmailBody({
       investorName: selectedName,
       items: result.items,
-      todayDate: new Date(),
+      todayDate: today,
     }));
-  }, [result, selectedName]);
+  }, [result, selectedName, template, investmentsForName, selectedInvestorId]);
 
   const handleCopy = async (text, key) => {
     try {
