@@ -25,7 +25,7 @@ export function renderTemplate(text, vars) {
  * All supported placeholders — displayed in the template editor for reference.
  */
 export const AVAILABLE_PLACEHOLDERS = [
-  { key: "investor_name", desc: "שם המשקיע" },
+  { key: "investor_name", desc: "שם פרטי של המשקיע" },
   { key: "principal", desc: "סכום קרן (מפורמט עם סימן מטבע)" },
   { key: "principal_raw", desc: "סכום קרן (מספר בלבד)" },
   { key: "currency", desc: "מטבע (USD/ILS/EUR)" },

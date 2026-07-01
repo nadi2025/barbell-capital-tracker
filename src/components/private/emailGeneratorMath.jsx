@@ -159,8 +159,9 @@ export const EMAIL_SUBJECT = "עדכון תקופתי על השקעתך – או
 export function buildTemplateVars({ investorName, item, todayDate, investor }) {
   const rate = item?.interestRate ?? item?.weightedRate ?? 0;
   const currency = item?.currency || "USD";
+  const firstName = (investorName || "").trim().split(/\s+/)[0] || "";
   return {
-    investor_name: investorName || "",
+    investor_name: firstName,
     principal: fmtAmount(item?.principal, currency),
     principal_raw: (Number(item?.principal) || 0).toString(),
     currency,
